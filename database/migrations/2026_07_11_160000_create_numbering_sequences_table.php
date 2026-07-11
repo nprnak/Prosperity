@@ -10,7 +10,7 @@ return new class extends Migration {
         Schema::create('numbering_sequences', function (Blueprint $table) {
             $table->id();
             $table->string('type');
-            $table->string('scope')->nullable();
+            $table->string('scope')->default('');
             $table->unsignedBigInteger('current_value')->default(0);
             $table->timestamps();
 

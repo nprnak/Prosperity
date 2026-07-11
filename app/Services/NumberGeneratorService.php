@@ -56,7 +56,7 @@ class NumberGeneratorService
         return DB::transaction(function () use ($type) {
             $row = NumberingSequence::query()
                 ->where('type', $type)
-                ->whereNull('scope')
+                ->where('scope', '')
                 ->lockForUpdate()
                 ->first();
 
@@ -64,7 +64,7 @@ class NumberGeneratorService
                 $bootstrap = $type === 'receipt' ? 56 : 0;
                 $row = NumberingSequence::create([
                     'type' => $type,
-                    'scope' => null,
+                    'scope' => '',
                     'current_value' => $bootstrap,
                 ]);
                 $row->refresh();

@@ -37,6 +37,7 @@ class ApproverController extends Controller
         abort_unless($application->status === ShareApplication::STATUS_PAYMENT_VERIFIED, 422);
 
         $payment = $application->paymentTransactions()->where('verification_status', 'verified')->latest()->firstOrFail();
+        $payment->update(['approved_by' => $request->user()->id]);
 
         $voucher = Voucher::create([
             'payment_transaction_id' => $payment->id,

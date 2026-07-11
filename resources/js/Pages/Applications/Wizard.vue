@@ -22,11 +22,15 @@ const form = useForm({
     shares_applied: props.draft?.shares_applied || 1,
     total_amount_declared: props.draft?.total_amount_declared || 100,
     declaration_accepted: false,
+    photo: null,
+    citizenship_doc: null,
+    national_id_doc: null,
+    pan_doc: null,
   },
 });
 
 const saveStep = () => {
-  form.post(route('applications.draft'));
+  form.post(route('applications.draft'), { forceFormData: true });
 };
 
 const submitFinal = () => {
@@ -58,6 +62,10 @@ const submitFinal = () => {
           <input v-model="form.payload.permanent_ward" placeholder="Permanent ward" class="border rounded p-2" />
           <input v-model="form.payload.shares_applied" type="number" min="1" placeholder="Shares applied" class="border rounded p-2" />
           <input v-model="form.payload.total_amount_declared" type="number" step="0.01" min="0" placeholder="Total declared" class="border rounded p-2" />
+          <input type="file" @change="form.payload.photo = $event.target.files[0]" class="border rounded p-2" />
+          <input type="file" @change="form.payload.citizenship_doc = $event.target.files[0]" class="border rounded p-2" />
+          <input type="file" @change="form.payload.national_id_doc = $event.target.files[0]" class="border rounded p-2" />
+          <input type="file" @change="form.payload.pan_doc = $event.target.files[0]" class="border rounded p-2" />
         </div>
         <div class="mt-4 flex gap-2">
           <button @click="saveStep" class="px-4 py-2 bg-indigo-600 text-white rounded">Save Draft</button>

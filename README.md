@@ -1,112 +1,91 @@
 # Prosperity MIS
 
-Management Information System for **Prosperity Holdings Limited** — tracking founder-share applications, payment receipts, and allotments.
+Laravel 11 MIS for Prosperity Holdings Ltd with Breeze (Vue + Inertia), role-based workflow, application/payment approval flow, PDF voucher generation, and shareholder register export.
 
-## Tech stack
+## Implemented modules
 
-| Layer | Technology |
-|---|---|
-| Framework | Laravel 11 |
-| Auth/UI | Breeze (Vue 3 + Inertia.js) |
-| Database | MySQL 8+ |
-| Permissions | spatie/laravel-permission |
-| Audit log | spatie/laravel-activitylog |
-| PDF generation | barryvdh/laravel-dompdf |
-| Excel export | maatwebsite/excel |
-| Queues | Laravel database driver |
+- Laravel 11 + Breeze (Vue/Inertia) bootstrap
+- Roles: `applicant`, `finance_staff`, `approver`, `admin`
+- Domain schema + models:
+  - `applicants`
+  - `share_applications`
+  - `payment_transactions` (soft deletes)
+  - `share_allotments`
+  - `vouchers` (soft deletes)
+  - `numbering_sequences`
+- Transaction-safe `NumberGeneratorService`:
+  - Application: `PHL-{fiscal_year}-{6-digit}`
+  - Receipt/Voucher: sequential padded numbers
+- Applicant 5-step scaffolded wizard (draft save + submit)
+- Finance dashboard:
+  - submitted/payment-pending lists
+  - multiple payment records per application
+  - verify/reject payment actions
+- Approver dashboard:
+  - review `payment_verified` applications
+  - approve -> generate voucher PDF
+  - reject with reason
+- Voucher PDF template (DomPDF) including amount in words service
+- Share allotment + shareholder register + Excel export
+- Admin dashboard cards + Chart.js capital-over-time chart
+- Queued email notifications for submit / payment verified / approved / rejected
+- Activity logging traits on share applications and payment transactions
 
-## Roles
+## Stack
 
-| Role | Description |
-|---|---|
-| `applicant` | Individual investor — can only view/edit their own applications |
-| `finance_staff` | Records and verifies payment transactions |
-| `approver` | Director / authorised signatory — approves applications for voucher issuance |
-| `admin` | Full access (Gate::before shortcut bypasses all checks) |
+- Laravel 11
+- Breeze (Vue 3 + Inertia)
+- MySQL
+- spatie/laravel-permission
+- spatie/laravel-activitylog
+- barryvdh/laravel-dompdf
+- maatwebsite/excel
 
 ## Local setup
 
-### Prerequisites
-
-- PHP >= 8.2
-- Composer 2
-- Node.js >= 18 + npm
-- MySQL 8+
-
-### Steps
-
 ```bash
-# 1. Clone the repository
 git clone https://github.com/nprnak/Prosperity.git
 cd Prosperity
 
-# 2. Install PHP dependencies
-composer install
-
-# 3. Install Node dependencies
-npm install
-
-# 4. Copy environment file and generate app key
 cp .env.example .env
+# set DB_* values for MySQL
+
+composer install --no-security-blocking
+npm install
+npm run build
+
 php artisan key:generate
-
-# 5. Create the MySQL database, then update .env:
-#    DB_DATABASE=prosperity_mis
-#    DB_USERNAME=<your_user>
-#    DB_PASSWORD=<your_password>
-
-# 6. Run migrations
 php artisan migrate
-
-# 7. Publish Spatie Permission tables and migrate
-php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
-php artisan migrate
-
-# 8. Seed roles
-php artisan db:seed --class=RolesAndPermissionsSeeder
-# Or run all seeders (includes roles + a test user):
 php artisan db:seed
 
-# 9. Create the storage symlink (for public file access)
-php artisan storage:link
-
-# 10. Build frontend assets
-npm run build
-# Or for hot-reload development:
-npm run dev
-
-# 11. Start the local server
+php artisan queue:work
 php artisan serve
 ```
 
-Visit http://localhost:8000
-
-## Queue worker
-
-The project uses the `database` queue driver. Start the worker with:
+## Useful commands
 
 ```bash
-php artisan queue:work
-```
-
-## Development (all processes in one terminal)
-
-```bash
+php artisan test
 composer run dev
 ```
 
-This starts the HTTP server, queue listener, log tail, and Vite dev server concurrently.
+## Workflow routes
 
-## Next steps (business domain)
+- Applicant wizard: `/applications/wizard`
+- Finance dashboard: `/finance/dashboard`
+- Approver dashboard: `/approver/dashboard`
+- Shareholder register: `/allotments/register`
+- Admin dashboard: `/admin/dashboard`
 
-The bootstrap PR sets up only the structural foundation. The following modules will be built in subsequent PRs:
+## Manual test checklist
 
-1. **Database schema** — migrations + Eloquent models for `applicants`, `share_applications`, `payment_transactions`, `share_allotments`, `vouchers`
-2. **NumberGeneratorService** — fiscal-year-aware sequential numbering (PHL-2083-000001 format) with row-level locking
-3. **Multi-step application form** — 5-step Vue/Inertia wizard with draft persistence and server-side Form Requests
-4. **Finance staff dashboard** — payment recording matching the physical receipt layout
-5. **Approver workflow** — approve/reject with reason; triggers PDF voucher generation
-6. **Voucher PDF** — Blade template mirroring the paper "Payment Receipt"
-7. **Shareholder register** — searchable/sortable table with CSV/Excel export
-8. **Admin dashboard** — capital-raised summary cards + Chart.js time-series
-9. **Email notifications** — queued jobs for application submitted / payment verified / approved / rejected
+1. Register a user and confirm `applicant` role assignment.
+2. Save draft in wizard and verify draft persists.
+3. Submit application and verify status -> `submitted` and email queued.
+4. Login as finance staff/admin; record two partial payments for one application.
+5. Verify payments; confirm application moves to `payment_verified` only after verified total reaches declared total.
+6. Login as approver/admin; approve application and verify voucher PDF is generated/stored and approval email is queued.
+7. Reject another application and verify rejection reason + email.
+8. Create share allotment from approved application; verify status -> `allotted`.
+9. Open register and export Excel.
+10. Open admin dashboard and verify summary metrics + chart data.

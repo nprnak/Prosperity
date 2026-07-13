@@ -1,92 +1,190 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import PanelLayout from '@/Layouts/PanelLayout.vue';
+import InputError from '@/Components/InputError.vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed, watch } from 'vue';
 
 const props = defineProps({
   draft: Object,
   applications: Array,
+  profileCompleted: Boolean,
 });
 
+const money = (value) => Number.parseFloat(value || 0);
+
 const form = useForm({
-  step: 1,
+  step: 2,
   payload: {
-    full_name_nepali: props.draft?.applicant?.full_name_nepali || '',
-    full_name_english: props.draft?.applicant?.full_name_english || '',
-    date_of_birth: props.draft?.applicant?.date_of_birth || '',
-    age: props.draft?.applicant?.age || '',
-    mobile_number: props.draft?.applicant?.mobile_number || '',
-    email: props.draft?.applicant?.email || '',
-    permanent_district: props.draft?.applicant?.permanent_district || '',
-    permanent_municipality: props.draft?.applicant?.permanent_municipality || '',
-    permanent_ward: props.draft?.applicant?.permanent_ward || '',
+    investment_source: props.draft?.applicant?.investment_source || 'salary',
+    investment_source_other: props.draft?.applicant?.investment_source_other || '',
+    share_heir_name: props.draft?.applicant?.share_heir_name || '',
+    share_heir_relation: props.draft?.applicant?.share_heir_relation || '',
+    share_heir_mobile: props.draft?.applicant?.share_heir_mobile || '',
     shares_applied: props.draft?.shares_applied || 1,
+    amount_per_share: props.draft?.amount_per_share || 100,
     total_amount_declared: props.draft?.total_amount_declared || 100,
     declaration_accepted: false,
-    photo: null,
-    citizenship_doc: null,
-    national_id_doc: null,
-    pan_doc: null,
   },
 });
 
-const saveStep = () => {
-  form.post(route('applications.draft'), { forceFormData: true });
+const hasDraft = computed(() => Boolean(props.draft?.id));
+const profileReady = computed(() => Boolean(props.profileCompleted));
+
+const estimatedTotal = computed(() => {
+  const shares = Math.max(1, Number.parseInt(form.payload.shares_applied || 1, 10));
+  const amount = Math.max(0, money(form.payload.amount_per_share));
+
+  return (shares * amount).toFixed(2);
+});
+
+watch(
+  () => [form.payload.shares_applied, form.payload.amount_per_share],
+  () => {
+    form.payload.total_amount_declared = estimatedTotal.value;
+  },
+  { immediate: true },
+);
+
+const payloadError = (field) => form.errors[`payload.${field}`];
+
+const inputClass = (field) => {
+  const base = 'w-full rounded-lg border px-3 py-2';
+  return payloadError(field) ? `${base} border-red-400 focus:border-red-500 focus:ring-red-500` : `${base} border-gray-300`;
+};
+
+const saveDraft = () => {
+  form.post(route('applications.draft'), {
+    forceFormData: true,
+    preserveScroll: true,
+  });
 };
 
 const submitFinal = () => {
   const id = props.draft?.id;
-  if (!id) return;
-  useForm({ declaration_accepted: true }).post(route('applications.submit', id));
+  if (!id || !profileReady.value) return;
+  useForm({ declaration_accepted: form.payload.declaration_accepted }).post(route('applications.submit', id));
 };
 </script>
 
 <template>
-  <Head title="Application Wizard" />
-  <AuthenticatedLayout>
-    <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 leading-tight">Application Wizard</h2>
-    </template>
+  <Head title="Share Application" />
+  <PanelLayout>
+    <div class="py-8 max-w-6xl mx-auto space-y-6 px-4 sm:px-6">
+      <div class="rounded-2xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-700 p-6 text-white shadow-lg">
+        <h3 class="text-2xl font-semibold">Share Application Portal</h3>
+        <p class="mt-2 text-sm text-blue-100">
+          Register first, login, complete your full profile, then apply for shares from the same account.
+        </p>
+      </div>
 
-    <div class="py-8 max-w-5xl mx-auto space-y-6">
-      <div class="bg-white p-6 rounded shadow">
-        <p class="text-sm text-gray-500 mb-4">5-step draft flow: personal → address/ID → investment/heir → work/docs → declaration/review.</p>
-        <div class="grid grid-cols-2 gap-4">
-          <input v-model="form.payload.full_name_nepali" placeholder="Full name (Nepali)" class="border rounded p-2" />
-          <input v-model="form.payload.full_name_english" placeholder="Full name (English)" class="border rounded p-2" />
-          <input v-model="form.payload.date_of_birth" type="date" class="border rounded p-2" />
-          <input v-model="form.payload.age" type="number" min="0" placeholder="Age" class="border rounded p-2" />
-          <input v-model="form.payload.mobile_number" placeholder="Mobile" class="border rounded p-2" />
-          <input v-model="form.payload.email" type="email" placeholder="Email" class="border rounded p-2" />
-          <input v-model="form.payload.permanent_district" placeholder="Permanent district" class="border rounded p-2" />
-          <input v-model="form.payload.permanent_municipality" placeholder="Permanent municipality" class="border rounded p-2" />
-          <input v-model="form.payload.permanent_ward" placeholder="Permanent ward" class="border rounded p-2" />
-          <input v-model="form.payload.shares_applied" type="number" min="1" placeholder="Shares applied" class="border rounded p-2" />
-          <input v-model="form.payload.total_amount_declared" type="number" step="0.01" min="0" placeholder="Total declared" class="border rounded p-2" />
-          <input type="file" @change="form.payload.photo = $event.target.files[0]" class="border rounded p-2" />
-          <input type="file" @change="form.payload.citizenship_doc = $event.target.files[0]" class="border rounded p-2" />
-          <input type="file" @change="form.payload.national_id_doc = $event.target.files[0]" class="border rounded p-2" />
-          <input type="file" @change="form.payload.pan_doc = $event.target.files[0]" class="border rounded p-2" />
-        </div>
-        <div class="mt-4 flex gap-2">
-          <button @click="saveStep" class="px-4 py-2 bg-indigo-600 text-white rounded">Save Draft</button>
-          <button @click="submitFinal" class="px-4 py-2 bg-green-600 text-white rounded" :disabled="!draft">Submit</button>
+      <div v-if="!profileReady" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
+        <h4 class="text-lg font-semibold">Complete Profile First</h4>
+        <p class="mt-2 text-sm">
+          Your share application is locked until your profile is complete with all required information, education, address, and documents.
+        </p>
+        <div class="mt-4">
+          <Link :href="route('profile.edit')" class="inline-flex rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">
+            Go To Profile
+          </Link>
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded shadow">
-        <h3 class="font-semibold mb-2">My Applications</h3>
+      <div v-else class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100 space-y-6">
+        <p v-if="$page.props.errors.profile" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {{ $page.props.errors.profile }}
+        </p>
+
+        <section class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 sm:p-5">
+          <h4 class="text-lg font-semibold text-gray-900">Share Details</h4>
+          <div class="mt-4 grid gap-4 md:grid-cols-3">
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Shares Applied</label>
+              <input v-model="form.payload.shares_applied" type="number" min="1" placeholder="e.g. 50" :class="inputClass('shares_applied')" />
+              <InputError :message="payloadError('shares_applied')" class="mt-1" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Amount per Share</label>
+              <input v-model="form.payload.amount_per_share" type="number" min="0" step="0.01" placeholder="e.g. 100" :class="inputClass('amount_per_share')" />
+              <InputError :message="payloadError('amount_per_share')" class="mt-1" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Total Declared Amount</label>
+              <input v-model="form.payload.total_amount_declared" type="number" min="0" step="0.01" :class="inputClass('total_amount_declared')" />
+              <InputError :message="payloadError('total_amount_declared')" class="mt-1" />
+              <p class="mt-1 text-xs text-gray-500">Suggested total: Rs. {{ estimatedTotal }}</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-rose-100 bg-rose-50/50 p-4 sm:p-5">
+          <h4 class="text-lg font-semibold text-gray-900">Investment and Heir Details</h4>
+          <div class="mt-4 grid gap-4 md:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Investment Source</label>
+              <select v-model="form.payload.investment_source" class="w-full rounded-lg border border-gray-300 px-3 py-2">
+                <option value="salary">Salary</option>
+                <option value="dividend">Dividend</option>
+                <option value="property_sale">Property Sale</option>
+                <option value="house_rent">House Rent</option>
+                <option value="share_trading">Share Trading</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Other Investment Source</label>
+              <input v-model="form.payload.investment_source_other" placeholder="Only fill if source is Other" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Share Heir Name</label>
+              <input v-model="form.payload.share_heir_name" placeholder="e.g. Sita Sharma" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Heir Relation</label>
+              <input v-model="form.payload.share_heir_relation" placeholder="e.g. Daughter" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Heir Mobile</label>
+              <input v-model="form.payload.share_heir_mobile" placeholder="e.g. 98XXXXXXXX" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
+          <label class="flex items-start gap-3 text-sm text-gray-700">
+            <input v-model="form.payload.declaration_accepted" type="checkbox" class="mt-0.5 rounded border-gray-300 text-blue-600" />
+            <span>I confirm that the profile and share application information provided above is true and complete.</span>
+          </label>
+          <InputError :message="payloadError('declaration_accepted') || form.errors.declaration_accepted" class="mt-2" />
+        </section>
+
+        <div class="flex flex-wrap justify-end gap-3">
+          <button @click="saveDraft" class="rounded-lg bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700" :disabled="form.processing">
+            Save Application Draft
+          </button>
+          <button
+            @click="submitFinal"
+            class="rounded-lg bg-emerald-600 px-5 py-2.5 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+            :disabled="!hasDraft || !form.payload.declaration_accepted"
+          >
+            Submit Application
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-gray-100">
+        <h3 class="font-semibold mb-3 text-gray-900">My Applications</h3>
         <table class="w-full text-sm">
-          <thead><tr class="text-left"><th>No</th><th>Status</th><th>Shares</th><th>Total</th></tr></thead>
+          <thead><tr class="text-left text-gray-600"><th>No</th><th>Status</th><th>Shares</th><th>Total</th></tr></thead>
           <tbody>
             <tr v-for="app in applications" :key="app.id" class="border-t">
-              <td>{{ app.application_number }}</td>
-              <td>{{ app.status }}</td>
-              <td>{{ app.shares_applied }}</td>
-              <td>{{ app.total_amount_declared }}</td>
+              <td class="py-2">{{ app.application_number }}</td>
+              <td class="py-2 capitalize">{{ app.status }}</td>
+              <td class="py-2">{{ app.shares_applied }}</td>
+              <td class="py-2">Rs. {{ app.total_amount_declared }}</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
-  </AuthenticatedLayout>
+  </PanelLayout>
 </template>

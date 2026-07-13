@@ -16,6 +16,10 @@ class ApplicationWizardController extends Controller
 {
     public function index(Request $request)
     {
+        $applicantProfile = Applicant::query()
+            ->where('user_id', $request->user()->id)
+            ->first();
+
         $draft = ShareApplication::query()
             ->whereHas('applicant', fn ($q) => $q->where('user_id', $request->user()->id))
             ->where('status', ShareApplication::STATUS_DRAFT)
@@ -31,6 +35,8 @@ class ApplicationWizardController extends Controller
         return Inertia::render('Applications/Wizard', [
             'draft' => $draft,
             'applications' => $applications,
+            'profile' => $applicantProfile,
+            'profileCompleted' => $this->isApplicantProfileComplete($applicantProfile),
         ]);
     }
 
@@ -38,38 +44,23 @@ class ApplicationWizardController extends Controller
     {
         $user = $request->user();
         $payload = $request->validated('payload');
+        $existingProfile = Applicant::query()->where('user_id', $user->id)->first();
 
-        $applicant = Applicant::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'full_name_nepali' => $payload['full_name_nepali'] ?? $user->name,
-                'full_name_english' => $payload['full_name_english'] ?? $user->name,
-                'date_of_birth' => $payload['date_of_birth'] ?? now()->subYears(18)->toDateString(),
-                'age' => $payload['age'] ?? 18,
-                'father_name' => $payload['father_name'] ?? '-',
-                'grandfather_name' => $payload['grandfather_name'] ?? '-',
-                'marital_status' => $payload['marital_status'] ?? 'single',
-                'permanent_district' => $payload['permanent_district'] ?? '-',
-                'permanent_municipality' => $payload['permanent_municipality'] ?? '-',
-                'permanent_ward' => $payload['permanent_ward'] ?? '-',
-                'mobile_number' => $payload['mobile_number'] ?? '-',
-            ]
-        );
-
-        $uploadMap = [
-            'photo' => 'photo_path',
-            'citizenship_doc' => 'citizenship_doc_path',
-            'national_id_doc' => 'national_id_doc_path',
-            'pan_doc' => 'pan_doc_path',
-        ];
-
-        foreach ($uploadMap as $fileInput => $dbColumn) {
-            if ($request->hasFile("payload.$fileInput")) {
-                $payload[$dbColumn] = $request->file("payload.$fileInput")->store('applications', 'private');
-            }
+        if (! $this->isApplicantProfileComplete($existingProfile)) {
+            return back()->withErrors([
+                'profile' => 'Complete your profile first. Only then you can apply for shares from this account.',
+            ]);
         }
 
-        $applicant->fill($payload);
+        $applicant = $existingProfile;
+
+        $applicant->fill([
+            'investment_source' => $payload['investment_source'] ?? $applicant->investment_source,
+            'investment_source_other' => $payload['investment_source_other'] ?? $applicant->investment_source_other,
+            'share_heir_name' => $payload['share_heir_name'] ?? $applicant->share_heir_name,
+            'share_heir_relation' => $payload['share_heir_relation'] ?? $applicant->share_heir_relation,
+            'share_heir_mobile' => $payload['share_heir_mobile'] ?? $applicant->share_heir_mobile,
+        ]);
         $applicant->save();
 
         $application = ShareApplication::firstOrCreate(
@@ -81,14 +72,14 @@ class ApplicationWizardController extends Controller
                 'application_number' => 'DRAFT-'.str_pad((string) $applicant->id, 6, '0', STR_PAD_LEFT),
                 'shares_applied' => $payload['shares_applied'] ?? 1,
                 'amount_per_share' => $payload['amount_per_share'] ?? '100.00',
-                'total_amount_declared' => $payload['total_amount_declared'] ?? '100.00',
+                'total_amount_declared' => $payload['total_amount_declared'] ?? (($payload['shares_applied'] ?? 1) * ($payload['amount_per_share'] ?? 100)),
             ]
         );
 
         $application->fill([
             'shares_applied' => $payload['shares_applied'] ?? $application->shares_applied,
             'amount_per_share' => $payload['amount_per_share'] ?? $application->amount_per_share,
-            'total_amount_declared' => $payload['total_amount_declared'] ?? $application->total_amount_declared,
+            'total_amount_declared' => $payload['total_amount_declared'] ?? (($payload['shares_applied'] ?? $application->shares_applied) * ($payload['amount_per_share'] ?? $application->amount_per_share)),
         ]);
         $application->save();
 
@@ -100,6 +91,12 @@ class ApplicationWizardController extends Controller
         $application->load('applicant');
 
         abort_unless($application->applicant?->user_id === $request->user()->id, 403);
+
+        if (! $this->isApplicantProfileComplete($application->applicant)) {
+            return redirect()->route('applications.wizard')->withErrors([
+                'profile' => 'Please complete your profile before submitting the application.',
+            ]);
+        }
 
         if (str_starts_with($application->application_number, 'DRAFT-')) {
             $application->application_number = $numberGenerator->generateApplicationNumber();
@@ -115,5 +112,44 @@ class ApplicationWizardController extends Controller
         }
 
         return redirect()->route('applications.wizard')->with('success', 'Application submitted successfully.');
+    }
+
+    private function isApplicantProfileComplete(?Applicant $applicant): bool
+    {
+        if (! $applicant) {
+            return false;
+        }
+
+        $requiredFields = [
+            'full_name_nepali',
+            'full_name_english',
+            'date_of_birth',
+            'age',
+            'father_name',
+            'grandfather_name',
+            'education',
+            'permanent_district',
+            'permanent_municipality',
+            'permanent_ward',
+            'mobile_number',
+            'photo_path',
+            'citizenship_doc_path',
+            'national_id_doc_path',
+            'pan_doc_path',
+        ];
+
+        foreach ($requiredFields as $field) {
+            $value = $applicant->{$field};
+
+            if (blank($value)) {
+                return false;
+            }
+
+            if (is_string($value) && in_array(trim($value), ['-', 'N/A'], true)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

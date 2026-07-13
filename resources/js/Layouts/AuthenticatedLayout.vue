@@ -39,6 +39,14 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Dashboard
                                 </NavLink>
+                                <template v-if="$page.props.auth.user.roles?.some(r => r.name === 'admin')">
+                                    <NavLink
+                                        :href="route('admin.panel')"
+                                        :active="route().current('admin.panel')"
+                                    >
+                                        Admin
+                                    </NavLink>
+                                </template>
                             </div>
                         </div>
 
@@ -146,6 +154,14 @@ const showingNavigationDropdown = ref(false);
                         >
                             Dashboard
                         </ResponsiveNavLink>
+                        <template v-if="$page.props.auth.user.roles?.some(r => r.name === 'admin')">
+                            <ResponsiveNavLink
+                                :href="route('admin.panel')"
+                                :active="route().current('admin.panel')"
+                            >
+                                Admin
+                            </ResponsiveNavLink>
+                        </template>
                     </div>
 
                     <!-- Responsive Settings Options -->

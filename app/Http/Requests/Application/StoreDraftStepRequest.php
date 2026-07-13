@@ -8,26 +8,22 @@ class StoreDraftStepRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check();
+        return $this->user() !== null;
     }
 
     public function rules(): array
     {
         return [
-            'step' => ['required', 'integer', 'between:1,5'],
+            'step' => ['sometimes', 'integer'],
             'payload' => ['required', 'array'],
-            'payload.full_name_nepali' => ['nullable', 'string', 'max:255'],
-            'payload.full_name_english' => ['nullable', 'string', 'max:255'],
-            'payload.date_of_birth' => ['nullable', 'date'],
-            'payload.age' => ['nullable', 'integer', 'min:0'],
-            'payload.mobile_number' => ['nullable', 'string', 'max:50'],
-            'payload.email' => ['nullable', 'email', 'max:255'],
-            'payload.shares_applied' => ['nullable', 'integer', 'min:1'],
-            'payload.total_amount_declared' => ['nullable', 'numeric', 'min:0'],
-            'payload.photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'payload.citizenship_doc' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'payload.national_id_doc' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'payload.pan_doc' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'payload.investment_source' => ['nullable', 'in:salary,dividend,property_sale,house_rent,share_trading,other'],
+            'payload.investment_source_other' => ['nullable', 'string', 'max:255'],
+            'payload.share_heir_name' => ['nullable', 'string', 'max:255'],
+            'payload.share_heir_relation' => ['nullable', 'string', 'max:255'],
+            'payload.share_heir_mobile' => ['nullable', 'string', 'max:50'],
+            'payload.shares_applied' => ['required', 'integer', 'min:1'],
+            'payload.amount_per_share' => ['required', 'numeric', 'min:0'],
+            'payload.total_amount_declared' => ['required', 'numeric', 'min:0'],
             'payload.declaration_accepted' => ['nullable', 'boolean'],
         ];
     }

@@ -24,7 +24,7 @@ const adminMenuItems = [
 ];
 
 const userMenuItems = [
-  { label: 'Dashboard', icon: '🏠', route: 'dashboard', startsWith: '/dashboard' },
+  { label: 'Dashboard ', icon: '🏠', route: 'dashboard', startsWith: '/dashboard' },
   { label: 'Share Application', icon: '🧾', route: 'applications.wizard', startsWith: '/applications' },
   { label: 'Profile', icon: '👤', route: 'profile.edit', startsWith: '/profile' },
   { label: 'Settings', icon: '⚙️', route: 'settings.edit', startsWith: '/settings' },

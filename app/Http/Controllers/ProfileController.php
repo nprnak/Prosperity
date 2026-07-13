@@ -38,6 +38,14 @@ class ProfileController extends Controller
                 'age' => 18,
                 'nationality' => 'Nepali',
                 'marital_status' => 'single',
+                'boid' => '',
+                'crn_number' => '',
+                'bank_name' => '',
+                'bank_code' => '',
+                'bank_branch' => '',
+                'bank_account_number' => '',
+                'account_holder_name' => '',
+                'asba_consent' => false,
             ]
         );
 

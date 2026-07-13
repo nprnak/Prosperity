@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ApplicantProfileUpdateRequest extends FormRequest
 {
@@ -38,6 +39,14 @@ class ApplicantProfileUpdateRequest extends FormRequest
             'citizenship_issue_date' => ['nullable', 'date'],
             'national_id_number' => ['nullable', 'string', 'max:255'],
             'pan_number' => ['nullable', 'string', 'max:255'],
+            'boid' => ['required', 'digits:16', Rule::unique('applicants', 'boid')->ignore($this->user()?->id, 'user_id')],
+            'crn_number' => ['required', 'string', 'min:8', 'max:20'],
+            'bank_name' => ['required', 'string', 'max:255'],
+            'bank_code' => ['nullable', 'string', 'max:20'],
+            'bank_branch' => ['required', 'string', 'max:255'],
+            'bank_account_number' => ['required', 'string', 'max:50'],
+            'account_holder_name' => ['required', 'string', 'max:255'],
+            'asba_consent' => ['required', 'accepted'],
             'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'citizenship_doc' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'national_id_doc' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],

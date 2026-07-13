@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Payment\StorePaymentRequest;
 use App\Http\Requests\Payment\VerifyPaymentRequest;
+use App\Models\ApplicationEvent;
 use App\Models\PaymentTransaction;
 use App\Models\ShareApplication;
 use App\Notifications\PaymentVerifiedNotification;
@@ -24,6 +25,9 @@ class FinanceController extends Controller
             ->with(['applicant', 'paymentTransactions'])
             ->when($status, fn ($q) => $q->where('status', $status), fn ($q) => $q->whereIn('status', [
                 ShareApplication::STATUS_SUBMITTED,
+                ShareApplication::STATUS_SENT_TO_BANK,
+                ShareApplication::STATUS_BANK_ACCEPTED,
+                ShareApplication::STATUS_BLOCKED,
                 ShareApplication::STATUS_PAYMENT_PENDING,
                 ShareApplication::STATUS_PAYMENT_VERIFIED,
             ]))
@@ -46,7 +50,19 @@ class FinanceController extends Controller
         ]);
 
         if ($application->status === ShareApplication::STATUS_SUBMITTED) {
-            $application->update(['status' => ShareApplication::STATUS_PAYMENT_PENDING]);
+            $application->update([
+                'status' => ShareApplication::STATUS_BLOCKED,
+                'blocked_amount' => $payment->amount,
+                'blocked_at' => now(),
+            ]);
+
+            ApplicationEvent::query()->create([
+                'share_application_id' => $application->id,
+                'actor_id' => $request->user()->id,
+                'from_status' => ShareApplication::STATUS_SUBMITTED,
+                'to_status' => ShareApplication::STATUS_BLOCKED,
+                'remarks' => 'Payment recorded and marked as blocked by finance.',
+            ]);
         }
 
         return back()->with('success', 'Payment recorded: receipt '.$payment->receipt_number);
@@ -64,7 +80,18 @@ class FinanceController extends Controller
         ]);
 
         $application = $payment->shareApplication;
+        $oldStatus = $application->status;
         $application->syncPaymentVerificationStatus();
+
+        if ($application->status !== $oldStatus) {
+            ApplicationEvent::query()->create([
+                'share_application_id' => $application->id,
+                'actor_id' => $request->user()->id,
+                'from_status' => $oldStatus,
+                'to_status' => $application->status,
+                'remarks' => 'Payment verification updated by finance.',
+            ]);
+        }
 
         if ($application->status === ShareApplication::STATUS_PAYMENT_VERIFIED && $application->applicant?->email) {
             Notification::route('mail', $application->applicant->email)

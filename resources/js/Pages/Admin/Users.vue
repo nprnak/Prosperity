@@ -6,6 +6,10 @@ import { ref } from 'vue';
 const props = defineProps({
   users: Array,
   roles: Array,
+  selectedRole: {
+    type: String,
+    default: '',
+  },
 });
 
 const showCreateModal = ref(false);
@@ -84,6 +88,22 @@ const deleteUser = (user) => {
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500';
 const primaryButtonClass = 'rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60';
 const secondaryButtonClass = 'rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50';
+
+const roleFilters = [
+  { label: 'All Roles', value: '' },
+  { label: 'Admin', value: 'admin' },
+  { label: 'Finance Staff', value: 'finance_staff' },
+  { label: 'Approver', value: 'approver' },
+  { label: 'User', value: 'user' },
+];
+
+const applyRoleFilter = (role) => {
+  router.get(route('admin.users'), role ? { role } : {}, {
+    preserveState: true,
+    preserveScroll: true,
+    replace: true,
+  });
+};
 </script>
 
 <template>
@@ -100,6 +120,20 @@ const secondaryButtonClass = 'rounded-lg border border-gray-300 px-4 py-2 text-g
       <p v-if="$page.props.errors.delete" class="px-4 py-2 mb-4 text-sm text-red-700 rounded bg-red-50">
         {{ $page.props.errors.delete }}
       </p>
+
+      <div class="flex flex-wrap items-center gap-2 mb-4">
+        <button
+          v-for="filter in roleFilters"
+          :key="filter.label"
+          @click="applyRoleFilter(filter.value)"
+          class="px-3 py-1.5 rounded-full text-xs font-semibold border"
+          :class="selectedRole === filter.value
+            ? 'border-blue-600 bg-blue-50 text-blue-700'
+            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'"
+        >
+          {{ filter.label }}
+        </button>
+      </div>
 
       <div class="overflow-x-auto">
         <table class="w-full">

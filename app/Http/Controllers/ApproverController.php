@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Approval\ApproveApplicationRequest;
 use App\Http\Requests\Approval\RejectApplicationRequest;
+use App\Models\ApplicationEvent;
 use App\Models\ShareApplication;
 use App\Models\Voucher;
 use App\Notifications\ApplicationApprovedNotification;
@@ -13,6 +14,7 @@ use App\Services\NumberGeneratorService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ApproverController extends Controller
@@ -54,14 +56,24 @@ class ApproverController extends Controller
         ]);
 
         $path = 'vouchers/voucher-'.$voucher->voucher_number.'.pdf';
-        \Storage::disk('private')->put($path, $pdf->output());
+        Storage::disk('private')->put($path, $pdf->output());
         $voucher->update(['pdf_path' => $path]);
+
+        $fromStatus = $application->status;
 
         $application->update([
             'status' => ShareApplication::STATUS_APPROVED,
             'reviewed_by' => $request->user()->id,
             'reviewed_at' => now(),
             'rejection_reason' => null,
+        ]);
+
+        ApplicationEvent::query()->create([
+            'share_application_id' => $application->id,
+            'actor_id' => $request->user()->id,
+            'from_status' => $fromStatus,
+            'to_status' => ShareApplication::STATUS_APPROVED,
+            'remarks' => 'Application approved by approver.',
         ]);
 
         if ($application->applicant?->email) {
@@ -74,11 +86,22 @@ class ApproverController extends Controller
 
     public function reject(RejectApplicationRequest $request, ShareApplication $application)
     {
+        $fromStatus = $application->status;
+
         $application->update([
             'status' => ShareApplication::STATUS_REJECTED,
             'reviewed_by' => $request->user()->id,
             'reviewed_at' => now(),
             'rejection_reason' => $request->validated('rejection_reason'),
+        ]);
+
+        ApplicationEvent::query()->create([
+            'share_application_id' => $application->id,
+            'actor_id' => $request->user()->id,
+            'from_status' => $fromStatus,
+            'to_status' => ShareApplication::STATUS_REJECTED,
+            'remarks' => 'Application rejected by approver.',
+            'meta' => ['reason' => $request->validated('rejection_reason')],
         ]);
 
         if ($application->applicant?->email) {

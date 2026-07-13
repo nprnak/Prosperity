@@ -11,6 +11,7 @@ const isAdmin = computed(() =>
 
 const adminMenuItems = [
   { label: 'Dashboard', icon: '📊', route: 'admin.dashboard', startsWith: '/admin/dashboard' },
+  { label: 'Role Hub', icon: '🧩', route: 'admin.roles.hub', startsWith: '/admin/roles/hub' },
   { label: 'Users', icon: '👥', route: 'admin.users', startsWith: '/admin/users' },
   { label: 'Applications', icon: '📝', route: 'admin.applications', startsWith: '/admin/applications' },
   { label: 'Payments', icon: '💳', route: 'admin.payments', startsWith: '/admin/payments' },

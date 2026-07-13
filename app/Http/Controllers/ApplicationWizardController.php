@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Application\StoreDraftStepRequest;
 use App\Http\Requests\Application\SubmitApplicationRequest;
+use App\Models\ApplicationEvent;
 use App\Models\Applicant;
 use App\Models\ShareApplication;
 use App\Notifications\ApplicationSubmittedNotification;
@@ -70,9 +71,11 @@ class ApplicationWizardController extends Controller
             ],
             [
                 'application_number' => 'DRAFT-'.str_pad((string) $applicant->id, 6, '0', STR_PAD_LEFT),
+                'issue_code' => $payload['issue_code'] ?? null,
                 'shares_applied' => $payload['shares_applied'] ?? 1,
                 'amount_per_share' => $payload['amount_per_share'] ?? '100.00',
                 'total_amount_declared' => $payload['total_amount_declared'] ?? (($payload['shares_applied'] ?? 1) * ($payload['amount_per_share'] ?? 100)),
+                'asba_reference' => $payload['asba_reference'] ?? null,
             ]
         );
 
@@ -80,6 +83,8 @@ class ApplicationWizardController extends Controller
             'shares_applied' => $payload['shares_applied'] ?? $application->shares_applied,
             'amount_per_share' => $payload['amount_per_share'] ?? $application->amount_per_share,
             'total_amount_declared' => $payload['total_amount_declared'] ?? (($payload['shares_applied'] ?? $application->shares_applied) * ($payload['amount_per_share'] ?? $application->amount_per_share)),
+            'issue_code' => $payload['issue_code'] ?? $application->issue_code,
+            'asba_reference' => $payload['asba_reference'] ?? $application->asba_reference,
         ]);
         $application->save();
 
@@ -102,9 +107,15 @@ class ApplicationWizardController extends Controller
             $application->application_number = $numberGenerator->generateApplicationNumber();
         }
 
+        if ($request->filled('asba_reference')) {
+            $application->asba_reference = $request->validated('asba_reference');
+        }
+
+        $fromStatus = $application->status;
         $application->status = ShareApplication::STATUS_SUBMITTED;
         $application->submitted_at = now();
         $application->save();
+        $this->logStatusEvent($application, $request->user()->id, $fromStatus, ShareApplication::STATUS_SUBMITTED, 'Application submitted by applicant.');
 
         if ($application->applicant?->email) {
             Notification::route('mail', $application->applicant->email)
@@ -136,6 +147,13 @@ class ApplicationWizardController extends Controller
             'citizenship_doc_path',
             'national_id_doc_path',
             'pan_doc_path',
+            'boid',
+            'crn_number',
+            'bank_name',
+            'bank_branch',
+            'bank_account_number',
+            'account_holder_name',
+            'asba_consent',
         ];
 
         foreach ($requiredFields as $field) {
@@ -151,5 +169,16 @@ class ApplicationWizardController extends Controller
         }
 
         return true;
+    }
+
+    private function logStatusEvent(ShareApplication $application, ?int $actorId, ?string $fromStatus, string $toStatus, string $remarks): void
+    {
+        ApplicationEvent::query()->create([
+            'share_application_id' => $application->id,
+            'actor_id' => $actorId,
+            'from_status' => $fromStatus,
+            'to_status' => $toStatus,
+            'remarks' => $remarks,
+        ]);
     }
 }

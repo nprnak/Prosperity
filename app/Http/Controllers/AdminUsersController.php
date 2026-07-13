@@ -16,8 +16,13 @@ class AdminUsersController extends Controller
     {
         abort_unless($request->user()->hasRole('admin'), 403);
 
+        $this->ensureDefaultRoles();
+
+        $roleFilter = $request->string('role')->toString();
+
         $users = User::query()
             ->with('roles:id,name')
+            ->when($roleFilter !== '', fn ($query) => $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', $roleFilter)))
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'created_at']);
 
@@ -28,12 +33,15 @@ class AdminUsersController extends Controller
         return Inertia::render('Admin/Users', [
             'users' => $users,
             'roles' => $roles,
+            'selectedRole' => $roleFilter,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         abort_unless($request->user()->hasRole('admin'), 403);
+
+        $this->ensureDefaultRoles();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -56,6 +64,8 @@ class AdminUsersController extends Controller
     public function update(Request $request, User $user): RedirectResponse
     {
         abort_unless($request->user()->hasRole('admin'), 403);
+
+        $this->ensureDefaultRoles();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -89,8 +99,15 @@ class AdminUsersController extends Controller
             ]);
         }
 
-        $user->delete();
+        User::query()->whereKey($user->id)->delete();
 
         return redirect()->route('admin.users');
+    }
+
+    private function ensureDefaultRoles(): void
+    {
+        foreach (['admin', 'finance_staff', 'approver', 'user'] as $roleName) {
+            Role::findOrCreate($roleName, 'web');
+        }
     }
 }

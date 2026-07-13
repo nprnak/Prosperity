@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\ShareholderRegisterExport;
 use App\Http\Requests\Allotment\StoreAllotmentRequest;
+use App\Models\ApplicationEvent;
 use App\Models\ShareAllotment;
 use App\Models\ShareApplication;
 use Maatwebsite\Excel\Facades\Excel;
@@ -42,7 +43,7 @@ class ShareAllotmentController extends Controller
 
     public function store(StoreAllotmentRequest $request, ShareApplication $application)
     {
-        abort_unless(in_array($application->status, [ShareApplication::STATUS_APPROVED, ShareApplication::STATUS_ALLOTTED], true), 422);
+        abort_unless(in_array($application->status, [ShareApplication::STATUS_APPROVED, ShareApplication::STATUS_ALLOTTED, ShareApplication::STATUS_PARTIALLY_ALLOTTED], true), 422);
 
         ShareAllotment::updateOrCreate(
             ['share_application_id' => $application->id],
@@ -52,7 +53,21 @@ class ShareAllotmentController extends Controller
             ]
         );
 
-        $application->update(['status' => ShareApplication::STATUS_ALLOTTED]);
+        $targetStatus = (int) $request->validated('shares_allotted') < (int) $application->shares_applied
+            ? ShareApplication::STATUS_PARTIALLY_ALLOTTED
+            : ShareApplication::STATUS_ALLOTTED;
+
+        $fromStatus = $application->status;
+        $application->update(['status' => $targetStatus]);
+
+        ApplicationEvent::query()->create([
+            'share_application_id' => $application->id,
+            'actor_id' => $request->user()->id,
+            'from_status' => $fromStatus,
+            'to_status' => $targetStatus,
+            'remarks' => 'Share allotment saved.',
+            'meta' => ['shares_allotted' => (int) $request->validated('shares_allotted')],
+        ]);
 
         return back()->with('success', 'Share allotment saved.');
     }

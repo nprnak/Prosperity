@@ -29,6 +29,7 @@ class AdminApplicationsController extends Controller
             'reviewer:id,name,email',
             'allotment',
             'paymentTransactions' => fn ($query) => $query->with('voucher')->latest(),
+            'events' => fn ($query) => $query->with('actor:id,name')->latest(),
         ]);
 
         return Inertia::render('Admin/ApplicationShow', [

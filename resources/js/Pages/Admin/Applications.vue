@@ -6,6 +6,48 @@ import { Link } from '@inertiajs/vue3';
 defineProps({
   applications: Array,
 });
+
+const statusClass = (status) => {
+  if (['submitted', 'sent_to_bank', 'bank_accepted', 'blocked', 'payment_pending'].includes(status)) {
+    return 'bg-yellow-100 text-yellow-700';
+  }
+
+  if (['payment_verified', 'approved', 'allotted', 'demat_credited'].includes(status)) {
+    return 'bg-green-100 text-green-700';
+  }
+
+  if (['partially_allotted', 'refund_initiated', 'refund_completed'].includes(status)) {
+    return 'bg-blue-100 text-blue-700';
+  }
+
+  if (['rejected', 'not_allotted'].includes(status)) {
+    return 'bg-red-100 text-red-700';
+  }
+
+  return 'bg-gray-100 text-gray-700';
+};
+
+const statusLabel = (status) => {
+  const labels = {
+    draft: 'Draft',
+    submitted: 'Submitted',
+    sent_to_bank: 'Sent To Bank',
+    bank_accepted: 'Bank Accepted',
+    blocked: 'Blocked',
+    payment_pending: 'Payment Pending',
+    payment_verified: 'Payment Verified',
+    approved: 'Approved',
+    allotted: 'Allotted',
+    partially_allotted: 'Partially Allotted',
+    not_allotted: 'Not Allotted',
+    refund_initiated: 'Refund Initiated',
+    refund_completed: 'Refund Completed',
+    demat_credited: 'Demat Credited',
+    rejected: 'Rejected',
+  };
+
+  return labels[status] || status;
+};
 </script>
 
 <template>
@@ -42,14 +84,8 @@ defineProps({
               <td class="px-6 py-4 text-sm text-gray-900">{{ app.shares_applied }}</td>
               <td class="px-6 py-4 text-sm text-gray-900">Rs. {{ app.total_amount_declared }}</td>
               <td class="px-6 py-4 text-sm">
-                <span :class="{
-                  'bg-yellow-100 text-yellow-700': app.status === 'submitted',
-                  'bg-blue-100 text-blue-700': app.status === 'payment_pending',
-                  'bg-green-100 text-green-700': app.status === 'approved',
-                  'bg-red-100 text-red-700': app.status === 'rejected',
-                  'bg-gray-100 text-gray-700': app.status === 'draft',
-                }" class="px-3 py-1 rounded-full text-xs font-semibold capitalize">
-                  {{ app.status }}
+                <span :class="statusClass(app.status)" class="px-3 py-1 rounded-full text-xs font-semibold">
+                  {{ statusLabel(app.status) }}
                 </span>
               </td>
               <td class="px-6 py-4 text-sm text-gray-600">{{ app.submitted_at }}</td>

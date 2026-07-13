@@ -73,6 +73,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
     Route::get('/admin/panel', [AdminPanelController::class, 'index'])->name('admin.panel');
+    Route::get('/admin/roles/hub', [AdminPanelController::class, 'roleHub'])->name('admin.roles.hub');
     Route::get('/admin/users', [AdminUsersController::class, 'index'])->name('admin.users');
     Route::post('/admin/users', [AdminUsersController::class, 'store'])->name('admin.users.store');
     Route::patch('/admin/users/{user}', [AdminUsersController::class, 'update'])->name('admin.users.update');

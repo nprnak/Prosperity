@@ -13,7 +13,12 @@ class ShareApplicationObserver
                 $application->reviewed_at = now();
             }
 
-            if ($application->status === ShareApplication::STATUS_SUBMITTED && ! $application->submitted_at) {
+            if (in_array($application->status, [
+                ShareApplication::STATUS_SUBMITTED,
+                ShareApplication::STATUS_SENT_TO_BANK,
+                ShareApplication::STATUS_BANK_ACCEPTED,
+                ShareApplication::STATUS_BLOCKED,
+            ], true) && ! $application->submitted_at) {
                 $application->submitted_at = now();
             }
         }

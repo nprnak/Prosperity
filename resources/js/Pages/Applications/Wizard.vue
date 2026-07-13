@@ -20,6 +20,8 @@ const form = useForm({
     share_heir_name: props.draft?.applicant?.share_heir_name || '',
     share_heir_relation: props.draft?.applicant?.share_heir_relation || '',
     share_heir_mobile: props.draft?.applicant?.share_heir_mobile || '',
+    issue_code: props.draft?.issue_code || '',
+    asba_reference: props.draft?.asba_reference || '',
     shares_applied: props.draft?.shares_applied || 1,
     amount_per_share: props.draft?.amount_per_share || 100,
     total_amount_declared: props.draft?.total_amount_declared || 100,
@@ -62,7 +64,32 @@ const saveDraft = () => {
 const submitFinal = () => {
   const id = props.draft?.id;
   if (!id || !profileReady.value) return;
-  useForm({ declaration_accepted: form.payload.declaration_accepted }).post(route('applications.submit', id));
+  useForm({
+    declaration_accepted: form.payload.declaration_accepted,
+    asba_reference: form.payload.asba_reference,
+  }).post(route('applications.submit', id));
+};
+
+const statusLabel = (status) => {
+  const labels = {
+    draft: 'Draft',
+    submitted: 'Submitted',
+    sent_to_bank: 'Sent To Bank',
+    bank_accepted: 'Bank Accepted',
+    blocked: 'Amount Blocked',
+    payment_pending: 'Payment Pending',
+    payment_verified: 'Payment Verified',
+    approved: 'Approved',
+    allotted: 'Allotted',
+    partially_allotted: 'Partially Allotted',
+    not_allotted: 'Not Allotted',
+    refund_initiated: 'Refund Initiated',
+    refund_completed: 'Refund Completed',
+    demat_credited: 'Demat Credited',
+    rejected: 'Rejected',
+  };
+
+  return labels[status] || status;
 };
 </script>
 
@@ -98,6 +125,11 @@ const submitFinal = () => {
           <h4 class="text-lg font-semibold text-gray-900">Share Details</h4>
           <div class="mt-4 grid gap-4 md:grid-cols-3">
             <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Issue Code *</label>
+              <input v-model="form.payload.issue_code" type="text" placeholder="e.g. NABILPO2026" :class="inputClass('issue_code')" />
+              <InputError :message="payloadError('issue_code')" class="mt-1" />
+            </div>
+            <div>
               <label class="mb-1 block text-sm font-medium text-gray-700">Shares Applied</label>
               <input v-model="form.payload.shares_applied" type="number" min="1" placeholder="e.g. 50" :class="inputClass('shares_applied')" />
               <InputError :message="payloadError('shares_applied')" class="mt-1" />
@@ -112,6 +144,11 @@ const submitFinal = () => {
               <input v-model="form.payload.total_amount_declared" type="number" min="0" step="0.01" :class="inputClass('total_amount_declared')" />
               <InputError :message="payloadError('total_amount_declared')" class="mt-1" />
               <p class="mt-1 text-xs text-gray-500">Suggested total: Rs. {{ estimatedTotal }}</p>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">ASBA Reference</label>
+              <input v-model="form.payload.asba_reference" type="text" placeholder="Enter bank reference if available" :class="inputClass('asba_reference')" />
+              <InputError :message="payloadError('asba_reference')" class="mt-1" />
             </div>
           </div>
         </section>
@@ -174,11 +211,12 @@ const submitFinal = () => {
       <div class="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-gray-100">
         <h3 class="font-semibold mb-3 text-gray-900">My Applications</h3>
         <table class="w-full text-sm">
-          <thead><tr class="text-left text-gray-600"><th>No</th><th>Status</th><th>Shares</th><th>Total</th></tr></thead>
+          <thead><tr class="text-left text-gray-600"><th>No</th><th>Issue</th><th>Status</th><th>Shares</th><th>Total</th></tr></thead>
           <tbody>
             <tr v-for="app in applications" :key="app.id" class="border-t">
               <td class="py-2">{{ app.application_number }}</td>
-              <td class="py-2 capitalize">{{ app.status }}</td>
+              <td class="py-2">{{ app.issue_code || '-' }}</td>
+              <td class="py-2">{{ statusLabel(app.status) }}</td>
               <td class="py-2">{{ app.shares_applied }}</td>
               <td class="py-2">Rs. {{ app.total_amount_declared }}</td>
             </tr>

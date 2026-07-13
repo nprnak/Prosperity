@@ -19,7 +19,13 @@ class AdminDashboardController extends Controller
             ->sum('amount');
 
         $pendingApplications = ShareApplication::query()
-            ->whereIn('status', [ShareApplication::STATUS_SUBMITTED, ShareApplication::STATUS_PAYMENT_PENDING])
+            ->where(function ($query) {
+                $query->where('status', ShareApplication::STATUS_SUBMITTED)
+                    ->orWhere('status', ShareApplication::STATUS_SENT_TO_BANK)
+                    ->orWhere('status', ShareApplication::STATUS_BANK_ACCEPTED)
+                    ->orWhere('status', ShareApplication::STATUS_BLOCKED)
+                    ->orWhere('status', ShareApplication::STATUS_PAYMENT_PENDING);
+            })
             ->count();
 
         $pendingPaymentVerification = PaymentTransaction::query()

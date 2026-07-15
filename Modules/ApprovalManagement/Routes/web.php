@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\ApprovalManagement\Controllers\ApproverController;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/approver/dashboard', [ApproverController::class, 'dashboard'])
         ->middleware('can:application.approve')->name('approver.dashboard');
     Route::post('/approver/applications/{application}/approve', [ApproverController::class, 'approve'])

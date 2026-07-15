@@ -6,7 +6,7 @@ use Modules\UserManagement\Controllers\AdminPanelController;
 use Modules\UserManagement\Controllers\AdminUsersController;
 use Modules\UserManagement\Controllers\ProfileController;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::get('/settings', [ProfileController::class, 'settings'])->name('settings.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

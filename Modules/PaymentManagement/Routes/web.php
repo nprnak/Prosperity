@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\PaymentManagement\Controllers\AdminPaymentsController;
 use Modules\PaymentManagement\Controllers\FinanceController;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/finance/dashboard', [FinanceController::class, 'dashboard'])
         ->middleware('can:payment.record')->name('finance.dashboard');
     Route::post('/finance/applications/{application}/payments', [FinanceController::class, 'storePayment'])

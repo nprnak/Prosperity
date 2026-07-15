@@ -21,7 +21,7 @@ Route::get('/dashboard', function () {
     return redirect()->route('applications.wizard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])
         ->middleware('can:dashboard.view-admin')->name('admin.dashboard');
 });

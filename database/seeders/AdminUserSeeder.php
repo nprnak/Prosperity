@@ -21,8 +21,11 @@ class AdminUserSeeder extends Seeder
         foreach ($admins as $admin) {
             $user = User::firstOrCreate(
                 ['email' => $admin['email']],
-                ['name' => $admin['name'], 'password' => $password]
+                ['name' => $admin['name'], 'password' => $password, 'email_verified_at' => now()]
             );
+            if (! $user->email_verified_at) {
+                $user->forceFill(['email_verified_at' => now()])->save();
+            }
             $user->syncRoles(['admin']);
             $this->command->info("✓ Admin user created: {$user->email}");
         }
@@ -36,8 +39,11 @@ class AdminUserSeeder extends Seeder
         foreach ($finance as $staff) {
             $user = User::firstOrCreate(
                 ['email' => $staff['email']],
-                ['name' => $staff['name'], 'password' => $password]
+                ['name' => $staff['name'], 'password' => $password, 'email_verified_at' => now()]
             );
+            if (! $user->email_verified_at) {
+                $user->forceFill(['email_verified_at' => now()])->save();
+            }
             $user->syncRoles(['finance_staff']);
             $this->command->info("✓ Finance staff user created: {$user->email}");
         }
@@ -51,8 +57,11 @@ class AdminUserSeeder extends Seeder
         foreach ($approvers as $approver) {
             $user = User::firstOrCreate(
                 ['email' => $approver['email']],
-                ['name' => $approver['name'], 'password' => $password]
+                ['name' => $approver['name'], 'password' => $password, 'email_verified_at' => now()]
             );
+            if (! $user->email_verified_at) {
+                $user->forceFill(['email_verified_at' => now()])->save();
+            }
             $user->syncRoles(['approver']);
             $this->command->info("✓ Approver user created: {$user->email}");
         }
@@ -69,8 +78,11 @@ class AdminUserSeeder extends Seeder
         foreach ($applicants as $applicant) {
             $user = User::firstOrCreate(
                 ['email' => $applicant['email']],
-                ['name' => $applicant['name'], 'password' => $password]
+                ['name' => $applicant['name'], 'password' => $password, 'email_verified_at' => now()]
             );
+            if (! $user->email_verified_at) {
+                $user->forceFill(['email_verified_at' => now()])->save();
+            }
             $user->syncRoles(['applicant']);
             $this->command->info("✓ Applicant user created: {$user->email}");
         }

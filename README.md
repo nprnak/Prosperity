@@ -5,6 +5,10 @@ Laravel 11 MIS for Prosperity Holdings Ltd with Breeze (Vue + Inertia), role-bas
 ## Implemented modules
 
 - Laravel 11 + Breeze (Vue/Inertia) bootstrap
+- Enforced email verification (`MustVerifyEmail` + `verified` middleware on all
+  module routes); registration emails a signed verification link, unverified
+  users are held at `/verify-email`. Seeded staff accounts are pre-verified
+  (re-running `AdminUserSeeder` backfills existing rows)
 - Roles: `applicant`, `finance_staff`, `approver`, `admin` with granular permissions
   (`application.submit`, `payment.record`, `payment.verify`, `application.approve`,
   `allotment.manage`, `user.manage`, `report.view`, `audit.view`, …) — see

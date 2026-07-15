@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\ApplicationManagement\Controllers\AdminApplicationsController;
 use Modules\ApplicationManagement\Controllers\ApplicationWizardController;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('can:application.submit')->group(function () {
         Route::get('/applications/wizard', [ApplicationWizardController::class, 'index'])->name('applications.wizard');
         Route::post('/applications/draft', [ApplicationWizardController::class, 'storeDraft'])->name('applications.draft');

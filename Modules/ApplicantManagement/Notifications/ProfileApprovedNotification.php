@@ -18,7 +18,7 @@ class ProfileApprovedNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -27,5 +27,13 @@ class ProfileApprovedNotification extends Notification implements ShouldQueue
             ->subject('Profile Approved')
             ->line('Your applicant profile has been approved.')
             ->line('You can now apply for shares from your dashboard.');
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'title' => 'Profile Approved',
+            'message' => 'Your applicant profile has been approved. You can now apply for shares.',
+        ];
     }
 }

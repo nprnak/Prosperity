@@ -36,12 +36,23 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('two-factor', [\App\Http\Controllers\Auth\TwoFactorChallengeController::class, 'create'])
+        ->name('two-factor.challenge');
+
+    Route::post('two-factor', [\App\Http\Controllers\Auth\TwoFactorChallengeController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('two-factor.verify');
+
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 
     Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
         ->middleware(['signed', 'throttle:6,1'])
         ->name('verification.verify');
+
+    Route::post('verify-email/otp', [\App\Http\Controllers\Auth\VerifyEmailOtpController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('verification.otp');
 
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
         ->middleware('throttle:6,1')

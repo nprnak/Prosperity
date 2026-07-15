@@ -144,7 +144,7 @@ const statusLabel = (status) => {
               <label class="mb-1 block text-sm font-medium text-gray-700">Share Offering *</label>
               <select v-model="form.payload.share_offering_id" :class="inputClass('share_offering_id')">
                 <option v-for="offering in offerings" :key="offering.id" :value="offering.id">
-                  {{ offering.company?.name }} · {{ offering.title }} ({{ offering.fiscal_year }}) · Rs. {{ offering.share_rate }}/share
+                  {{ offering.company?.name }} · {{ offering.title }} ({{ offering.fiscal_year }}) · {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ offering.share_rate }}/share
                 </option>
               </select>
               <InputError :message="payloadError('share_offering_id')" class="mt-1" />
@@ -164,9 +164,9 @@ const statusLabel = (status) => {
               <InputError :message="payloadError('shares_applied')" class="mt-1" />
             </div>
             <div class="md:col-span-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm">
-              <span class="text-gray-600">Rate: <strong>Rs. {{ selectedOffering?.share_rate || '—' }}</strong> per share</span>
+              <span class="text-gray-600">Rate: <strong>{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ selectedOffering?.share_rate || '—' }}</strong> per share</span>
               <span class="mx-2 text-gray-300">|</span>
-              <span class="text-gray-600">Total payable: <strong class="text-gray-900">Rs. {{ estimatedTotal }}</strong></span>
+              <span class="text-gray-600">Total payable: <strong class="text-gray-900">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ estimatedTotal }}</strong></span>
             </div>
             <div>
               <label class="mb-1 block text-sm font-medium text-gray-700">ASBA Reference</label>
@@ -264,7 +264,7 @@ const statusLabel = (status) => {
               <td class="py-2">{{ app.issue_code || '-' }}</td>
               <td class="py-2">{{ statusLabel(app.status) }}</td>
               <td class="py-2">{{ app.shares_applied }}</td>
-              <td class="py-2">Rs. {{ app.total_amount_declared }}</td>
+              <td class="py-2">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ app.total_amount_declared }}</td>
             </tr>
           </tbody>
         </table>

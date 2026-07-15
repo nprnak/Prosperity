@@ -14,7 +14,9 @@ class RolesAndPermissionsSeeder extends Seeder
      * Roles:
      *   - applicant      : individual investor filling a share purchase application
      *   - finance_staff  : records and verifies payment transactions
-     *   - approver       : director / authorised signatory who approves applications
+     *   - reviewer       : first approval stage — reviews payment-verified applications
+     *   - verifier       : second approval stage — verifies reviewed applications
+     *   - approver       : director / authorised signatory who gives final approval
      *   - admin          : full access (all permissions + Gate::before shortcut)
      *
      * `voucher.download` allows downloading vouchers the user owns (enforced by
@@ -25,6 +27,8 @@ class RolesAndPermissionsSeeder extends Seeder
         'profile.review',
         'application.submit',
         'application.view-any',
+        'application.review',
+        'application.verify',
         'application.approve',
         'application.reject',
         'payment.record',
@@ -50,6 +54,12 @@ class RolesAndPermissionsSeeder extends Seeder
         'finance_staff' => [
             'payment.record',
             'payment.verify',
+        ],
+        'reviewer' => [
+            'application.review',
+        ],
+        'verifier' => [
+            'application.verify',
         ],
         'approver' => [
             'profile.review',

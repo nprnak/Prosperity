@@ -16,4 +16,7 @@ Route::get('/', function () {
     ]);
 });
 
+Route::post('/notifications/mark-read', [\App\Http\Controllers\NotificationController::class, 'markAllRead'])
+    ->middleware(['auth', 'verified'])->name('notifications.mark-read');
+
 require __DIR__.'/auth.php';

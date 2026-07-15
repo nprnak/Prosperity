@@ -18,7 +18,15 @@ class ProfileRejectedNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'title' => 'Profile Needs Changes',
+            'message' => 'Your profile needs changes: '.($this->applicant->profile_rejection_reason ?? 'Not specified'),
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage

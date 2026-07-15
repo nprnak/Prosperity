@@ -108,11 +108,11 @@ const money = (value) => Number(value || 0).toLocaleString('en-IN', { minimumFra
         </div>
         <div class="bg-white p-4 rounded-lg shadow">
           <div class="text-xs uppercase text-gray-500">Total Declared</div>
-          <div class="mt-1 text-2xl font-bold text-gray-900">Rs. {{ money(summary.totalDeclared) }}</div>
+          <div class="mt-1 text-2xl font-bold text-gray-900">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ money(summary.totalDeclared) }}</div>
         </div>
         <div class="bg-white p-4 rounded-lg shadow">
           <div class="text-xs uppercase text-gray-500">Verified Payments</div>
-          <div class="mt-1 text-2xl font-bold text-emerald-700">Rs. {{ money(summary.totalVerifiedPayments) }}</div>
+          <div class="mt-1 text-2xl font-bold text-emerald-700">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ money(summary.totalVerifiedPayments) }}</div>
         </div>
         <div class="bg-white p-4 rounded-lg shadow">
           <div class="text-xs uppercase text-gray-500">Shares Allotted</div>
@@ -146,8 +146,8 @@ const money = (value) => Number(value || 0).toLocaleString('en-IN', { minimumFra
                 <template v-else>—</template>
               </td>
               <td class="px-4 py-3">{{ application.shares_applied }}</td>
-              <td class="px-4 py-3">Rs. {{ money(application.total_amount_declared) }}</td>
-              <td class="px-4 py-3">Rs. {{ money(application.verified_amount) }}</td>
+              <td class="px-4 py-3">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ money(application.total_amount_declared) }}</td>
+              <td class="px-4 py-3">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ money(application.verified_amount) }}</td>
               <td class="px-4 py-3">{{ application.allotment?.shares_allotted ?? 0 }}</td>
               <td class="px-4 py-3"><span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">{{ application.status }}</span></td>
               <td class="px-4 py-3 text-gray-600">{{ application.created_at?.slice(0, 10) }}</td>

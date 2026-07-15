@@ -95,9 +95,13 @@ class FinanceController extends Controller
             ]);
         }
 
-        if ($application->status === ShareApplication::STATUS_PAYMENT_VERIFIED && $application->applicant?->email) {
-            Notification::route('mail', $application->applicant->email)
-                ->notify(new PaymentVerifiedNotification($application));
+        if ($application->status === ShareApplication::STATUS_PAYMENT_VERIFIED) {
+            if ($application->applicant?->email) {
+                Notification::route('mail', $application->applicant->email)
+                    ->notify(new PaymentVerifiedNotification($application));
+            }
+
+            $application->applicant?->user?->notify(new PaymentVerifiedNotification($application));
         }
 
         return back()->with('success', 'Payment verification updated.');

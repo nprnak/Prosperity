@@ -20,6 +20,8 @@ const statusLabel = (status) => {
     blocked: 'Blocked',
     payment_pending: 'Payment Pending',
     payment_verified: 'Payment Verified',
+    reviewed: 'Reviewed',
+    verified: 'Verified',
     approved: 'Approved',
     allotted: 'Allotted',
     partially_allotted: 'Partially Allotted',
@@ -67,10 +69,10 @@ const statusLabel = (status) => {
           <p class="text-sm text-gray-700"><span class="font-medium">Issue Code:</span> {{ application.issue_code || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">ASBA Reference:</span> {{ application.asba_reference || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Shares Applied:</span> {{ application.shares_applied }}</p>
-          <p class="text-sm text-gray-700"><span class="font-medium">Amount Per Share:</span> Rs. {{ application.amount_per_share }}</p>
-          <p class="text-sm text-gray-700"><span class="font-medium">Total Declared:</span> Rs. {{ application.total_amount_declared }}</p>
-          <p class="text-sm text-gray-700"><span class="font-medium">Blocked Amount:</span> Rs. {{ application.blocked_amount || '-' }}</p>
-          <p class="text-sm text-gray-700"><span class="font-medium">Refunded Amount:</span> Rs. {{ application.refunded_amount || '-' }}</p>
+          <p class="text-sm text-gray-700"><span class="font-medium">Amount Per Share:</span> {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ application.amount_per_share }}</p>
+          <p class="text-sm text-gray-700"><span class="font-medium">Total Declared:</span> {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ application.total_amount_declared }}</p>
+          <p class="text-sm text-gray-700"><span class="font-medium">Blocked Amount:</span> {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ application.blocked_amount || '-' }}</p>
+          <p class="text-sm text-gray-700"><span class="font-medium">Refunded Amount:</span> {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ application.refunded_amount || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Submitted At:</span> {{ formatDate(application.submitted_at) }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Reviewed By:</span> {{ application.reviewer?.name || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Reviewed At:</span> {{ formatDate(application.reviewed_at) }}</p>
@@ -109,7 +111,7 @@ const statusLabel = (status) => {
             <tbody class="divide-y">
               <tr v-for="payment in application.payment_transactions" :key="payment.id" class="hover:bg-gray-50">
                 <td class="px-4 py-3">{{ payment.receipt_number }}</td>
-                <td class="px-4 py-3">Rs. {{ payment.amount }}</td>
+                <td class="px-4 py-3">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ payment.amount }}</td>
                 <td class="px-4 py-3 capitalize">{{ payment.payment_mode }}</td>
                 <td class="px-4 py-3 capitalize">{{ payment.verification_status }}</td>
                 <td class="px-4 py-3">{{ payment.voucher?.voucher_number || '-' }}</td>

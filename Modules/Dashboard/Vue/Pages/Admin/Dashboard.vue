@@ -13,7 +13,7 @@ const props = defineProps({ metrics: Object, capitalSeries: Array });
       <div class="grid grid-cols-4 gap-4">
         <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded shadow p-4 border border-blue-200">
           <div class="text-gray-500 text-sm">Capital Raised</div>
-          <div class="text-3xl font-bold text-blue-600 mt-2">Rs. {{ metrics?.capitalRaised || 0 }}</div>
+          <div class="text-3xl font-bold text-blue-600 mt-2">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ metrics?.capitalRaised || 0 }}</div>
         </div>
         <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded shadow p-4 border border-orange-200">
           <div class="text-gray-500 text-sm">Pending Applications</div>

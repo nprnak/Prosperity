@@ -159,7 +159,7 @@ const statusBadge = (status) => ({
             <tr v-for="offering in company.offerings" :key="offering.id">
               <td class="py-2 pr-4 font-medium">{{ offering.title }}</td>
               <td class="py-2 pr-4">{{ offering.fiscal_year }}</td>
-              <td class="py-2 pr-4">Rs. {{ offering.share_rate }}</td>
+              <td class="py-2 pr-4">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ offering.share_rate }}</td>
               <td class="py-2 pr-4">{{ offering.min_shares }}–{{ offering.max_shares }}</td>
               <td class="py-2 pr-4 text-gray-600">
                 {{ offering.opens_at?.slice(0, 10) || 'anytime' }} → {{ offering.closes_at?.slice(0, 10) || 'open-ended' }}

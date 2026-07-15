@@ -23,6 +23,8 @@ class ShareApplication extends Model
     public const STATUS_BLOCKED = 'blocked';
     public const STATUS_PAYMENT_PENDING = 'payment_pending';
     public const STATUS_PAYMENT_VERIFIED = 'payment_verified';
+    public const STATUS_REVIEWED = 'reviewed';
+    public const STATUS_VERIFIED = 'verified';
     public const STATUS_APPROVED = 'approved';
     public const STATUS_ALLOTTED = 'allotted';
     public const STATUS_PARTIALLY_ALLOTTED = 'partially_allotted';
@@ -40,6 +42,8 @@ class ShareApplication extends Model
         self::STATUS_BLOCKED,
         self::STATUS_PAYMENT_PENDING,
         self::STATUS_PAYMENT_VERIFIED,
+        self::STATUS_REVIEWED,
+        self::STATUS_VERIFIED,
         self::STATUS_APPROVED,
         self::STATUS_ALLOTTED,
         self::STATUS_PARTIALLY_ALLOTTED,
@@ -53,7 +57,7 @@ class ShareApplication extends Model
     protected $fillable = [
         'applicant_id','share_offering_id','application_number','shares_applied','amount_per_share','total_amount_declared',
         'status','issue_code','asba_reference','blocked_amount','blocked_at','refunded_amount','refunded_at',
-        'submitted_at','reviewed_by','reviewed_at','rejection_reason',
+        'submitted_at','reviewed_by','reviewed_at','verified_by','verified_at','approved_by','approved_at','rejection_reason',
     ];
 
     protected $casts = [
@@ -65,6 +69,8 @@ class ShareApplication extends Model
         'refunded_at' => 'datetime',
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
+        'verified_at' => 'datetime',
+        'approved_at' => 'datetime',
     ];
 
     public function getActivitylogOptions(): LogOptions
@@ -88,6 +94,16 @@ class ShareApplication extends Model
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function verifier()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     public function paymentTransactions()

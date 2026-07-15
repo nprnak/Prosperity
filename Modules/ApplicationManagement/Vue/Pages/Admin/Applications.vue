@@ -12,7 +12,7 @@ const statusClass = (status) => {
     return 'bg-yellow-100 text-yellow-700';
   }
 
-  if (['payment_verified', 'approved', 'allotted', 'demat_credited'].includes(status)) {
+  if (['payment_verified', 'reviewed', 'verified', 'approved', 'allotted', 'demat_credited'].includes(status)) {
     return 'bg-green-100 text-green-700';
   }
 
@@ -36,6 +36,8 @@ const statusLabel = (status) => {
     blocked: 'Blocked',
     payment_pending: 'Payment Pending',
     payment_verified: 'Payment Verified',
+    reviewed: 'Reviewed',
+    verified: 'Verified',
     approved: 'Approved',
     allotted: 'Allotted',
     partially_allotted: 'Partially Allotted',
@@ -82,7 +84,7 @@ const statusLabel = (status) => {
               <td class="px-6 py-4 text-sm text-gray-600">{{ app.applicant?.full_name_english }}</td>
               <td class="px-6 py-4 text-sm text-gray-600">{{ app.applicant?.email }}</td>
               <td class="px-6 py-4 text-sm text-gray-900">{{ app.shares_applied }}</td>
-              <td class="px-6 py-4 text-sm text-gray-900">Rs. {{ app.total_amount_declared }}</td>
+              <td class="px-6 py-4 text-sm text-gray-900">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ app.total_amount_declared }}</td>
               <td class="px-6 py-4 text-sm">
                 <span :class="statusClass(app.status)" class="px-3 py-1 rounded-full text-xs font-semibold">
                   {{ statusLabel(app.status) }}

@@ -27,11 +27,20 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request, \App\Services\TwoFactorService $twoFactor): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        $user = $request->user();
+
+        if ($user->requiresTwoFactor()) {
+            $request->session()->put('two_factor.pending', true);
+            $twoFactor->send($user);
+
+            return redirect()->route('two-factor.challenge');
+        }
 
         return redirect()->intended(route('dashboard', absolute: false));
     }

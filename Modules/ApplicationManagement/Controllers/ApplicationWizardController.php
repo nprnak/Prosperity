@@ -131,6 +131,18 @@ class ApplicationWizardController extends Controller
             ]);
         }
 
+        $maxApplications = (int) \Modules\SettingsManagement\Models\Setting::get('max_applications_per_user', 5);
+        $activeApplications = ShareApplication::query()
+            ->where('applicant_id', $application->applicant_id)
+            ->whereNotIn('status', [ShareApplication::STATUS_DRAFT, ShareApplication::STATUS_REJECTED])
+            ->count();
+
+        if ($activeApplications >= $maxApplications) {
+            return redirect()->route('applications.wizard')->withErrors([
+                'profile' => "You have reached the maximum of {$maxApplications} active applications.",
+            ]);
+        }
+
         if (str_starts_with($application->application_number, 'DRAFT-')) {
             $application->application_number = $numberGenerator->generateApplicationNumber();
         }
@@ -149,6 +161,8 @@ class ApplicationWizardController extends Controller
             Notification::route('mail', $application->applicant->email)
                 ->notify(new ApplicationSubmittedNotification($application));
         }
+
+        $application->applicant?->user?->notify(new ApplicationSubmittedNotification($application));
 
         return redirect()->route('applications.wizard')->with('success', 'Application submitted successfully.');
     }

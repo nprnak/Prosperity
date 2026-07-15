@@ -28,7 +28,7 @@ defineProps({
         </div>
         <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-6 border border-orange-200">
           <h3 class="text-gray-600 text-sm font-medium">Total Raised</h3>
-          <p class="text-4xl font-bold text-orange-600 mt-2">Rs. {{ stats?.totalRaised || 0 }}</p>
+          <p class="text-4xl font-bold text-orange-600 mt-2">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ stats?.totalRaised || 0 }}</p>
         </div>
       </div>
 
@@ -61,8 +61,8 @@ defineProps({
                 <td class="px-6 py-4 text-sm text-gray-600">{{ allot.share_application?.application_number }}</td>
                 <td class="px-6 py-4 text-sm text-gray-900">{{ allot.share_application?.shares_applied }}</td>
                 <td class="px-6 py-4 text-sm font-semibold text-green-600">{{ allot.shares_allotted }}</td>
-                <td class="px-6 py-4 text-sm text-gray-900">Rs. {{ allot.share_application?.amount_per_share || 'N/A' }}</td>
-                <td class="px-6 py-4 text-sm font-semibold text-gray-900">Rs. {{ allot.shares_allotted * (allot.share_application?.amount_per_share || 0) }}</td>
+                <td class="px-6 py-4 text-sm text-gray-900">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ allot.share_application?.amount_per_share || 'N/A' }}</td>
+                <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ allot.shares_allotted * (allot.share_application?.amount_per_share || 0) }}</td>
                 <td class="px-6 py-4 text-sm">
                   <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Allotted</span>
                 </td>

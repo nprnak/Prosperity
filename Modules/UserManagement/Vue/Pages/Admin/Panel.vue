@@ -52,7 +52,7 @@ defineProps({
           <div class="space-y-3">
             <div class="flex items-center justify-between pb-3 border-b">
               <span class="text-gray-600">Total Capital Raised</span>
-              <span class="text-2xl font-bold text-green-600">Rs. {{ stats?.capitalRaised || 0 }}</span>
+              <span class="text-2xl font-bold text-green-600">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ stats?.capitalRaised || 0 }}</span>
             </div>
             <div class="flex items-center justify-between pb-3 border-b">
               <span class="text-gray-600">Verified Payments</span>

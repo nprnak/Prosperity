@@ -16,7 +16,7 @@ defineProps({
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 border border-green-200">
           <h3 class="text-gray-600 text-sm font-medium">Total Verified</h3>
-          <p class="text-4xl font-bold text-green-600 mt-2">Rs. {{ stats?.verifiedAmount || 0 }}</p>
+          <p class="text-4xl font-bold text-green-600 mt-2">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ stats?.verifiedAmount || 0 }}</p>
         </div>
         <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-6 border border-orange-200">
           <h3 class="text-gray-600 text-sm font-medium">Pending Verification</h3>
@@ -62,7 +62,7 @@ defineProps({
                 <td class="px-6 py-4 text-sm font-medium text-gray-900">TXN-{{ payment.id }}</td>
                 <td class="px-6 py-4 text-sm text-gray-600">{{ payment.share_application?.applicant?.full_name_english }}</td>
                 <td class="px-6 py-4 text-sm text-gray-600">{{ payment.share_application?.application_number }}</td>
-                <td class="px-6 py-4 text-sm font-semibold text-gray-900">Rs. {{ payment.amount }}</td>
+                <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ payment.amount }}</td>
                 <td class="px-6 py-4 text-sm text-gray-600 capitalize">{{ payment.payment_method }}</td>
                 <td class="px-6 py-4 text-sm">
                   <span :class="{

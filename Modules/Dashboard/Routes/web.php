@@ -14,6 +14,14 @@ Route::get('/dashboard', function () {
         return redirect()->route('finance.dashboard');
     }
 
+    if ($user?->hasRole('reviewer')) {
+        return redirect()->route('reviewer.dashboard');
+    }
+
+    if ($user?->hasRole('verifier')) {
+        return redirect()->route('verifier.dashboard');
+    }
+
     if ($user?->hasRole('approver')) {
         return redirect()->route('approver.dashboard');
     }

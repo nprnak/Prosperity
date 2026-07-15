@@ -48,7 +48,7 @@ class EmailVerificationEnforcementTest extends TestCase
         $user = User::where('email', 'new-user@example.com')->firstOrFail();
         \Illuminate\Support\Facades\Notification::assertSentTo(
             $user,
-            \Illuminate\Auth\Notifications\VerifyEmail::class,
+            \App\Notifications\VerifyEmailWithOtp::class,
         );
     }
 }

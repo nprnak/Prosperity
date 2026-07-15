@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Notifications\VerifyEmailWithOtp;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
@@ -32,6 +34,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'email_otp_code',
+        'email_otp_expires_at',
     ];
 
     /**
@@ -43,7 +47,40 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'email_otp_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Sends the verification mail with both a signed link and a 6-digit OTP.
+     * The OTP is stored hashed and expires after 10 minutes.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $otp = (string) random_int(100000, 999999);
+
+        $this->forceFill([
+            'email_otp_code' => Hash::make($otp),
+            'email_otp_expires_at' => now()->addMinutes(10),
+        ])->save();
+
+        $this->notify(new VerifyEmailWithOtp($otp));
+    }
+
+    /**
+     * Staff accounts must pass a second factor at login; applicants are exempt.
+     */
+    public function requiresTwoFactor(): bool
+    {
+        return $this->hasAnyRole(['admin', 'finance_staff', 'reviewer', 'verifier', 'approver']);
+    }
+
+    public function clearEmailOtp(): void
+    {
+        $this->forceFill([
+            'email_otp_code' => null,
+            'email_otp_expires_at' => null,
+        ])->save();
     }
 }

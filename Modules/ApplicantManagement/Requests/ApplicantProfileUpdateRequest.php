@@ -47,10 +47,17 @@ class ApplicantProfileUpdateRequest extends FormRequest
             'bank_account_number' => ['required', 'string', 'max:50'],
             'account_holder_name' => ['required', 'string', 'max:255'],
             'asba_consent' => ['required', 'accepted'],
-            'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'citizenship_doc' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'national_id_doc' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'pan_doc' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'photo' => $this->documentRules(),
+            'citizenship_doc' => $this->documentRules(),
+            'national_id_doc' => $this->documentRules(),
+            'pan_doc' => $this->documentRules(),
         ];
+    }
+
+    protected function documentRules(): array
+    {
+        $maxKb = (int) \Modules\SettingsManagement\Models\Setting::get('max_upload_size_kb', 5120);
+
+        return ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:'.$maxKb];
     }
 }

@@ -39,6 +39,14 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Dashboard
                                 </NavLink>
+                                <template v-if="$page.props.auth.permissions?.includes('profile.review')">
+                                    <NavLink
+                                        :href="route('applicants.review')"
+                                        :active="route().current('applicants.review')"
+                                    >
+                                        Profile Reviews
+                                    </NavLink>
+                                </template>
                                 <template v-if="$page.props.auth.user.roles?.some(r => r.name === 'admin')">
                                     <NavLink
                                         :href="route('admin.panel')"

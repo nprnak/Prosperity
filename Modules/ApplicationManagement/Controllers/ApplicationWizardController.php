@@ -39,7 +39,8 @@ class ApplicationWizardController extends Controller
             'draft' => $draft,
             'applications' => $applications,
             'profile' => $applicantProfile,
-            'profileCompleted' => $this->isApplicantProfileComplete($applicantProfile),
+            'profileCompleted' => $applicantProfile?->isProfileComplete() ?? false,
+            'profileStatus' => $applicantProfile->profile_status ?? Applicant::PROFILE_DRAFT,
         ]);
     }
 
@@ -49,9 +50,9 @@ class ApplicationWizardController extends Controller
         $payload = $request->validated('payload');
         $existingProfile = Applicant::query()->where('user_id', $user->id)->first();
 
-        if (! $this->isApplicantProfileComplete($existingProfile)) {
+        if (! $existingProfile?->isProfileApproved()) {
             return back()->withErrors([
-                'profile' => 'Complete your profile first. Only then you can apply for shares from this account.',
+                'profile' => 'Your profile must be approved before you can apply for shares. Complete it and submit it for review from the Profile page.',
             ]);
         }
 
@@ -99,9 +100,9 @@ class ApplicationWizardController extends Controller
 
         Gate::authorize('submit', $application);
 
-        if (! $this->isApplicantProfileComplete($application->applicant)) {
+        if (! $application->applicant?->isProfileApproved()) {
             return redirect()->route('applications.wizard')->withErrors([
-                'profile' => 'Please complete your profile before submitting the application.',
+                'profile' => 'Your profile must be approved before submitting an application. Submit it for review from the Profile page.',
             ]);
         }
 
@@ -127,51 +128,6 @@ class ApplicationWizardController extends Controller
         return redirect()->route('applications.wizard')->with('success', 'Application submitted successfully.');
     }
 
-    private function isApplicantProfileComplete(?Applicant $applicant): bool
-    {
-        if (! $applicant) {
-            return false;
-        }
-
-        $requiredFields = [
-            'full_name_nepali',
-            'full_name_english',
-            'date_of_birth',
-            'age',
-            'father_name',
-            'grandfather_name',
-            'education',
-            'permanent_district',
-            'permanent_municipality',
-            'permanent_ward',
-            'mobile_number',
-            'photo_path',
-            'citizenship_doc_path',
-            'national_id_doc_path',
-            'pan_doc_path',
-            'boid',
-            'crn_number',
-            'bank_name',
-            'bank_branch',
-            'bank_account_number',
-            'account_holder_name',
-            'asba_consent',
-        ];
-
-        foreach ($requiredFields as $field) {
-            $value = $applicant->{$field};
-
-            if (blank($value)) {
-                return false;
-            }
-
-            if (is_string($value) && in_array(trim($value), ['-', 'N/A'], true)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
 
     private function logStatusEvent(ShareApplication $application, ?int $actorId, ?string $fromStatus, string $toStatus, string $remarks): void
     {

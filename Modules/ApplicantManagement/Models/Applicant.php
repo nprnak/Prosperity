@@ -11,6 +11,39 @@ class Applicant extends Model
 {
     use HasFactory;
 
+    public const PROFILE_DRAFT = 'draft';
+    public const PROFILE_SUBMITTED = 'submitted';
+    public const PROFILE_APPROVED = 'approved';
+    public const PROFILE_REJECTED = 'rejected';
+
+    /**
+     * Fields the KYC review requires before a profile can be submitted.
+     */
+    public const REQUIRED_PROFILE_FIELDS = [
+        'full_name_nepali',
+        'full_name_english',
+        'date_of_birth',
+        'age',
+        'father_name',
+        'grandfather_name',
+        'education',
+        'permanent_district',
+        'permanent_municipality',
+        'permanent_ward',
+        'mobile_number',
+        'photo_path',
+        'citizenship_doc_path',
+        'national_id_doc_path',
+        'pan_doc_path',
+        'boid',
+        'crn_number',
+        'bank_name',
+        'bank_branch',
+        'bank_account_number',
+        'account_holder_name',
+        'asba_consent',
+    ];
+
     protected $fillable = [
         'user_id','full_name_nepali','full_name_english','date_of_birth','age','nationality','father_name','grandfather_name',
         'marital_status','spouse_name','education','occupation','permanent_district','permanent_municipality','permanent_ward',
@@ -28,6 +61,8 @@ class Applicant extends Model
         'asba_consent' => 'boolean',
         'declaration_accepted' => 'boolean',
         'declaration_accepted_at' => 'datetime',
+        'profile_submitted_at' => 'datetime',
+        'profile_reviewed_at' => 'datetime',
     ];
 
     public function user()
@@ -38,5 +73,32 @@ class Applicant extends Model
     public function shareApplications()
     {
         return $this->hasMany(ShareApplication::class);
+    }
+
+    public function profileReviewer()
+    {
+        return $this->belongsTo(User::class, 'profile_reviewed_by');
+    }
+
+    public function isProfileComplete(): bool
+    {
+        foreach (self::REQUIRED_PROFILE_FIELDS as $field) {
+            $value = $this->{$field};
+
+            if (blank($value)) {
+                return false;
+            }
+
+            if (is_string($value) && in_array(trim($value), ['-', 'N/A'], true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function isProfileApproved(): bool
+    {
+        return $this->profile_status === self::PROFILE_APPROVED;
     }
 }

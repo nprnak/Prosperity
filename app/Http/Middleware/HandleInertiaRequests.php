@@ -44,6 +44,9 @@ class HandleInertiaRequests extends Middleware
                 // page.props.auth.permissions.includes('...').
                 'permissions' => $user?->getAllPermissions()->pluck('name') ?? [],
             ],
+            'flash' => [
+                'success' => $request->session()->get('success'),
+            ],
         ];
     }
 }

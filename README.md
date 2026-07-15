@@ -23,6 +23,11 @@ Laravel 11 MIS for Prosperity Holdings Ltd with Breeze (Vue + Inertia), role-bas
 - Transaction-safe `NumberGeneratorService`:
   - Application: `PHL-{fiscal_year}-{6-digit}`
   - Receipt/Voucher: sequential padded numbers
+- Applicant profile (KYC) approval workflow: applicants complete their profile and
+  submit it for review (`profile_status`: draft → submitted → approved/rejected);
+  users with `profile.review` (approver, admin) work a review queue at
+  `/applicants/review` with approve/reject + reason; applicants are emailed the
+  outcome and can only draft/submit share applications once approved
 - Applicant 5-step scaffolded wizard (draft save + submit)
 - Finance dashboard:
   - submitted/payment-pending lists
@@ -109,6 +114,7 @@ Tailwind scans `Modules/**/Vue` and module blade views (see `tailwind.config.js`
 ## Workflow routes
 
 - Applicant wizard: `/applications/wizard`
+- Profile review queue: `/applicants/review`
 - Finance dashboard: `/finance/dashboard`
 - Approver dashboard: `/approver/dashboard`
 - Shareholder register: `/allotments/register`

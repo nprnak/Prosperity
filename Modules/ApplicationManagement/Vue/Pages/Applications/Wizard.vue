@@ -8,6 +8,7 @@ const props = defineProps({
   draft: Object,
   applications: Array,
   profileCompleted: Boolean,
+  profileStatus: { type: String, default: 'draft' },
 });
 
 const money = (value) => Number.parseFloat(value || 0);
@@ -30,7 +31,7 @@ const form = useForm({
 });
 
 const hasDraft = computed(() => Boolean(props.draft?.id));
-const profileReady = computed(() => Boolean(props.profileCompleted));
+const profileReady = computed(() => props.profileStatus === 'approved');
 
 const estimatedTotal = computed(() => {
   const shares = Math.max(1, Number.parseInt(form.payload.shares_applied || 1, 10));
@@ -105,9 +106,19 @@ const statusLabel = (status) => {
       </div>
 
       <div v-if="!profileReady" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
-        <h4 class="text-lg font-semibold">Complete Profile First</h4>
+        <h4 class="text-lg font-semibold">
+          {{ profileStatus === 'submitted' ? 'Profile Under Review' : 'Profile Approval Required' }}
+        </h4>
         <p class="mt-2 text-sm">
-          Your share application is locked until your profile is complete with all required information, education, address, and documents.
+          <template v-if="profileStatus === 'submitted'">
+            Your profile has been submitted and is being reviewed. You can apply for shares as soon as it is approved.
+          </template>
+          <template v-else-if="!profileCompleted">
+            Your share application is locked until your profile is complete with all required information, education, address, and documents, and has been approved.
+          </template>
+          <template v-else>
+            Your profile is complete but not yet approved. Go to your profile and submit it for review.
+          </template>
         </p>
         <div class="mt-4">
           <Link :href="route('profile.edit')" class="inline-flex rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">

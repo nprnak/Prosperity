@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             \Modules\CompanyManagement\Database\Seeders\CompanySeeder::class,
             \Modules\PaymentManagement\Database\Seeders\PaymentMethodSeeder::class,
+            \Modules\SettingsManagement\Database\Seeders\SettingsSeeder::class,
         ]);
     }
 }

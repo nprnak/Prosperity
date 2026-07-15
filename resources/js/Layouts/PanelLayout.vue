@@ -20,6 +20,7 @@ const adminMenuItems = [
   { label: 'Allotments', icon: '📋', route: 'admin.allotments', startsWith: '/admin/allotments' },
   { label: 'Reports', icon: '📈', route: 'admin.reports', startsWith: '/admin/reports' },
   { label: 'Admin Settings', icon: '⚙️', route: 'admin.credentials', startsWith: '/admin/credentials' },
+  { label: 'Site Settings', icon: '🏛️', route: 'admin.settings', startsWith: '/admin/settings' },
   { label: 'Activity Log', icon: '🔍', route: 'admin.logs', startsWith: '/admin/logs' },
   { label: 'Share Application', icon: '🧾', route: 'applications.wizard', startsWith: '/applications' },
   { label: 'Profile', icon: '👤', route: 'profile.edit', startsWith: '/profile' },

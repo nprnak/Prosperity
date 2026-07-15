@@ -14,15 +14,11 @@ class AdminCredentialsController extends Controller
 {
     public function index(Request $request): Response
     {
-        abort_unless($request->user()?->hasRole('admin'), 403);
-
         return Inertia::render('Admin/Credentials');
     }
 
     public function updateProfile(Request $request): RedirectResponse
     {
-        abort_unless($request->user()?->hasRole('admin'), 403);
-
         $user = $request->user();
 
         abort_unless($user instanceof User, 403);
@@ -45,8 +41,6 @@ class AdminCredentialsController extends Controller
 
     public function updatePassword(Request $request): RedirectResponse
     {
-        abort_unless($request->user()?->hasRole('admin'), 403);
-
         $user = $request->user();
 
         abort_unless($user instanceof User, 403);

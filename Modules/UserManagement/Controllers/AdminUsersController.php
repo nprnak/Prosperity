@@ -15,8 +15,6 @@ class AdminUsersController extends Controller
 {
     public function index(Request $request): Response
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         $this->ensureDefaultRoles();
 
         $roleFilter = $request->string('role')->toString();
@@ -40,8 +38,6 @@ class AdminUsersController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         $this->ensureDefaultRoles();
 
         $validated = $request->validate([
@@ -64,8 +60,6 @@ class AdminUsersController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         $this->ensureDefaultRoles();
 
         $validated = $request->validate([
@@ -92,8 +86,6 @@ class AdminUsersController extends Controller
 
     public function destroy(Request $request, User $user): RedirectResponse
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         if ($request->user()->id === $user->id) {
             return redirect()->route('admin.users')->withErrors([
                 'delete' => 'You cannot delete your own account.',

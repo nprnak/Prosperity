@@ -13,8 +13,6 @@ class AdminDashboardController extends Controller
 {
     public function index(Request $request)
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         $capitalRaised = (string) PaymentTransaction::query()
             ->where('verification_status', 'verified')
             ->sum('amount');

@@ -5,7 +5,14 @@ Laravel 11 MIS for Prosperity Holdings Ltd with Breeze (Vue + Inertia), role-bas
 ## Implemented modules
 
 - Laravel 11 + Breeze (Vue/Inertia) bootstrap
-- Roles: `applicant`, `finance_staff`, `approver`, `admin`
+- Roles: `applicant`, `finance_staff`, `approver`, `admin` with granular permissions
+  (`application.submit`, `payment.record`, `payment.verify`, `application.approve`,
+  `allotment.manage`, `user.manage`, `report.view`, `audit.view`, …) — see
+  `RolesAndPermissionsSeeder`. Routes are gated with `can:` middleware, FormRequests
+  check permissions, and object-level rules live in module Policies
+  (`ShareApplicationPolicy` ownership on submit, `VoucherPolicy` ownership on download).
+  Permission names are shared with Vue via Inertia (`page.props.auth.permissions`).
+  After pulling, re-run `php artisan db:seed --class=RolesAndPermissionsSeeder`.
 - Domain schema + models:
   - `applicants`
   - `share_applications`

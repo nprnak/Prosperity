@@ -61,8 +61,8 @@ defineProps({
                 <td class="px-6 py-4 text-sm text-gray-600">{{ allot.share_application?.application_number }}</td>
                 <td class="px-6 py-4 text-sm text-gray-900">{{ allot.share_application?.shares_applied }}</td>
                 <td class="px-6 py-4 text-sm font-semibold text-green-600">{{ allot.shares_allotted }}</td>
-                <td class="px-6 py-4 text-sm text-gray-900">Rs. {{ allot.cost_per_share || 'N/A' }}</td>
-                <td class="px-6 py-4 text-sm font-semibold text-gray-900">Rs. {{ (allot.shares_allotted * (allot.cost_per_share || 0)) | 0 }}</td>
+                <td class="px-6 py-4 text-sm text-gray-900">Rs. {{ allot.share_application?.amount_per_share || 'N/A' }}</td>
+                <td class="px-6 py-4 text-sm font-semibold text-gray-900">Rs. {{ allot.shares_allotted * (allot.share_application?.amount_per_share || 0) }}</td>
                 <td class="px-6 py-4 text-sm">
                   <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Allotted</span>
                 </td>

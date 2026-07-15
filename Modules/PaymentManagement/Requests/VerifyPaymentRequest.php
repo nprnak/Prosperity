@@ -8,7 +8,7 @@ class VerifyPaymentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->hasAnyRole(['finance_staff', 'admin']);
+        return auth()->user()?->can('payment.verify') ?? false;
     }
 
     public function rules(): array

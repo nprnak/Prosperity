@@ -11,6 +11,7 @@ use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApplicationManagement\Notifications\ApplicationSubmittedNotification;
 use App\Services\NumberGeneratorService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 
@@ -96,7 +97,7 @@ class ApplicationWizardController extends Controller
     {
         $application->load('applicant');
 
-        abort_unless($application->applicant?->user_id === $request->user()->id, 403);
+        Gate::authorize('submit', $application);
 
         if (! $this->isApplicantProfileComplete($application->applicant)) {
             return redirect()->route('applications.wizard')->withErrors([

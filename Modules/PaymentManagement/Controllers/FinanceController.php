@@ -18,8 +18,6 @@ class FinanceController extends Controller
 {
     public function dashboard(Request $request)
     {
-        abort_unless($request->user()->hasAnyRole(['finance_staff', 'admin']), 403);
-
         $status = $request->string('status')->toString();
 
         $applications = ShareApplication::query()

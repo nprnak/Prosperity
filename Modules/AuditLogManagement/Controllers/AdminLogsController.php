@@ -11,8 +11,6 @@ class AdminLogsController extends Controller
 {
     public function index(Request $request)
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         $logs = Activity::latest()->paginate(10);
 
         return Inertia::render('Admin/Logs', [

@@ -40,6 +40,9 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $user,
+                // Flat permission names so Vue can gate UI with
+                // page.props.auth.permissions.includes('...').
+                'permissions' => $user?->getAllPermissions()->pluck('name') ?? [],
             ],
         ];
     }

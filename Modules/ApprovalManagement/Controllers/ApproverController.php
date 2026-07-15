@@ -22,8 +22,6 @@ class ApproverController extends Controller
 {
     public function dashboard(Request $request)
     {
-        abort_unless($request->user()->hasAnyRole(['approver', 'admin']), 403);
-
         $applications = ShareApplication::query()
             ->where('status', ShareApplication::STATUS_PAYMENT_VERIFIED)
             ->with(['applicant', 'paymentTransactions'])

@@ -16,8 +16,6 @@ class ShareAllotmentController extends Controller
 {
     public function index(Request $request)
     {
-        abort_unless($request->user()->hasAnyRole(['approver', 'admin']), 403);
-
         $search = $request->string('q')->toString();
         $sort = $request->string('sort')->toString() ?: 'desc';
 

@@ -12,6 +12,8 @@ return [
     // Routes/api.php; override the paths here if needed.
 
     // Extra service providers to register for this module.
-    'providers' => [],
+    'providers' => [
+        Modules\VoucherManagement\Providers\VoucherManagementServiceProvider::class,
+    ],
 
 ];

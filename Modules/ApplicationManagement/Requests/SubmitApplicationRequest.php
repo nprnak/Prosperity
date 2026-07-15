@@ -8,7 +8,8 @@ class SubmitApplicationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        // ShareApplicationPolicy::submit — owner only (admin via Gate::before).
+        return $this->user()?->can('submit', $this->route('application')) ?? false;
     }
 
     public function rules(): array

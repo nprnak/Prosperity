@@ -11,8 +11,6 @@ class AdminPaymentsController extends Controller
 {
     public function index(Request $request)
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         $payments = PaymentTransaction::with('share_application.applicant')->latest()->get();
 
         $stats = [

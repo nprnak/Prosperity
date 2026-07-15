@@ -14,8 +14,6 @@ class AdminPanelController extends Controller
 {
     public function index(Request $request)
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         $stats = [
             'totalUsers' => User::query()->count('*'),
             'adminUsers' => User::role('admin')->get()->count(),
@@ -50,8 +48,6 @@ class AdminPanelController extends Controller
 
     public function roleHub(Request $request)
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         $roleUsers = [
             'admin' => User::role('admin')
                 ->with('roles:id,name')

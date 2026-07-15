@@ -12,8 +12,6 @@ class AdminApplicationsController extends Controller
 {
     public function index(Request $request): Response
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         $applications = ShareApplication::with('applicant')->latest()->get();
 
         return Inertia::render('Admin/Applications', [
@@ -23,8 +21,6 @@ class AdminApplicationsController extends Controller
 
     public function show(Request $request, ShareApplication $application): Response
     {
-        abort_unless($request->user()->hasRole('admin'), 403);
-
         $application->load([
             'applicant',
             'reviewer:id,name,email',

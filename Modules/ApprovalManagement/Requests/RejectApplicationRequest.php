@@ -8,7 +8,7 @@ class RejectApplicationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->hasAnyRole(['approver', 'admin']);
+        return auth()->user()?->can('application.reject') ?? false;
     }
 
     public function rules(): array

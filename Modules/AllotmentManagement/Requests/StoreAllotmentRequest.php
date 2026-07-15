@@ -8,7 +8,7 @@ class StoreAllotmentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->hasAnyRole(['approver', 'admin']);
+        return auth()->user()?->can('allotment.manage') ?? false;
     }
 
     public function rules(): array

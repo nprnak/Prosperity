@@ -137,11 +137,18 @@ class ProfileApprovalTest extends TestCase
         $user = $this->applicantUser();
         $applicant = $this->completeProfileFor($user);
 
+        $company = \Modules\CompanyManagement\Models\Company::create([
+            'name' => 'Prosperity Holdings', 'code' => 'PHL', 'status' => 'active',
+        ]);
+        $offering = $company->offerings()->create([
+            'title' => 'IPO', 'fiscal_year' => '2082/83', 'total_shares' => 100000,
+            'share_rate' => '100.00', 'min_shares' => 10, 'max_shares' => 1000,
+            'status' => \Modules\CompanyManagement\Models\ShareOffering::STATUS_OPEN,
+        ]);
+
         $payload = ['payload' => [
-            'issue_code' => 'PHL-IPO-1',
+            'share_offering_id' => $offering->id,
             'shares_applied' => 10,
-            'amount_per_share' => '100.00',
-            'total_amount_declared' => '1000.00',
         ]];
 
         $this->actingAs($user)->post('/applications/draft', $payload)->assertSessionHasErrors('profile');

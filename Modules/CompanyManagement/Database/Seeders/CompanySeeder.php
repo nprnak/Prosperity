@@ -1,0 +1,40 @@
+<?php
+
+namespace Modules\CompanyManagement\Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Modules\CompanyManagement\Models\Company;
+use Modules\CompanyManagement\Models\ShareOffering;
+
+class CompanySeeder extends Seeder
+{
+    /**
+     * Seeds Prosperity Holdings itself as the first issuer with an open
+     * offering, so the applicant wizard works out of the box.
+     */
+    public function run(): void
+    {
+        $company = Company::firstOrCreate(
+            ['code' => 'PHL'],
+            [
+                'name' => 'Prosperity Holdings Limited',
+                'description' => 'Prosperity Holdings Limited public share issue.',
+                'status' => Company::STATUS_ACTIVE,
+            ]
+        );
+
+        ShareOffering::firstOrCreate(
+            ['company_id' => $company->id, 'fiscal_year' => '2082/83'],
+            [
+                'title' => 'Founder Share Issue',
+                'total_shares' => 1000000,
+                'share_rate' => '100.00',
+                'min_shares' => 10,
+                'max_shares' => 10000,
+                'opens_at' => now()->subMonth()->toDateString(),
+                'closes_at' => now()->addMonths(3)->toDateString(),
+                'status' => ShareOffering::STATUS_OPEN,
+            ]
+        );
+    }
+}

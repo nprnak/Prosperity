@@ -9,9 +9,8 @@ const props = defineProps({
   applications: Array,
   profileCompleted: Boolean,
   profileStatus: { type: String, default: 'draft' },
+  offerings: { type: Array, default: () => [] },
 });
-
-const money = (value) => Number.parseFloat(value || 0);
 
 const form = useForm({
   step: 2,
@@ -21,11 +20,9 @@ const form = useForm({
     share_heir_name: props.draft?.applicant?.share_heir_name || '',
     share_heir_relation: props.draft?.applicant?.share_heir_relation || '',
     share_heir_mobile: props.draft?.applicant?.share_heir_mobile || '',
-    issue_code: props.draft?.issue_code || '',
+    share_offering_id: props.draft?.share_offering_id || props.offerings[0]?.id || null,
     asba_reference: props.draft?.asba_reference || '',
     shares_applied: props.draft?.shares_applied || 1,
-    amount_per_share: props.draft?.amount_per_share || 100,
-    total_amount_declared: props.draft?.total_amount_declared || 100,
     declaration_accepted: false,
   },
 });
@@ -33,20 +30,22 @@ const form = useForm({
 const hasDraft = computed(() => Boolean(props.draft?.id));
 const profileReady = computed(() => props.profileStatus === 'approved');
 
-const estimatedTotal = computed(() => {
-  const shares = Math.max(1, Number.parseInt(form.payload.shares_applied || 1, 10));
-  const amount = Math.max(0, money(form.payload.amount_per_share));
+const selectedOffering = computed(
+  () => props.offerings.find((offering) => offering.id === form.payload.share_offering_id) || null,
+);
 
-  return (shares * amount).toFixed(2);
+const estimatedTotal = computed(() => {
+  if (!selectedOffering.value) return '0.00';
+  const shares = Math.max(1, Number.parseInt(form.payload.shares_applied || 1, 10));
+
+  return (shares * Number.parseFloat(selectedOffering.value.share_rate)).toFixed(2);
 });
 
-watch(
-  () => [form.payload.shares_applied, form.payload.amount_per_share],
-  () => {
-    form.payload.total_amount_declared = estimatedTotal.value;
-  },
-  { immediate: true },
-);
+watch(selectedOffering, (offering) => {
+  if (offering && form.payload.shares_applied < offering.min_shares) {
+    form.payload.shares_applied = offering.min_shares;
+  }
+});
 
 const payloadError = (field) => form.errors[`payload.${field}`];
 
@@ -134,27 +133,39 @@ const statusLabel = (status) => {
 
         <section class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 sm:p-5">
           <h4 class="text-lg font-semibold text-gray-900">Share Details</h4>
-          <div class="mt-4 grid gap-4 md:grid-cols-3">
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">Issue Code *</label>
-              <input v-model="form.payload.issue_code" type="text" placeholder="e.g. NABILPO2026" :class="inputClass('issue_code')" />
-              <InputError :message="payloadError('issue_code')" class="mt-1" />
+
+          <p v-if="!offerings.length" class="mt-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
+            There are no share offerings open for applications right now. Please check back later.
+          </p>
+
+          <div v-else class="mt-4 grid gap-4 md:grid-cols-3">
+            <div class="md:col-span-2">
+              <label class="mb-1 block text-sm font-medium text-gray-700">Share Offering *</label>
+              <select v-model="form.payload.share_offering_id" :class="inputClass('share_offering_id')">
+                <option v-for="offering in offerings" :key="offering.id" :value="offering.id">
+                  {{ offering.company?.name }} · {{ offering.title }} ({{ offering.fiscal_year }}) · Rs. {{ offering.share_rate }}/share
+                </option>
+              </select>
+              <InputError :message="payloadError('share_offering_id')" class="mt-1" />
+              <p v-if="selectedOffering" class="mt-1 text-xs text-gray-500">
+                {{ selectedOffering.min_shares }}–{{ selectedOffering.max_shares }} shares per applicant<span v-if="selectedOffering.closes_at">, closes {{ selectedOffering.closes_at.slice(0, 10) }}</span>
+              </p>
             </div>
             <div>
               <label class="mb-1 block text-sm font-medium text-gray-700">Shares Applied</label>
-              <input v-model="form.payload.shares_applied" type="number" min="1" placeholder="e.g. 50" :class="inputClass('shares_applied')" />
+              <input
+                v-model="form.payload.shares_applied"
+                type="number"
+                :min="selectedOffering?.min_shares || 1"
+                :max="selectedOffering?.max_shares"
+                :class="inputClass('shares_applied')"
+              />
               <InputError :message="payloadError('shares_applied')" class="mt-1" />
             </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">Amount per Share</label>
-              <input v-model="form.payload.amount_per_share" type="number" min="0" step="0.01" placeholder="e.g. 100" :class="inputClass('amount_per_share')" />
-              <InputError :message="payloadError('amount_per_share')" class="mt-1" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">Total Declared Amount</label>
-              <input v-model="form.payload.total_amount_declared" type="number" min="0" step="0.01" :class="inputClass('total_amount_declared')" />
-              <InputError :message="payloadError('total_amount_declared')" class="mt-1" />
-              <p class="mt-1 text-xs text-gray-500">Suggested total: Rs. {{ estimatedTotal }}</p>
+            <div class="md:col-span-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm">
+              <span class="text-gray-600">Rate: <strong>Rs. {{ selectedOffering?.share_rate || '—' }}</strong> per share</span>
+              <span class="mx-2 text-gray-300">|</span>
+              <span class="text-gray-600">Total payable: <strong class="text-gray-900">Rs. {{ estimatedTotal }}</strong></span>
             </div>
             <div>
               <label class="mb-1 block text-sm font-medium text-gray-700">ASBA Reference</label>

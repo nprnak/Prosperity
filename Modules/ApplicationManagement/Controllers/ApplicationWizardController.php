@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
+use Modules\CompanyManagement\Models\ShareOffering;
 
 class ApplicationWizardController extends Controller
 {
@@ -41,6 +42,7 @@ class ApplicationWizardController extends Controller
             'profile' => $applicantProfile,
             'profileCompleted' => $applicantProfile?->isProfileComplete() ?? false,
             'profileStatus' => $applicantProfile->profile_status ?? Applicant::PROFILE_DRAFT,
+            'offerings' => ShareOffering::query()->openNow()->with('company:id,name,code')->orderBy('closes_at')->get(),
         ]);
     }
 
@@ -56,6 +58,22 @@ class ApplicationWizardController extends Controller
             ]);
         }
 
+        $offering = ShareOffering::query()->with('company')->findOrFail($payload['share_offering_id']);
+
+        if (! $offering->isOpenForApplications()) {
+            return back()->withErrors([
+                'payload.share_offering_id' => 'This share offering is not open for applications.',
+            ]);
+        }
+
+        $shares = (int) $payload['shares_applied'];
+
+        if ($shares < $offering->min_shares || $shares > $offering->max_shares) {
+            return back()->withErrors([
+                'payload.shares_applied' => "Shares must be between {$offering->min_shares} and {$offering->max_shares} for this offering.",
+            ]);
+        }
+
         $applicant = $existingProfile;
 
         $applicant->fill([
@@ -67,26 +85,24 @@ class ApplicationWizardController extends Controller
         ]);
         $applicant->save();
 
-        $application = ShareApplication::firstOrCreate(
-            [
-                'applicant_id' => $applicant->id,
-                'status' => ShareApplication::STATUS_DRAFT,
-            ],
-            [
-                'application_number' => 'DRAFT-'.str_pad((string) $applicant->id, 6, '0', STR_PAD_LEFT),
-                'issue_code' => $payload['issue_code'] ?? null,
-                'shares_applied' => $payload['shares_applied'] ?? 1,
-                'amount_per_share' => $payload['amount_per_share'] ?? '100.00',
-                'total_amount_declared' => $payload['total_amount_declared'] ?? (($payload['shares_applied'] ?? 1) * ($payload['amount_per_share'] ?? 100)),
-                'asba_reference' => $payload['asba_reference'] ?? null,
-            ]
-        );
+        // Rate and total are always taken from the offering, never from the client.
+        $totalAmount = number_format($shares * (float) $offering->share_rate, 2, '.', '');
+
+        $application = ShareApplication::firstOrNew([
+            'applicant_id' => $applicant->id,
+            'status' => ShareApplication::STATUS_DRAFT,
+        ]);
+
+        if (! $application->exists) {
+            $application->application_number = 'DRAFT-'.str_pad((string) $applicant->id, 6, '0', STR_PAD_LEFT);
+        }
 
         $application->fill([
-            'shares_applied' => $payload['shares_applied'] ?? $application->shares_applied,
-            'amount_per_share' => $payload['amount_per_share'] ?? $application->amount_per_share,
-            'total_amount_declared' => $payload['total_amount_declared'] ?? (($payload['shares_applied'] ?? $application->shares_applied) * ($payload['amount_per_share'] ?? $application->amount_per_share)),
-            'issue_code' => $payload['issue_code'] ?? $application->issue_code,
+            'share_offering_id' => $offering->id,
+            'issue_code' => $offering->company->code.'-'.$offering->fiscal_year,
+            'shares_applied' => $shares,
+            'amount_per_share' => $offering->share_rate,
+            'total_amount_declared' => $totalAmount,
             'asba_reference' => $payload['asba_reference'] ?? $application->asba_reference,
         ]);
         $application->save();
@@ -103,6 +119,12 @@ class ApplicationWizardController extends Controller
         if (! $application->applicant?->isProfileApproved()) {
             return redirect()->route('applications.wizard')->withErrors([
                 'profile' => 'Your profile must be approved before submitting an application. Submit it for review from the Profile page.',
+            ]);
+        }
+
+        if ($application->share_offering_id && ! $application->offering?->isOpenForApplications()) {
+            return redirect()->route('applications.wizard')->withErrors([
+                'profile' => 'This share offering is no longer open for applications.',
             ]);
         }
 

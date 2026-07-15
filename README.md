@@ -32,6 +32,13 @@ Laravel 11 MIS for Prosperity Holdings Ltd with Breeze (Vue + Inertia), role-bas
   users with `profile.review` (approver, admin) work a review queue at
   `/applicants/review` with approve/reject + reason; applicants are emailed the
   outcome and can only draft/submit share applications once approved
+- Multi-company share offerings: admins manage companies and their offerings
+  (fiscal year, rate, min/max shares, open/close window, status lifecycle) at
+  `/admin/companies` (`company.manage` permission). Applicants apply against an
+  open offering — the wizard snapshots the rate server-side (client-supplied
+  amounts are ignored), enforces per-offering share limits, and re-checks the
+  offering window at submission. Seeded with Prosperity's own offering
+  (`CompanySeeder`)
 - Applicant 5-step scaffolded wizard (draft save + submit)
 - Finance dashboard:
   - submitted/payment-pending lists

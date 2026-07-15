@@ -21,6 +21,7 @@ class RolesAndPermissionsSeeder extends Seeder
      * VoucherPolicy); `voucher.download-any` bypasses the ownership check.
      */
     public const PERMISSIONS = [
+        'company.manage',
         'profile.review',
         'application.submit',
         'application.view-any',

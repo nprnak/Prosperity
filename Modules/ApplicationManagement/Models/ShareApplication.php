@@ -51,7 +51,7 @@ class ShareApplication extends Model
     ];
 
     protected $fillable = [
-        'applicant_id','application_number','shares_applied','amount_per_share','total_amount_declared',
+        'applicant_id','share_offering_id','application_number','shares_applied','amount_per_share','total_amount_declared',
         'status','issue_code','asba_reference','blocked_amount','blocked_at','refunded_amount','refunded_at',
         'submitted_at','reviewed_by','reviewed_at','rejection_reason',
     ];
@@ -78,6 +78,11 @@ class ShareApplication extends Model
     public function applicant()
     {
         return $this->belongsTo(Applicant::class);
+    }
+
+    public function offering()
+    {
+        return $this->belongsTo(\Modules\CompanyManagement\Models\ShareOffering::class, 'share_offering_id');
     }
 
     public function reviewer()

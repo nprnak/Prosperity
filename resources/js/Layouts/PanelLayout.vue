@@ -13,6 +13,7 @@ const adminMenuItems = [
   { label: 'Dashboard', icon: '📊', route: 'admin.dashboard', startsWith: '/admin/dashboard' },
   { label: 'Role Hub', icon: '🧩', route: 'admin.roles.hub', startsWith: '/admin/roles/hub' },
   { label: 'Users', icon: '👥', route: 'admin.users', startsWith: '/admin/users' },
+  { label: 'Companies', icon: '🏢', route: 'admin.companies', startsWith: '/admin/companies' },
   { label: 'Applications', icon: '📝', route: 'admin.applications', startsWith: '/admin/applications' },
   { label: 'Payments', icon: '💳', route: 'admin.payments', startsWith: '/admin/payments' },
   { label: 'Allotments', icon: '📋', route: 'admin.allotments', startsWith: '/admin/allotments' },

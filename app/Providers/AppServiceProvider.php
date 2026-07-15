@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use App\Models\PaymentTransaction;
-use App\Models\ShareApplication;
+use Modules\PaymentManagement\Models\PaymentTransaction;
+use Modules\ApplicationManagement\Models\ShareApplication;
 use App\Models\User;
 use App\Observers\PaymentTransactionObserver;
 use App\Observers\ShareApplicationObserver;

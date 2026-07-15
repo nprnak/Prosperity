@@ -12,7 +12,15 @@
 
         <!-- Scripts -->
         @routes
-        @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
+        @php
+            // Pages live either in resources/js/Pages or in a module's Vue/Pages dir.
+            $pageFile = "resources/js/Pages/{$page['component']}.vue";
+            if (! file_exists(base_path($pageFile))) {
+                $moduleMatch = glob(base_path("Modules/*/Vue/Pages/{$page['component']}.vue"));
+                $pageFile = $moduleMatch ? ltrim(str_replace(base_path(), '', $moduleMatch[0]), '/') : null;
+            }
+        @endphp
+        @vite(array_filter(['resources/js/app.js', $pageFile]))
         @inertiaHead
     </head>
     <body class="font-sans antialiased">

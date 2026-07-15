@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Models\Applicant;
+use Modules\ApplicantManagement\Models\Applicant;
 use App\Models\User;
 
 class UserObserver

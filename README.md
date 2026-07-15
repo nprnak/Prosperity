@@ -67,7 +67,37 @@ php artisan serve
 ```bash
 php artisan test
 composer run dev
+php artisan make:module CompanyManagement   # scaffold a new module
 ```
+
+## Modular architecture
+
+Domain code lives in self-contained modules under `Modules/`, each declared by a
+`module.php` manifest and auto-discovered by `App\Providers\ModuleServiceProvider`
+(web/api routes, migrations, views, translations, extra providers). Shared core —
+`User`, `NumberingSequence`, base `Controller`, Breeze auth, and the number/amount
+services — stays in `app/`.
+
+```
+Modules/<Name>/
+├── module.php            # manifest: name, enabled, providers
+├── Routes/web.php        # module routes (same names/URIs as before)
+├── Controllers/          # namespace Modules\<Name>\Controllers
+├── Models/
+├── Requests/
+├── Notifications/
+├── Database/Migrations/  # auto-loaded; new tables go here
+├── Resources/views/      # blade views (registered as plain location + "<slug>::" namespace)
+└── Vue/Pages/            # Inertia pages, resolved by resources/js/resolvePage.js
+```
+
+Current modules: `UserManagement`, `ApplicantManagement`, `ApplicationManagement`,
+`PaymentManagement`, `ApprovalManagement`, `AllotmentManagement`, `VoucherManagement`,
+`Dashboard`, `ReportManagement`, `SettingsManagement`, `AuditLogManagement`.
+
+Inertia page names are unchanged (`Inertia::render('Admin/Users')`); the resolver
+finds the component in `resources/js/Pages` first, then any module's `Vue/Pages`.
+Tailwind scans `Modules/**/Vue` and module blade views (see `tailwind.config.js`).
 
 ## Workflow routes
 

@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Models\PaymentTransaction;
+use Modules\PaymentManagement\Models\PaymentTransaction;
 
 class PaymentTransactionObserver
 {

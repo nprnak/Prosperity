@@ -3,7 +3,11 @@
     "name": "nprnak/prosperity",
     "type": "project",
     "description": "Prosperity Holdings Limited — Management Information System.",
-    "keywords": ["laravel", "mis", "shares"],
+    "keywords": [
+        "laravel",
+        "mis",
+        "shares"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.2",
@@ -31,7 +35,8 @@
         "psr-4": {
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
-            "Database\\Seeders\\": "database/seeders/"
+            "Database\\Seeders\\": "database/seeders/",
+            "Modules\\": "Modules/"
         }
     },
     "autoload-dev": {

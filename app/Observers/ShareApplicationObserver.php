@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Models\ShareApplication;
+use Modules\ApplicationManagement\Models\ShareApplication;
 
 class ShareApplicationObserver
 {

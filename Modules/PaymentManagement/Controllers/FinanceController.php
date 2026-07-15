@@ -36,6 +36,9 @@ class FinanceController extends Controller
         return Inertia::render('Finance/Dashboard', [
             'applications' => $applications,
             'status' => $status,
+            'paymentMethods' => \Modules\PaymentManagement\Models\PaymentMethod::query()
+                ->active()
+                ->get(['id', 'name']),
         ]);
     }
 

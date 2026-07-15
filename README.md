@@ -39,6 +39,15 @@ Laravel 11 MIS for Prosperity Holdings Ltd with Breeze (Vue + Inertia), role-bas
   amounts are ignored), enforces per-offering share limits, and re-checks the
   offering window at submission. Seeded with Prosperity's own offering
   (`CompanySeeder`)
+- Payment methods management: admins configure methods (bank/wallet details,
+  instructions, QR image upload) at `/admin/payment-methods`
+  (`payment-method.manage`); applicants see a "How to Pay" section on the wizard
+  with QR + instructions; finance staff tag recorded payments with a method
+  (active methods only). Seeded defaults via `PaymentMethodSeeder`
+- Reports: `/admin/reports` (`report.view`) filters applications by company,
+  offering, status, payment method, and date range with live summary totals
+  (applications, shares, declared, verified payments, allotted) and exports the
+  filtered set to Excel, CSV, or PDF
 - Applicant 5-step scaffolded wizard (draft save + submit)
 - Finance dashboard:
   - submitted/payment-pending lists

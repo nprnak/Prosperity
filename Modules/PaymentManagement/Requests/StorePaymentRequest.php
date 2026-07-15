@@ -16,6 +16,11 @@ class StorePaymentRequest extends FormRequest
         return [
             'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_mode' => ['required', 'in:cheque,self_cheque_deposit,online_transfer,cash,ips,mobile_banking'],
+            'payment_method_id' => [
+                'nullable',
+                \Illuminate\Validation\Rule::exists('payment_methods', 'id')
+                    ->where('status', \Modules\PaymentManagement\Models\PaymentMethod::STATUS_ACTIVE),
+            ],
             'bank_name' => ['nullable', 'string', 'max:255'],
             'payment_reference_no' => ['nullable', 'string', 'max:255'],
             'cheque_no' => ['nullable', 'string', 'max:255'],

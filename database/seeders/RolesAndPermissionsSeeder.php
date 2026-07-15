@@ -30,6 +30,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'payment.record',
         'payment.verify',
         'payment.view-any',
+        'payment-method.manage',
         'allotment.manage',
         'allotment.view-any',
         'voucher.download',

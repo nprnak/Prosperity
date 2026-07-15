@@ -15,7 +15,7 @@ class PaymentTransaction extends Model
     use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
-        'share_application_id','receipt_number','amount','payment_mode','bank_name','payment_reference_no','cheque_no',
+        'share_application_id','receipt_number','amount','payment_mode','payment_method_id','bank_name','payment_reference_no','cheque_no',
         'payment_date','holding_id_no','id_type','verification_status','verified_by','verified_at','issued_by','approved_by','notes',
     ];
 
@@ -31,6 +31,11 @@ class PaymentTransaction extends Model
             ->useLogName('payment_transaction')
             ->logFillable()
             ->logOnlyDirty();
+    }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(PaymentMethod::class);
     }
 
     public function shareApplication()

@@ -43,6 +43,9 @@ class ApplicationWizardController extends Controller
             'profileCompleted' => $applicantProfile?->isProfileComplete() ?? false,
             'profileStatus' => $applicantProfile->profile_status ?? Applicant::PROFILE_DRAFT,
             'offerings' => ShareOffering::query()->openNow()->with('company:id,name,code')->orderBy('closes_at')->get(),
+            'paymentMethods' => \Modules\PaymentManagement\Models\PaymentMethod::query()
+                ->active()
+                ->get(['id', 'name', 'account_name', 'account_number', 'bank_name', 'instructions', 'qr_image_path']),
         ]);
     }
 

@@ -10,6 +10,7 @@ const props = defineProps({
   profileCompleted: Boolean,
   profileStatus: { type: String, default: 'draft' },
   offerings: { type: Array, default: () => [] },
+  paymentMethods: { type: Array, default: () => [] },
 });
 
 const form = useForm({
@@ -227,6 +228,29 @@ const statusLabel = (status) => {
           >
             Submit Application
           </button>
+        </div>
+      </div>
+
+      <div v-if="profileReady && paymentMethods.length" class="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-gray-100">
+        <h3 class="font-semibold mb-1 text-gray-900">How to Pay</h3>
+        <p class="text-sm text-gray-500 mb-4">Pay the total amount using any of the methods below, then keep your reference/voucher number — finance staff will verify it against your application.</p>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div v-for="method in paymentMethods" :key="method.id" class="rounded-xl border border-gray-200 p-4 flex gap-4">
+            <img
+              v-if="method.qr_image_path"
+              :src="route('payment-methods.qr', method.id)"
+              :alt="`${method.name} QR code`"
+              class="h-24 w-24 rounded object-contain border border-gray-100"
+            />
+            <div class="text-sm">
+              <div class="font-semibold text-gray-900">{{ method.name }}</div>
+              <div v-if="method.bank_name" class="text-gray-600">{{ method.bank_name }}</div>
+              <div v-if="method.account_number" class="text-gray-600">
+                {{ method.account_name ? method.account_name + ' · ' : '' }}A/C {{ method.account_number }}
+              </div>
+              <p v-if="method.instructions" class="mt-1 text-gray-500">{{ method.instructions }}</p>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -16,6 +16,7 @@ const adminMenuItems = [
   { label: 'Companies', icon: '🏢', route: 'admin.companies', startsWith: '/admin/companies' },
   { label: 'Applications', icon: '📝', route: 'admin.applications', startsWith: '/admin/applications' },
   { label: 'Payments', icon: '💳', route: 'admin.payments', startsWith: '/admin/payments' },
+  { label: 'Payment Methods', icon: '🏦', route: 'admin.payment-methods', startsWith: '/admin/payment-methods' },
   { label: 'Allotments', icon: '📋', route: 'admin.allotments', startsWith: '/admin/allotments' },
   { label: 'Reports', icon: '📈', route: 'admin.reports', startsWith: '/admin/reports' },
   { label: 'Admin Settings', icon: '⚙️', route: 'admin.credentials', startsWith: '/admin/credentials' },

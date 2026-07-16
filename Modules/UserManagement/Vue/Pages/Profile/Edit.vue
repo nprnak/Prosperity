@@ -11,14 +11,18 @@ const props = defineProps({
     status: {
         type: String,
     },
-    applicant: {
+    profile: {
         type: Object,
         default: null,
     },
+    completionPercent: {
+        type: Number,
+        default: 0,
+    },
 });
 
-const profileStatus = computed(() => props.applicant?.profile_status ?? 'draft');
-const canSubmitForReview = computed(() => ['draft', 'rejected'].includes(profileStatus.value));
+const profileStatus = computed(() => props.profile?.profile_status ?? 'incomplete');
+const canSubmitForReview = computed(() => ['incomplete', 'rejected'].includes(profileStatus.value));
 
 const submitForm = useForm({});
 const submitForReview = () => submitForm.post(route('profile.submit'), { preserveScroll: true });
@@ -33,15 +37,24 @@ const profileError = computed(() => usePage().props.errors?.profile);
     <PanelLayout>
         <div class="space-y-6">
             <div class="rounded-xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-700 p-5 text-white shadow">
-                <h2 class="text-xl font-semibold">Profile</h2>
+                <h2 class="text-2xl font-semibold">Complete Your Profile</h2>
                 <p class="mt-1 text-sm text-blue-100">
-                    Complete required personal, education, address, and document information for share application.
+                    Please provide the following information to apply for shares.
                 </p>
+                <div class="mt-4">
+                    <div class="flex items-center justify-between text-sm font-medium text-blue-100">
+                        <span>Profile Completion</span>
+                        <span>{{ completionPercent }}%</span>
+                    </div>
+                    <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-white/25">
+                        <div class="h-full rounded-full bg-white transition-all" :style="{ width: `${completionPercent}%` }" />
+                    </div>
+                </div>
             </div>
 
             <div class="rounded-lg border p-4 flex items-start justify-between gap-4"
                 :class="{
-                    'border-gray-300 bg-gray-50': profileStatus === 'draft',
+                    'border-gray-300 bg-gray-50': profileStatus === 'incomplete',
                     'border-amber-300 bg-amber-50': profileStatus === 'submitted',
                     'border-green-300 bg-green-50': profileStatus === 'approved',
                     'border-red-300 bg-red-50': profileStatus === 'rejected',
@@ -51,7 +64,7 @@ const profileError = computed(() => usePage().props.errors?.profile);
                         KYC review status:
                         <span class="uppercase">{{ profileStatus }}</span>
                     </p>
-                    <p v-if="profileStatus === 'draft'" class="mt-1 text-gray-600">
+                    <p v-if="profileStatus === 'incomplete'" class="mt-1 text-gray-600">
                         Complete all required fields below, then submit your profile for review. You can apply for shares once it is approved.
                     </p>
                     <p v-else-if="profileStatus === 'submitted'" class="mt-1 text-amber-700">
@@ -61,7 +74,7 @@ const profileError = computed(() => usePage().props.errors?.profile);
                         Your profile is approved. You can now apply for shares.
                     </p>
                     <p v-else-if="profileStatus === 'rejected'" class="mt-1 text-red-700">
-                        Your profile needs changes: {{ applicant?.profile_rejection_reason || 'see the email we sent you' }}.
+                        Your profile needs changes: {{ profile?.profile_rejection_reason || 'see the email we sent you' }}.
                         Update it below and submit again.
                     </p>
                     <p v-if="profileError" class="mt-1 font-medium text-red-700">{{ profileError }}</p>

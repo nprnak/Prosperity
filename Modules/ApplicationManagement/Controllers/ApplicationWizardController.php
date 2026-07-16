@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Modules\ApplicationManagement\Requests\StoreDraftStepRequest;
 use Modules\ApplicationManagement\Requests\SubmitApplicationRequest;
 use Modules\ApplicationManagement\Models\ApplicationEvent;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApplicationManagement\Notifications\ApplicationSubmittedNotification;
 use App\Services\NumberGeneratorService;
@@ -20,14 +20,14 @@ class ApplicationWizardController extends Controller
 {
     public function index(Request $request)
     {
-        $applicantProfile = Applicant::query()
+        $applicantProfile = Profile::query()
             ->where('user_id', $request->user()->id)
             ->first();
 
         $draft = ShareApplication::query()
             ->whereHas('applicant', fn ($q) => $q->where('user_id', $request->user()->id))
             ->where('status', ShareApplication::STATUS_DRAFT)
-            ->with('applicant')
+            ->with(['applicant.nominees', 'applicant.sourcesOfFunds'])
             ->latest()
             ->first();
 
@@ -41,7 +41,7 @@ class ApplicationWizardController extends Controller
             'applications' => $applications,
             'profile' => $applicantProfile,
             'profileCompleted' => $applicantProfile?->isProfileComplete() ?? false,
-            'profileStatus' => $applicantProfile->profile_status ?? Applicant::PROFILE_DRAFT,
+            'profileStatus' => $applicantProfile->profile_status ?? Profile::PROFILE_INCOMPLETE,
             'offerings' => ShareOffering::query()->openNow()->with('company:id,name,code')->orderBy('closes_at')->get(),
             'paymentMethods' => \Modules\PaymentManagement\Models\PaymentMethod::query()
                 ->active()
@@ -53,7 +53,7 @@ class ApplicationWizardController extends Controller
     {
         $user = $request->user();
         $payload = $request->validated('payload');
-        $existingProfile = Applicant::query()->where('user_id', $user->id)->first();
+        $existingProfile = Profile::query()->where('user_id', $user->id)->first();
 
         if (! $existingProfile?->isProfileApproved()) {
             return back()->withErrors([
@@ -79,14 +79,21 @@ class ApplicationWizardController extends Controller
 
         $applicant = $existingProfile;
 
-        $applicant->fill([
-            'investment_source' => $payload['investment_source'] ?? $applicant->investment_source,
-            'investment_source_other' => $payload['investment_source_other'] ?? $applicant->investment_source_other,
-            'share_heir_name' => $payload['share_heir_name'] ?? $applicant->share_heir_name,
-            'share_heir_relation' => $payload['share_heir_relation'] ?? $applicant->share_heir_relation,
-            'share_heir_mobile' => $payload['share_heir_mobile'] ?? $applicant->share_heir_mobile,
-        ]);
-        $applicant->save();
+        if (! empty($payload['investment_source'])) {
+            $applicant->sourcesOfFunds()->updateOrCreate(
+                ['source_type' => $payload['investment_source']],
+                ['description' => $payload['investment_source_other'] ?? null],
+            );
+        }
+
+        if (! empty($payload['share_heir_name'])) {
+            $nominee = $applicant->nominees()->first() ?? $applicant->nominees()->make();
+            $nominee->fill([
+                'full_name' => $payload['share_heir_name'],
+                'relationship' => $payload['share_heir_relation'] ?? ($nominee->relationship ?: 'Family'),
+                'mobile' => $payload['share_heir_mobile'] ?? $nominee->mobile,
+            ])->save();
+        }
 
         // Rate and total are always taken from the offering, never from the client.
         $totalAmount = number_format($shares * (float) $offering->share_rate, 2, '.', '');

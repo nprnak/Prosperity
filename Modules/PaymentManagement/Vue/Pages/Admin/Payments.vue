@@ -60,7 +60,7 @@ defineProps({
             <tbody class="divide-y">
               <tr v-for="payment in payments" :key="payment.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 text-sm font-medium text-gray-900">TXN-{{ payment.id }}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">{{ payment.share_application?.applicant?.full_name_english }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">{{ payment.share_application?.applicant?.full_name_en }}</td>
                 <td class="px-6 py-4 text-sm text-gray-600">{{ payment.share_application?.application_number }}</td>
                 <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ payment.amount }}</td>
                 <td class="px-6 py-4 text-sm text-gray-600 capitalize">{{ payment.payment_method }}</td>

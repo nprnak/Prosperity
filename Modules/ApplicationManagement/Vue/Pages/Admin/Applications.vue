@@ -81,7 +81,7 @@ const statusLabel = (status) => {
           <tbody class="divide-y">
             <tr v-for="app in applications" :key="app.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ app.application_number }}</td>
-              <td class="px-6 py-4 text-sm text-gray-600">{{ app.applicant?.full_name_english }}</td>
+              <td class="px-6 py-4 text-sm text-gray-600">{{ app.applicant?.full_name_en }}</td>
               <td class="px-6 py-4 text-sm text-gray-600">{{ app.applicant?.email }}</td>
               <td class="px-6 py-4 text-sm text-gray-900">{{ app.shares_applied }}</td>
               <td class="px-6 py-4 text-sm text-gray-900">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ app.total_amount_declared }}</td>

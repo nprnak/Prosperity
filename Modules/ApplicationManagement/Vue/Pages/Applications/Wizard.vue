@@ -8,7 +8,7 @@ const props = defineProps({
   draft: Object,
   applications: Array,
   profileCompleted: Boolean,
-  profileStatus: { type: String, default: 'draft' },
+  profileStatus: { type: String, default: 'incomplete' },
   offerings: { type: Array, default: () => [] },
   paymentMethods: { type: Array, default: () => [] },
 });
@@ -16,11 +16,11 @@ const props = defineProps({
 const form = useForm({
   step: 2,
   payload: {
-    investment_source: props.draft?.applicant?.investment_source || 'salary',
-    investment_source_other: props.draft?.applicant?.investment_source_other || '',
-    share_heir_name: props.draft?.applicant?.share_heir_name || '',
-    share_heir_relation: props.draft?.applicant?.share_heir_relation || '',
-    share_heir_mobile: props.draft?.applicant?.share_heir_mobile || '',
+    investment_source: props.draft?.applicant?.sources_of_funds?.[0]?.source_type || 'salary',
+    investment_source_other: props.draft?.applicant?.sources_of_funds?.[0]?.description || '',
+    share_heir_name: props.draft?.applicant?.nominees?.[0]?.full_name || '',
+    share_heir_relation: props.draft?.applicant?.nominees?.[0]?.relationship || '',
+    share_heir_mobile: props.draft?.applicant?.nominees?.[0]?.mobile || '',
     share_offering_id: props.draft?.share_offering_id || props.offerings[0]?.id || null,
     asba_reference: props.draft?.asba_reference || '',
     shares_applied: props.draft?.shares_applied || 1,

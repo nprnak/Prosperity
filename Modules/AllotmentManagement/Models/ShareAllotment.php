@@ -3,7 +3,7 @@
 namespace Modules\AllotmentManagement\Models;
 
 use Modules\ApplicationManagement\Models\ShareApplication;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicantManagement\Models\Profile;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -26,6 +26,6 @@ class ShareAllotment extends Model
 
     public function applicant()
     {
-        return $this->belongsTo(Applicant::class);
+        return $this->belongsTo(Profile::class);
     }
 }

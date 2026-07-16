@@ -6,13 +6,13 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicantManagement\Models\Profile;
 
 class ProfileApprovedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(private readonly Applicant $applicant)
+    public function __construct(private readonly Profile $applicant)
     {
     }
 

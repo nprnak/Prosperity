@@ -57,7 +57,7 @@
             @forelse ($applications as $application)
                 <tr>
                     <td>{{ $application->application_number }}</td>
-                    <td>{{ $application->applicant?->full_name_english }}</td>
+                    <td>{{ $application->applicant?->full_name_en }}</td>
                     <td>
                         {{ $application->offering?->company?->name ?? '-' }}
                         @if ($application->offering) / {{ $application->offering->title }} ({{ $application->offering->fiscal_year }}) @endif

@@ -21,7 +21,7 @@ class ShareAllotmentController extends Controller
 
         $allotments = ShareAllotment::query()
             ->with(['applicant', 'shareApplication'])
-            ->when($search, fn ($q) => $q->whereHas('applicant', fn ($aq) => $aq->where('full_name_english', 'like', '%'.$search.'%')))
+            ->when($search, fn ($q) => $q->whereHas('applicant', fn ($aq) => $aq->where('full_name_en', 'like', '%'.$search.'%')))
             ->orderBy('allotment_date', $sort === 'asc' ? 'asc' : 'desc')
             ->get();
 

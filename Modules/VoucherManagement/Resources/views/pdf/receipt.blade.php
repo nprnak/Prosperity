@@ -26,7 +26,7 @@
     <div class="row"><span class="label">Voucher No:</span> {{ $voucher->voucher_number }}</div>
     <div class="row"><span class="label">Receipt No:</span> {{ $payment->receipt_number }}</div>
     <div class="row"><span class="label">Date:</span> {{ optional($payment->payment_date)->format('Y-m-d') }}</div>
-    <div class="row"><span class="label">Applicant Name:</span> {{ $application->applicant->full_name_english ?? '-' }}</div>
+    <div class="row"><span class="label">Applicant Name:</span> {{ $application->applicant->full_name_en ?? '-' }}</div>
     <div class="row"><span class="label">Application No:</span> {{ $application->application_number }}</div>
     <div class="row"><span class="label">Amount:</span> {{ \Modules\SettingsManagement\Models\Setting::get('currency_code', 'NPR') }} {{ $payment->amount }}</div>
     <div class="row"><span class="label">Amount in Words:</span> {{ $amountInWords }}</div>

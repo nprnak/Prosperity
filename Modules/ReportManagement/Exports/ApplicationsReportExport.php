@@ -45,8 +45,8 @@ class ApplicationsReportExport implements FromQuery, WithHeadings, WithMapping
     {
         return [
             $application->application_number,
-            $application->applicant?->full_name_english,
-            $application->applicant?->mobile_number,
+            $application->applicant?->full_name_en,
+            $application->applicant?->mobile,
             $application->offering?->company?->name,
             $application->offering?->title,
             $application->offering?->fiscal_year,

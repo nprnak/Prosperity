@@ -3,7 +3,7 @@
 namespace Modules\ApplicationManagement\Models;
 
 use App\Models\User;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicantManagement\Models\Profile;
 use Modules\PaymentManagement\Models\PaymentTransaction;
 use Modules\AllotmentManagement\Models\ShareAllotment;
 use Spatie\Activitylog\LogOptions;
@@ -83,7 +83,7 @@ class ShareApplication extends Model
 
     public function applicant()
     {
-        return $this->belongsTo(Applicant::class);
+        return $this->belongsTo(Profile::class);
     }
 
     public function offering()

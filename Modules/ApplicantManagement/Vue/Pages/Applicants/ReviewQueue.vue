@@ -25,7 +25,7 @@ const reject = (applicantId) => {
         <div v-for="applicant in pending" :key="applicant.id" class="bg-white p-4 rounded shadow mb-3">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <div class="font-medium">{{ applicant.full_name_english }} <span class="text-gray-400">·</span> {{ applicant.mobile_number }}</div>
+              <div class="font-medium">{{ applicant.full_name_en }} <span class="text-gray-400">·</span> {{ applicant.mobile }}</div>
               <div class="text-sm text-gray-600 mt-1">
                 Citizenship: {{ applicant.citizenship_number || '—' }} ·
                 BOID: {{ applicant.boid || '—' }} ·
@@ -55,7 +55,7 @@ const reject = (applicantId) => {
           </thead>
           <tbody class="divide-y">
             <tr v-for="applicant in recentlyReviewed" :key="applicant.id">
-              <td class="px-4 py-2">{{ applicant.full_name_english }}</td>
+              <td class="px-4 py-2">{{ applicant.full_name_en }}</td>
               <td class="px-4 py-2">
                 <span
                   :class="applicant.profile_status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"

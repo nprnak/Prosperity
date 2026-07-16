@@ -25,7 +25,7 @@ const initForm = (appId) => {
     <template #header><h2 class="font-semibold text-xl">Finance Dashboard</h2></template>
     <div class="py-8 max-w-6xl mx-auto space-y-6">
       <div v-for="app in applications" :key="app.id" class="bg-white p-4 rounded shadow space-y-3">
-        <div class="font-medium">{{ app.application_number }} · {{ app.applicant?.full_name_english }} · {{ app.status }}</div>
+        <div class="font-medium">{{ app.application_number }} · {{ app.applicant?.full_name_en }} · {{ app.status }}</div>
         <form @submit.prevent="initForm(app.id).post(route('finance.payments.store', app.id))" class="grid grid-cols-4 gap-2">
           <input v-model="initForm(app.id).amount" type="number" step="0.01" placeholder="Amount" class="border rounded p-2" />
           <select v-model="initForm(app.id).payment_mode" class="border rounded p-2"><option>cash</option><option>cheque</option><option>online_transfer</option><option>self_cheque_deposit</option><option>ips</option><option>mobile_banking</option></select>

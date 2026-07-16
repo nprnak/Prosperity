@@ -25,7 +25,7 @@ const applyFilters = (event) => {
       <div class="bg-white rounded shadow p-4">
         <h3 class="font-medium">Pending approved applications</h3>
         <div v-for="app in pendingApplications" :key="app.id" class="mt-2">
-          {{ app.application_number }} · {{ app.applicant?.full_name_english }}
+          {{ app.application_number }} · {{ app.applicant?.full_name_en }}
           <button class="ml-2 text-indigo-700" @click="createAllotment(app.id)">Create allotment</button>
         </div>
       </div>
@@ -42,7 +42,7 @@ const applyFilters = (event) => {
         <table class="w-full text-sm">
           <thead><tr class="text-left"><th>Applicant</th><th>Shares</th><th>Date</th></tr></thead>
           <tbody>
-            <tr v-for="a in allotments" :key="a.id" class="border-t"><td>{{ a.applicant?.full_name_english }}</td><td>{{ a.shares_allotted }}</td><td>{{ a.allotment_date }}</td></tr>
+            <tr v-for="a in allotments" :key="a.id" class="border-t"><td>{{ a.applicant?.full_name_en }}</td><td>{{ a.shares_allotted }}</td><td>{{ a.allotment_date }}</td></tr>
           </tbody>
         </table>
       </div>

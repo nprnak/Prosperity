@@ -32,7 +32,7 @@ const reject = (appId) => {
       <div v-for="app in applications" :key="app.id" class="bg-white p-4 rounded shadow">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div class="font-medium">{{ app.application_number }} · {{ app.applicant?.full_name_english }}</div>
+            <div class="font-medium">{{ app.application_number }} · {{ app.applicant?.full_name_en }}</div>
             <div class="text-sm text-gray-500">
               {{ app.shares_applied }} shares · {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ app.total_amount_declared }}
             </div>

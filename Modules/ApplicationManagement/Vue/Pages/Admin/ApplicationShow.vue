@@ -54,12 +54,11 @@ const statusLabel = (status) => {
       <div class="grid gap-6 lg:grid-cols-2">
         <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100 space-y-3">
           <h2 class="text-lg font-semibold text-gray-900">Applicant</h2>
-          <p class="text-sm text-gray-700"><span class="font-medium">Name:</span> {{ application.applicant?.full_name_english || '-' }}</p>
+          <p class="text-sm text-gray-700"><span class="font-medium">Name:</span> {{ application.applicant?.full_name_en || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Email:</span> {{ application.applicant?.email || '-' }}</p>
-          <p class="text-sm text-gray-700"><span class="font-medium">Mobile:</span> {{ application.applicant?.mobile_number || '-' }}</p>
+          <p class="text-sm text-gray-700"><span class="font-medium">Mobile:</span> {{ application.applicant?.mobile || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Citizenship No:</span> {{ application.applicant?.citizenship_number || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">BOID:</span> {{ application.applicant?.boid || '-' }}</p>
-          <p class="text-sm text-gray-700"><span class="font-medium">CRN:</span> {{ application.applicant?.crn_number || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Bank:</span> {{ application.applicant?.bank_name || '-' }} {{ application.applicant?.bank_branch || '' }}</p>
         </section>
 

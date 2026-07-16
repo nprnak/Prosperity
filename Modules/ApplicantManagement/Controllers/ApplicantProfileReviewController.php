@@ -5,7 +5,7 @@ namespace Modules\ApplicantManagement\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Notifications\ProfileApprovedNotification;
 use Modules\ApplicantManagement\Notifications\ProfileRejectedNotification;
 use Modules\ApplicantManagement\Requests\RejectProfileRequest;
@@ -15,12 +15,12 @@ class ApplicantProfileReviewController extends Controller
     public function queue(Request $request)
     {
         return Inertia::render('Applicants/ReviewQueue', [
-            'pending' => Applicant::query()
-                ->where('profile_status', Applicant::PROFILE_SUBMITTED)
+            'pending' => Profile::query()
+                ->where('profile_status', Profile::PROFILE_SUBMITTED)
                 ->orderBy('profile_submitted_at')
                 ->get(),
-            'recentlyReviewed' => Applicant::query()
-                ->whereIn('profile_status', [Applicant::PROFILE_APPROVED, Applicant::PROFILE_REJECTED])
+            'recentlyReviewed' => Profile::query()
+                ->whereIn('profile_status', [Profile::PROFILE_APPROVED, Profile::PROFILE_REJECTED])
                 ->with('profileReviewer:id,name')
                 ->latest('profile_reviewed_at')
                 ->limit(20)
@@ -28,12 +28,12 @@ class ApplicantProfileReviewController extends Controller
         ]);
     }
 
-    public function approve(Request $request, Applicant $applicant)
+    public function approve(Request $request, Profile $applicant)
     {
-        abort_unless($applicant->profile_status === Applicant::PROFILE_SUBMITTED, 422);
+        abort_unless($applicant->profile_status === Profile::PROFILE_SUBMITTED, 422);
 
         $applicant->forceFill([
-            'profile_status' => Applicant::PROFILE_APPROVED,
+            'profile_status' => Profile::PROFILE_APPROVED,
             'profile_reviewed_by' => $request->user()->id,
             'profile_reviewed_at' => now(),
             'profile_rejection_reason' => null,
@@ -41,15 +41,15 @@ class ApplicantProfileReviewController extends Controller
 
         $applicant->user?->notify(new ProfileApprovedNotification($applicant));
 
-        return back()->with('success', 'Profile approved: '.$applicant->full_name_english);
+        return back()->with('success', 'Profile approved: '.$applicant->full_name_en);
     }
 
-    public function reject(RejectProfileRequest $request, Applicant $applicant)
+    public function reject(RejectProfileRequest $request, Profile $applicant)
     {
-        abort_unless($applicant->profile_status === Applicant::PROFILE_SUBMITTED, 422);
+        abort_unless($applicant->profile_status === Profile::PROFILE_SUBMITTED, 422);
 
         $applicant->forceFill([
-            'profile_status' => Applicant::PROFILE_REJECTED,
+            'profile_status' => Profile::PROFILE_REJECTED,
             'profile_reviewed_by' => $request->user()->id,
             'profile_reviewed_at' => now(),
             'profile_rejection_reason' => $request->validated('rejection_reason'),
@@ -57,6 +57,6 @@ class ApplicantProfileReviewController extends Controller
 
         $applicant->user?->notify(new ProfileRejectedNotification($applicant));
 
-        return back()->with('success', 'Profile rejected: '.$applicant->full_name_english);
+        return back()->with('success', 'Profile rejected: '.$applicant->full_name_en);
     }
 }

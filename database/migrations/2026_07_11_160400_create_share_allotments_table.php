@@ -10,7 +10,7 @@ return new class extends Migration {
         Schema::create('share_allotments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('share_application_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('applicant_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('applicant_id')->constrained('profiles')->cascadeOnDelete();
             $table->unsignedInteger('shares_allotted');
             $table->date('allotment_date');
             $table->string('demat_account_no')->nullable();

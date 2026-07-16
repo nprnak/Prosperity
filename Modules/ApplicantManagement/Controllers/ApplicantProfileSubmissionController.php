@@ -4,7 +4,7 @@ namespace Modules\ApplicantManagement\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicantManagement\Models\Profile;
 
 class ApplicantProfileSubmissionController extends Controller
 {
@@ -13,7 +13,7 @@ class ApplicantProfileSubmissionController extends Controller
      */
     public function store(Request $request)
     {
-        $applicant = Applicant::query()->where('user_id', $request->user()->id)->first();
+        $applicant = Profile::query()->where('user_id', $request->user()->id)->first();
 
         if (! $applicant || ! $applicant->isProfileComplete()) {
             return back()->withErrors([
@@ -21,14 +21,14 @@ class ApplicantProfileSubmissionController extends Controller
             ]);
         }
 
-        if (! in_array($applicant->profile_status, [Applicant::PROFILE_DRAFT, Applicant::PROFILE_REJECTED], true)) {
+        if (! in_array($applicant->profile_status, [Profile::PROFILE_INCOMPLETE, Profile::PROFILE_REJECTED], true)) {
             return back()->withErrors([
                 'profile' => 'Your profile is already '.$applicant->profile_status.'.',
             ]);
         }
 
         $applicant->forceFill([
-            'profile_status' => Applicant::PROFILE_SUBMITTED,
+            'profile_status' => Profile::PROFILE_SUBMITTED,
             'profile_submitted_at' => now(),
             'profile_rejection_reason' => null,
         ])->save();

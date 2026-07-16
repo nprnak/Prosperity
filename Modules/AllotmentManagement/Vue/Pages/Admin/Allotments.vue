@@ -57,7 +57,7 @@ defineProps({
             <tbody class="divide-y">
               <tr v-for="allot in allotments" :key="allot.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 text-sm font-medium text-gray-900">ALLOT-{{ allot.id }}</td>
-                <td class="px-6 py-4 text-sm text-gray-600">{{ allot.share_application?.applicant?.full_name_english }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600">{{ allot.share_application?.applicant?.full_name_en }}</td>
                 <td class="px-6 py-4 text-sm text-gray-600">{{ allot.share_application?.application_number }}</td>
                 <td class="px-6 py-4 text-sm text-gray-900">{{ allot.share_application?.shares_applied }}</td>
                 <td class="px-6 py-4 text-sm font-semibold text-green-600">{{ allot.shares_allotted }}</td>

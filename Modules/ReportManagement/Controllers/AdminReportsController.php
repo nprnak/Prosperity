@@ -60,7 +60,7 @@ class AdminReportsController extends Controller
     protected function filteredQuery(Request $request): Builder
     {
         return ShareApplication::query()
-            ->with(['applicant:id,full_name_english,mobile_number', 'offering.company', 'allotment'])
+            ->with(['applicant:id,full_name_en,mobile', 'offering.company', 'allotment'])
             ->withSum([
                 'paymentTransactions as verified_amount' => fn ($q) => $q->where('verification_status', 'verified'),
             ], 'amount')

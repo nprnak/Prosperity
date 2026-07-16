@@ -15,7 +15,7 @@ class ShareholderRegisterExport implements FromCollection, WithHeadings
             ->get()
             ->map(function (ShareAllotment $allotment) {
                 return [
-                    'applicant_name' => $allotment->applicant?->full_name_english,
+                    'applicant_name' => $allotment->applicant?->full_name_en,
                     'shares_allotted' => $allotment->shares_allotted,
                     'allotment_date' => optional($allotment->allotment_date)->toDateString(),
                     'certificate_number' => $allotment->certificate_number,

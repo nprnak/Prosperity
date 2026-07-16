@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            GeographySeeder::class,
             RolesAndPermissionsSeeder::class,
             AdminUserSeeder::class,
             \Modules\CompanyManagement\Database\Seeders\CompanySeeder::class,

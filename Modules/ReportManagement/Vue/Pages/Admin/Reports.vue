@@ -138,7 +138,7 @@ const money = (value) => Number(value || 0).toLocaleString('en-IN', { minimumFra
           <tbody class="divide-y">
             <tr v-for="application in applications.data" :key="application.id">
               <td class="px-4 py-3 font-medium">{{ application.application_number }}</td>
-              <td class="px-4 py-3">{{ application.applicant?.full_name_english }}</td>
+              <td class="px-4 py-3">{{ application.applicant?.full_name_en }}</td>
               <td class="px-4 py-3 text-gray-600">
                 <template v-if="application.offering">
                   {{ application.offering.company?.name }} / {{ application.offering.title }}

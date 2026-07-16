@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create('share_applications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('applicant_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('applicant_id')->constrained('profiles')->cascadeOnDelete();
             $table->string('application_number')->unique();
             $table->unsignedInteger('shares_applied');
             $table->decimal('amount_per_share', 12, 2)->default(100);

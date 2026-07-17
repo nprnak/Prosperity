@@ -6,42 +6,44 @@ use App\Http\Controllers\Controller;
 use Inertia\Inertia;
 use Modules\CompanyManagement\Models\Company;
 use Modules\CompanyManagement\Models\ShareOffering;
+use Modules\CompanyManagement\Repositories\CompanyRepository;
 use Modules\CompanyManagement\Requests\StoreCompanyRequest;
 use Modules\CompanyManagement\Requests\StoreShareOfferingRequest;
 
 class AdminCompaniesController extends Controller
 {
+    public function __construct(private CompanyRepository $companies)
+    {
+    }
+
     public function index()
     {
         return Inertia::render('Admin/Companies', [
-            'companies' => Company::query()
-                ->with(['offerings' => fn ($q) => $q->withCount('applications')->latest()])
-                ->orderBy('name')
-                ->get(),
+            'companies' => $this->companies->listWithOfferings(),
             'offeringStatuses' => ShareOffering::STATUSES,
         ]);
     }
 
     public function store(StoreCompanyRequest $request)
     {
-        $company = Company::create($request->validated());
+        $company = $this->companies->create($request->validated());
 
         return back()->with('success', 'Company created: '.$company->name);
     }
 
     public function update(StoreCompanyRequest $request, Company $company)
     {
-        $company->update($request->validated());
+        $this->companies->update($company, $request->validated());
 
         return back()->with('success', 'Company updated: '.$company->name);
     }
 
     public function destroy(Company $company)
     {
-        abort_if($company->offerings()->withCount('applications')->get()->sum('applications_count') > 0, 422,
+        abort_if($this->companies->hasApplications($company), 422,
             'Cannot delete a company that has applications.');
 
-        $company->delete();
+        $this->companies->destroy($company);
 
         return back()->with('success', 'Company deleted.');
     }

@@ -3,25 +3,25 @@
 namespace Modules\PaymentManagement\Controllers;
 
 use App\Http\Controllers\Controller;
-use Modules\PaymentManagement\Models\PaymentTransaction;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Modules\PaymentManagement\Repositories\PaymentTransactionRepository;
 
 class AdminPaymentsController extends Controller
 {
+    public function __construct(private PaymentTransactionRepository $payments)
+    {
+    }
+
     public function index(Request $request)
     {
-        $payments = PaymentTransaction::with('share_application.applicant')->latest()->get();
-
-        $stats = [
-            'verifiedAmount' => PaymentTransaction::where('verification_status', 'verified')->sum('amount'),
-            'pendingCount' => PaymentTransaction::where('verification_status', 'pending')->count(),
-            'totalCount' => PaymentTransaction::count(),
-        ];
-
         return Inertia::render('Admin/Payments', [
-            'payments' => $payments,
-            'stats' => $stats,
+            'payments' => $this->payments->listForAdmin(),
+            'stats' => [
+                'verifiedAmount' => $this->payments->verifiedSum(),
+                'pendingCount' => $this->payments->pendingCount(),
+                'totalCount' => $this->payments->query()->count(),
+            ],
         ]);
     }
 }

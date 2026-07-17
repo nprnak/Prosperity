@@ -8,12 +8,18 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
 /**
- * Discovers and registers every enabled module found under Modules/.
+ * Loads every module enabled in the config/modules.php registry.
  *
- * Each module is self-contained and declares itself through a module.php
- * manifest. For every enabled module this provider registers:
- *   - web routes   (wrapped in the "web" middleware group)
- *   - api routes   (prefixed api/v1/{slug}, "api" middleware group)
+ * The registry is the single source of truth for which modules load and how
+ * their routes are mounted (api prefix + middleware). A module may still ship
+ * a module.php manifest for per-module extras: additional service providers
+ * and path overrides for routes, migrations, views, and translations.
+ *
+ * For every enabled module this provider registers:
+ *   - web routes   (Routes/web.php, wrapped in the "web" middleware group)
+ *   - api routes   (Routes/api.php, mounted at api/{prefix} with the
+ *                   configured middleware — route files must not repeat
+ *                   the prefix)
  *   - migrations   (Database/Migrations)
  *   - views        (Resources/views — both as a namespace and a plain location)
  *   - translations (Resources/lang, namespaced by module slug)
@@ -23,8 +29,8 @@ class ModuleServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ($this->manifests() as $manifest) {
-            foreach ($manifest['providers'] ?? [] as $provider) {
+        foreach ($this->modules() as $module) {
+            foreach ($module['providers'] ?? [] as $provider) {
                 $this->app->register($provider);
             }
         }
@@ -32,71 +38,84 @@ class ModuleServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        foreach ($this->manifests() as $manifest) {
-            $this->bootModule($manifest);
+        foreach ($this->modules() as $module) {
+            $this->bootModule($module);
         }
     }
 
     /**
-     * @return array<int, array>
+     * Enabled modules from the registry, merged with each module's optional
+     * module.php manifest (registry values win).
+     *
+     * @return array<string, array>
      */
-    protected function manifests(): array
+    protected function modules(): array
     {
         if (! config('modules.enabled', true)) {
             return [];
         }
 
-        static $manifests = null;
+        static $modules = null;
 
-        if ($manifests !== null) {
-            return $manifests;
+        if ($modules !== null) {
+            return $modules;
         }
 
-        $manifests = [];
+        $modules = [];
+        $basePath = config('modules.path');
 
-        foreach (glob(config('modules.path').'/*/module.php') ?: [] as $file) {
-            $manifest = require $file;
-
-            if (! is_array($manifest) || ! ($manifest['enabled'] ?? true)) {
+        foreach (config('modules.modules', []) as $name => $settings) {
+            if (! ($settings['enabled'] ?? true)) {
                 continue;
             }
 
-            $manifest['base_path'] = dirname($file);
-            $manifests[] = $manifest;
+            $path = "{$basePath}/{$name}";
+
+            if (! is_dir($path)) {
+                continue;
+            }
+
+            $manifest = is_file("{$path}/module.php") ? require "{$path}/module.php" : [];
+            $manifest = is_array($manifest) ? $manifest : [];
+
+            $modules[$name] = array_merge($manifest, $settings, [
+                'name' => $name,
+                'base_path' => $path,
+            ]);
         }
 
-        return $manifests;
+        return $modules;
     }
 
-    protected function bootModule(array $manifest): void
+    protected function bootModule(array $module): void
     {
-        $base = $manifest['base_path'];
-        $slug = Str::kebab($manifest['name'] ?? basename($base));
+        $base = $module['base_path'];
+        $slug = Str::kebab($module['name']);
 
-        $webRoutes = $manifest['routes']['web'] ?? "{$base}/Routes/web.php";
+        $webRoutes = $module['routes']['web'] ?? "{$base}/Routes/web.php";
         if (is_file($webRoutes)) {
             Route::middleware('web')->group($webRoutes);
         }
 
-        $apiRoutes = $manifest['routes']['api'] ?? "{$base}/Routes/api.php";
+        $apiRoutes = $module['routes']['api'] ?? "{$base}/Routes/api.php";
         if (is_file($apiRoutes)) {
-            Route::prefix($manifest['api_prefix'] ?? "api/v1/{$slug}")
-                ->middleware('api')
+            Route::prefix('api/'.trim($module['prefix'] ?? "v1/{$slug}", '/'))
+                ->middleware($module['middleware'] ?? ['api'])
                 ->group($apiRoutes);
         }
 
-        $migrations = $manifest['migrations'] ?? "{$base}/Database/Migrations";
+        $migrations = $module['migrations'] ?? "{$base}/Database/Migrations";
         if (is_dir($migrations)) {
             $this->loadMigrationsFrom($migrations);
         }
 
-        $views = $manifest['views'] ?? "{$base}/Resources/views";
+        $views = $module['views'] ?? "{$base}/Resources/views";
         if (is_dir($views)) {
             $this->loadViewsFrom($views, $slug);
             View::addLocation($views);
         }
 
-        $translations = $manifest['translations'] ?? "{$base}/Resources/lang";
+        $translations = $module['translations'] ?? "{$base}/Resources/lang";
         if (is_dir($translations)) {
             $this->loadTranslationsFrom($translations, $slug);
         }

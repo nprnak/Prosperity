@@ -4,8 +4,8 @@ namespace Modules\ApprovalManagement\Concerns;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
-use Modules\ApplicationManagement\Models\ApplicationEvent;
 use Modules\ApplicationManagement\Models\ShareApplication;
+use Modules\ApplicationManagement\Repositories\ApplicationEventRepository;
 use Modules\ApprovalManagement\Notifications\ApplicationRejectedNotification;
 use Modules\ApprovalManagement\Requests\RejectApplicationRequest;
 
@@ -21,14 +21,14 @@ trait RecordsStageTransitions
 
         $application->update([...$attributes, 'status' => $toStatus]);
 
-        ApplicationEvent::query()->create([
-            'share_application_id' => $application->id,
-            'actor_id' => $request->user()->id,
-            'from_status' => $fromStatus,
-            'to_status' => $toStatus,
-            'remarks' => $remarks,
-            'meta' => [...$meta, 'ip' => $request->ip(), 'user_agent' => $request->userAgent()],
-        ]);
+        app(ApplicationEventRepository::class)->record(
+            $application,
+            $request->user()->id,
+            $fromStatus,
+            $toStatus,
+            $remarks,
+            [...$meta, 'ip' => $request->ip(), 'user_agent' => $request->userAgent()],
+        );
     }
 
     protected function rejectAtStage(RejectApplicationRequest $request, ShareApplication $application, string $stage)

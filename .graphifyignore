@@ -1,0 +1,7 @@
+# Third-party and generated code — excluded from the knowledge graph
+vendor/
+node_modules/
+storage/
+public/build/
+bootstrap/cache/
+graphify-out/

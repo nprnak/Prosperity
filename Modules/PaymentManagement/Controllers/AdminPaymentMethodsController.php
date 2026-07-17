@@ -6,31 +6,32 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Modules\PaymentManagement\Models\PaymentMethod;
+use Modules\PaymentManagement\Repositories\PaymentMethodRepository;
 use Modules\PaymentManagement\Requests\StorePaymentMethodRequest;
 
 class AdminPaymentMethodsController extends Controller
 {
+    public function __construct(private PaymentMethodRepository $methods)
+    {
+    }
+
     public function index()
     {
         return Inertia::render('Admin/PaymentMethods', [
-            'methods' => PaymentMethod::query()
-                ->withCount('transactions')
-                ->orderBy('sort_order')
-                ->orderBy('name')
-                ->get(),
+            'methods' => $this->methods->listForAdmin(),
         ]);
     }
 
     public function store(StorePaymentMethodRequest $request)
     {
-        $method = PaymentMethod::create($this->payload($request));
+        $method = $this->methods->create($this->payload($request));
 
         return back()->with('success', 'Payment method created: '.$method->name);
     }
 
     public function update(StorePaymentMethodRequest $request, PaymentMethod $method)
     {
-        $method->update($this->payload($request, $method));
+        $this->methods->update($method, $this->payload($request, $method));
 
         return back()->with('success', 'Payment method updated: '.$method->name);
     }
@@ -39,7 +40,7 @@ class AdminPaymentMethodsController extends Controller
     {
         abort_if($method->transactions()->exists(), 422, 'Cannot delete a payment method with recorded payments.');
 
-        $method->delete();
+        $this->methods->destroy($method);
 
         return back()->with('success', 'Payment method deleted.');
     }

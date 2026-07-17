@@ -4,12 +4,17 @@ namespace Modules\VoucherManagement\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Modules\VoucherManagement\Models\Voucher;
-use Illuminate\Support\Facades\Storage;
+use Modules\VoucherManagement\Repositories\VoucherRepository;
 
 class VoucherController extends Controller
 {
+    public function __construct(private VoucherRepository $vouchers)
+    {
+    }
+
     public function download(Voucher $voucher)
     {
         abort_unless($voucher->pdf_path, 404);
@@ -27,10 +32,7 @@ class VoucherController extends Controller
         $result = null;
 
         if ($code !== '') {
-            $voucher = Voucher::query()
-                ->where('verification_code', $code)
-                ->with('paymentTransaction.shareApplication')
-                ->first();
+            $voucher = $this->vouchers->findByVerificationCode($code);
 
             $result = $voucher ? [
                 'valid' => true,

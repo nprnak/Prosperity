@@ -8,23 +8,20 @@ use Inertia\Inertia;
 use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Notifications\ProfileApprovedNotification;
 use Modules\ApplicantManagement\Notifications\ProfileRejectedNotification;
+use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicantManagement\Requests\RejectProfileRequest;
 
 class ApplicantProfileReviewController extends Controller
 {
+    public function __construct(private ProfileRepository $profiles)
+    {
+    }
+
     public function queue(Request $request)
     {
         return Inertia::render('Applicants/ReviewQueue', [
-            'pending' => Profile::query()
-                ->where('profile_status', Profile::PROFILE_SUBMITTED)
-                ->orderBy('profile_submitted_at')
-                ->get(),
-            'recentlyReviewed' => Profile::query()
-                ->whereIn('profile_status', [Profile::PROFILE_APPROVED, Profile::PROFILE_REJECTED])
-                ->with('profileReviewer:id,name')
-                ->latest('profile_reviewed_at')
-                ->limit(20)
-                ->get(),
+            'pending' => $this->profiles->pendingReviewQueue(),
+            'recentlyReviewed' => $this->profiles->recentlyReviewed(),
         ]);
     }
 

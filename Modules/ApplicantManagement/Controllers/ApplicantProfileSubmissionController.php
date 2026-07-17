@@ -5,15 +5,20 @@ namespace Modules\ApplicantManagement\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Modules\ApplicantManagement\Models\Profile;
+use Modules\ApplicantManagement\Repositories\ProfileRepository;
 
 class ApplicantProfileSubmissionController extends Controller
 {
+    public function __construct(private ProfileRepository $profiles)
+    {
+    }
+
     /**
      * Applicant submits their own profile for KYC review.
      */
     public function store(Request $request)
     {
-        $applicant = Profile::query()->where('user_id', $request->user()->id)->first();
+        $applicant = $this->profiles->findByUserId($request->user()->id);
 
         if (! $applicant || ! $applicant->isProfileComplete()) {
             return back()->withErrors([

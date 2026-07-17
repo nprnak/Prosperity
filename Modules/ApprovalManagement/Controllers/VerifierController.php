@@ -5,6 +5,7 @@ namespace Modules\ApprovalManagement\Controllers;
 use App\Http\Controllers\Controller;
 use Inertia\Inertia;
 use Modules\ApplicationManagement\Models\ShareApplication;
+use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
 use Modules\ApprovalManagement\Concerns\RecordsStageTransitions;
 use Modules\ApprovalManagement\Requests\RejectApplicationRequest;
 use Modules\ApprovalManagement\Requests\VerifyApplicationRequest;
@@ -13,14 +14,17 @@ class VerifierController extends Controller
 {
     use RecordsStageTransitions;
 
+    public function __construct(private ShareApplicationRepository $applications)
+    {
+    }
+
     public function dashboard()
     {
         return Inertia::render('Verifier/Dashboard', [
-            'applications' => ShareApplication::query()
-                ->where('status', ShareApplication::STATUS_REVIEWED)
-                ->with(['applicant', 'paymentTransactions', 'reviewer'])
-                ->latest()
-                ->get(),
+            'applications' => $this->applications->listByStatus(
+                ShareApplication::STATUS_REVIEWED,
+                ['applicant', 'paymentTransactions', 'reviewer'],
+            ),
         ]);
     }
 

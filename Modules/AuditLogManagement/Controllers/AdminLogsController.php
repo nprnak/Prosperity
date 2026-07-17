@@ -5,10 +5,15 @@ namespace Modules\AuditLogManagement\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Modules\AuditLogManagement\Repositories\ActivityLogRepository;
 use Spatie\Activitylog\Models\Activity;
 
 class AdminLogsController extends Controller
 {
+    public function __construct(private ActivityLogRepository $logs)
+    {
+    }
+
     public function index(Request $request)
     {
         $filters = $request->validate([
@@ -17,14 +22,7 @@ class AdminLogsController extends Controller
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
         ]);
 
-        $logs = Activity::query()
-            ->with('causer')
-            ->when($filters['log_name'] ?? null, fn ($q, $name) => $q->where('log_name', $name))
-            ->when($filters['date_from'] ?? null, fn ($q, $from) => $q->whereDate('created_at', '>=', $from))
-            ->when($filters['date_to'] ?? null, fn ($q, $to) => $q->whereDate('created_at', '<=', $to))
-            ->latest()
-            ->paginate(15)
-            ->withQueryString()
+        $logs = $this->logs->filtered($filters)
             ->through(fn (Activity $log) => [
                 'id' => $log->id,
                 'created_at' => $log->created_at->format('Y-m-d H:i'),
@@ -39,7 +37,7 @@ class AdminLogsController extends Controller
 
         return Inertia::render('Admin/Logs', [
             'logs' => $logs,
-            'logNames' => Activity::query()->select('log_name')->distinct()->orderBy('log_name')->pluck('log_name'),
+            'logNames' => $this->logs->logNames(),
             'filters' => $filters,
         ]);
     }

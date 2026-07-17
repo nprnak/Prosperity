@@ -9,36 +9,30 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
-use Spatie\Permission\Models\Role;
+use Modules\UserManagement\Repositories\UserRepository;
 
 class AdminUsersController extends Controller
 {
+    public function __construct(private UserRepository $users)
+    {
+    }
+
     public function index(Request $request): Response
     {
-        $this->ensureDefaultRoles();
+        $this->users->ensureDefaultRoles();
 
         $roleFilter = $request->string('role')->toString();
 
-        $users = User::query()
-            ->with('roles:id,name')
-            ->when($roleFilter !== '', fn ($query) => $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', $roleFilter)))
-            ->orderBy('name')
-            ->get(['id', 'name', 'email', 'created_at']);
-
-        $roles = Role::query()
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
         return Inertia::render('Admin/Users', [
-            'users' => $users,
-            'roles' => $roles,
+            'users' => $this->users->listForAdmin($roleFilter ?: null),
+            'roles' => $this->users->roles(),
             'selectedRole' => $roleFilter,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $this->ensureDefaultRoles();
+        $this->users->ensureDefaultRoles();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -47,7 +41,7 @@ class AdminUsersController extends Controller
             'role' => ['required', 'string', Rule::exists('roles', 'name')],
         ]);
 
-        $user = User::create([
+        $user = $this->users->create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
@@ -60,7 +54,7 @@ class AdminUsersController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
-        $this->ensureDefaultRoles();
+        $this->users->ensureDefaultRoles();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -69,16 +63,13 @@ class AdminUsersController extends Controller
             'role' => ['required', 'string', Rule::exists('roles', 'name')],
         ]);
 
-        $user->fill([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-        ]);
+        $attributes = ['name' => $validated['name'], 'email' => $validated['email']];
 
         if (! empty($validated['password'])) {
-            $user->password = $validated['password'];
+            $attributes['password'] = $validated['password'];
         }
 
-        $user->save();
+        $this->users->update($user, $attributes);
         $user->syncRoles([$validated['role']]);
 
         return redirect()->route('admin.users');
@@ -92,15 +83,8 @@ class AdminUsersController extends Controller
             ]);
         }
 
-        User::query()->whereKey($user->id)->delete();
+        $this->users->destroy($user);
 
         return redirect()->route('admin.users');
-    }
-
-    private function ensureDefaultRoles(): void
-    {
-        foreach (['admin', 'finance_staff', 'approver', 'user'] as $roleName) {
-            Role::findOrCreate($roleName, 'web');
-        }
     }
 }

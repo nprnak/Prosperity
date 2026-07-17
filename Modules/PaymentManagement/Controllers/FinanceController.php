@@ -3,42 +3,47 @@
 namespace Modules\PaymentManagement\Controllers;
 
 use App\Http\Controllers\Controller;
-use Modules\PaymentManagement\Requests\StorePaymentRequest;
-use Modules\PaymentManagement\Requests\VerifyPaymentRequest;
-use Modules\ApplicationManagement\Models\ApplicationEvent;
-use Modules\PaymentManagement\Models\PaymentTransaction;
-use Modules\ApplicationManagement\Models\ShareApplication;
-use Modules\PaymentManagement\Notifications\PaymentVerifiedNotification;
 use App\Services\NumberGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
+use Modules\ApplicationManagement\Models\ShareApplication;
+use Modules\ApplicationManagement\Repositories\ApplicationEventRepository;
+use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
+use Modules\PaymentManagement\Models\PaymentTransaction;
+use Modules\PaymentManagement\Notifications\PaymentVerifiedNotification;
+use Modules\PaymentManagement\Repositories\PaymentMethodRepository;
+use Modules\PaymentManagement\Requests\StorePaymentRequest;
+use Modules\PaymentManagement\Requests\VerifyPaymentRequest;
 
 class FinanceController extends Controller
 {
-    public function dashboard(Request $request)
+    public function __construct(
+        private ShareApplicationRepository $applications,
+        private ApplicationEventRepository $events,
+    ) {
+    }
+
+    public function dashboard(Request $request, PaymentMethodRepository $paymentMethods)
     {
         $status = $request->string('status')->toString();
 
-        $applications = ShareApplication::query()
-            ->with(['applicant', 'paymentTransactions'])
-            ->when($status, fn ($q) => $q->where('status', $status), fn ($q) => $q->whereIn('status', [
+        $applications = $this->applications->listByStatus(
+            $status ?: [
                 ShareApplication::STATUS_SUBMITTED,
                 ShareApplication::STATUS_SENT_TO_BANK,
                 ShareApplication::STATUS_BANK_ACCEPTED,
                 ShareApplication::STATUS_BLOCKED,
                 ShareApplication::STATUS_PAYMENT_PENDING,
                 ShareApplication::STATUS_PAYMENT_VERIFIED,
-            ]))
-            ->latest()
-            ->get();
+            ],
+            ['applicant', 'paymentTransactions'],
+        );
 
         return Inertia::render('Finance/Dashboard', [
             'applications' => $applications,
             'status' => $status,
-            'paymentMethods' => \Modules\PaymentManagement\Models\PaymentMethod::query()
-                ->active()
-                ->get(['id', 'name']),
+            'paymentMethods' => $paymentMethods->active(['id', 'name']),
         ]);
     }
 
@@ -58,13 +63,9 @@ class FinanceController extends Controller
                 'blocked_at' => now(),
             ]);
 
-            ApplicationEvent::query()->create([
-                'share_application_id' => $application->id,
-                'actor_id' => $request->user()->id,
-                'from_status' => ShareApplication::STATUS_SUBMITTED,
-                'to_status' => ShareApplication::STATUS_BLOCKED,
-                'remarks' => 'Payment recorded and marked as blocked by finance.',
-            ]);
+            $this->events->record($application, $request->user()->id,
+                ShareApplication::STATUS_SUBMITTED, ShareApplication::STATUS_BLOCKED,
+                'Payment recorded and marked as blocked by finance.');
         }
 
         return back()->with('success', 'Payment recorded: receipt '.$payment->receipt_number);
@@ -86,13 +87,9 @@ class FinanceController extends Controller
         $application->syncPaymentVerificationStatus();
 
         if ($application->status !== $oldStatus) {
-            ApplicationEvent::query()->create([
-                'share_application_id' => $application->id,
-                'actor_id' => $request->user()->id,
-                'from_status' => $oldStatus,
-                'to_status' => $application->status,
-                'remarks' => 'Payment verification updated by finance.',
-            ]);
+            $this->events->record($application, $request->user()->id,
+                $oldStatus, $application->status,
+                'Payment verification updated by finance.');
         }
 
         if ($application->status === ShareApplication::STATUS_PAYMENT_VERIFIED) {

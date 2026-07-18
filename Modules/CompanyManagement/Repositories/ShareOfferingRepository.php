@@ -14,15 +14,24 @@ class ShareOfferingRepository extends Repository
     }
 
     /**
-     * Offerings currently open for applications, soonest closing first.
+     * Offerings currently open for applications, soonest closing first,
+     * with subscribed/remaining share counts for display.
      */
     public function openNow(): Collection
     {
         return $this->query()
             ->openNow()
             ->with('company:id,name,code')
+            ->withSum(
+                ['applications as shares_subscribed' => fn ($query) => $query->countsTowardSubscription()],
+                'shares_applied',
+            )
             ->orderBy('closes_at')
-            ->get();
+            ->get()
+            ->each(function (ShareOffering $offering) {
+                $offering->shares_subscribed = (int) $offering->shares_subscribed;
+                $offering->shares_remaining = max(0, (int) $offering->total_shares - $offering->shares_subscribed);
+            });
     }
 
     public function listForFilters(): Collection

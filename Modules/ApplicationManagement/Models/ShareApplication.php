@@ -125,6 +125,20 @@ class ShareApplication extends Model
         return $this->hasMany(\Modules\ApplicationManagement\Models\ApplicationEvent::class);
     }
 
+    /**
+     * Applications that count toward an offering's subscribed shares:
+     * everything except drafts, rejections, and applications that ended
+     * with no allotment.
+     */
+    public function scopeCountsTowardSubscription($query)
+    {
+        return $query->whereNotIn('status', [
+            self::STATUS_DRAFT,
+            self::STATUS_REJECTED,
+            self::STATUS_NOT_ALLOTTED,
+        ]);
+    }
+
     public function getHasBankVoucherImageAttribute(): bool
     {
         return $this->bank_voucher_image !== null;

@@ -59,6 +59,20 @@ class ApplicationWizardService
             ]);
         }
 
+        $remaining = $offering->sharesRemaining();
+
+        if ($remaining <= 0) {
+            throw ValidationException::withMessages([
+                'payload.share_offering_id' => 'This share offering is fully subscribed.',
+            ]);
+        }
+
+        if ($shares > $remaining) {
+            throw ValidationException::withMessages([
+                'payload.shares_applied' => "Only {$remaining} shares remain in this offering.",
+            ]);
+        }
+
         if (! empty($payload['investment_source'])) {
             $applicant->sourcesOfFunds()->updateOrCreate(
                 ['source_type' => $payload['investment_source']],
@@ -120,6 +134,17 @@ class ApplicationWizardService
 
         if ($application->share_offering_id && ! $application->offering?->isOpenForApplications()) {
             $this->failSubmission('This share offering is no longer open for applications.');
+        }
+
+        // Shares may have been taken by other applicants since the draft was saved.
+        $remaining = $application->offering?->sharesRemaining();
+
+        if ($remaining !== null && $application->shares_applied > $remaining) {
+            $this->failSubmission(
+                $remaining > 0
+                    ? "Only {$remaining} shares remain in this offering. Reduce your applied shares and save the draft again."
+                    : 'This share offering is now fully subscribed.',
+            );
         }
 
         $maxApplications = (int) Setting::get('max_applications_per_user', 5);

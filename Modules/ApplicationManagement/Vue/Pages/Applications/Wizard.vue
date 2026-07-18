@@ -54,9 +54,40 @@ const estimatedTotal = computed(() => {
   return (shares * Number.parseFloat(selectedOffering.value.share_rate)).toFixed(2);
 });
 
+const sharesRemaining = computed(() => selectedOffering.value?.shares_remaining ?? null);
+
+const percentSubscribed = computed(() => {
+  const offering = selectedOffering.value;
+  if (!offering || !offering.total_shares || sharesRemaining.value === null) return 0;
+
+  return Math.min(100, Math.round(((offering.total_shares - sharesRemaining.value) / offering.total_shares) * 100));
+});
+
+const subscriptionBarClass = computed(() => {
+  if (percentSubscribed.value >= 100) return 'bg-red-500';
+  if (percentSubscribed.value >= 80) return 'bg-amber-500';
+
+  return 'bg-emerald-500';
+});
+
+const maxApplicable = computed(() => {
+  if (!selectedOffering.value) return null;
+  if (sharesRemaining.value === null) return selectedOffering.value.max_shares;
+
+  return Math.min(selectedOffering.value.max_shares, sharesRemaining.value);
+});
+
+const fullySubscribed = computed(() => sharesRemaining.value === 0);
+
 watch(selectedOffering, (offering) => {
   if (offering && form.payload.shares_applied < offering.min_shares) {
     form.payload.shares_applied = offering.min_shares;
+  }
+});
+
+watch([maxApplicable, () => form.payload.shares_applied], ([max, shares]) => {
+  if (max !== null && max > 0 && Number(shares) > max) {
+    form.payload.shares_applied = max;
   }
 });
 
@@ -141,6 +172,18 @@ const submitFinal = () => {
               <p v-if="selectedOffering" class="mt-1 text-xs text-gray-500">
                 {{ selectedOffering.min_shares }}–{{ selectedOffering.max_shares }} shares per applicant<span v-if="selectedOffering.closes_at">, closes {{ selectedOffering.closes_at.slice(0, 10) }}</span>
               </p>
+              <div v-if="selectedOffering && sharesRemaining !== null" class="mt-2">
+                <div class="flex items-center justify-between text-xs">
+                  <span :class="sharesRemaining === 0 ? 'font-semibold text-red-600' : 'text-gray-600'">
+                    <template v-if="sharesRemaining === 0">Fully subscribed — no shares remaining, new applications cannot be submitted</template>
+                    <template v-else><strong class="text-gray-900">{{ sharesRemaining.toLocaleString() }}</strong> of {{ Number(selectedOffering.total_shares).toLocaleString() }} shares remaining</template>
+                  </span>
+                  <span class="text-gray-500">{{ percentSubscribed }}% subscribed</span>
+                </div>
+                <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div class="h-full rounded-full transition-all" :class="subscriptionBarClass" :style="{ width: `${percentSubscribed}%` }" />
+                </div>
+              </div>
             </div>
             <div>
               <label class="mb-1 block text-sm font-medium text-gray-700">Shares Applied</label>
@@ -148,10 +191,17 @@ const submitFinal = () => {
                 v-model="form.payload.shares_applied"
                 type="number"
                 :min="selectedOffering?.min_shares || 1"
-                :max="selectedOffering?.max_shares"
+                :max="maxApplicable ?? selectedOffering?.max_shares"
+                :disabled="fullySubscribed"
                 :class="inputClass('shares_applied')"
               />
               <InputError :message="payloadError('shares_applied')" class="mt-1" />
+              <p
+                v-if="maxApplicable !== null && selectedOffering && maxApplicable > 0 && maxApplicable < selectedOffering.max_shares"
+                class="mt-1 text-xs text-amber-700"
+              >
+                Only {{ maxApplicable.toLocaleString() }} shares can still be applied for.
+              </p>
             </div>
             <div class="md:col-span-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm">
               <span class="text-gray-600">Rate: <strong>{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ selectedOffering?.share_rate || '—' }}</strong> per share</span>
@@ -229,13 +279,17 @@ const submitFinal = () => {
         </section>
 
         <div class="flex flex-wrap justify-end gap-3">
-          <button @click="saveDraft" class="rounded-lg bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700" :disabled="form.processing">
+          <button
+            @click="saveDraft"
+            class="rounded-lg bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+            :disabled="form.processing || fullySubscribed"
+          >
             Save Application Draft
           </button>
           <button
             @click="submitFinal"
             class="rounded-lg bg-emerald-600 px-5 py-2.5 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
-            :disabled="!hasDraft || !form.payload.declaration_accepted"
+            :disabled="!hasDraft || !form.payload.declaration_accepted || fullySubscribed"
           >
             Submit Application
           </button>

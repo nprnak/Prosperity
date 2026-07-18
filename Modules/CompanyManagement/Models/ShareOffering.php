@@ -69,6 +69,17 @@ class ShareOffering extends Model
         return true;
     }
 
+    /**
+     * Shares still available: total minus everything applied on
+     * applications that count toward subscription. Never negative.
+     */
+    public function sharesRemaining(): int
+    {
+        $subscribed = (int) $this->applications()->countsTowardSubscription()->sum('shares_applied');
+
+        return max(0, (int) $this->total_shares - $subscribed);
+    }
+
     public function scopeOpenNow($query)
     {
         $today = now()->toDateString();

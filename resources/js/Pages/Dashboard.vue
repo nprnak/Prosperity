@@ -1,6 +1,11 @@
 <script setup>
 import PanelLayout from '@/Layouts/PanelLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import ApplicationsTable from '@/Components/ApplicationsTable.vue';
+import { Head, Link } from '@inertiajs/vue3';
+
+defineProps({
+    applications: { type: Array, default: () => [] },
+});
 </script>
 
 <template>
@@ -12,10 +17,14 @@ import { Head } from '@inertiajs/vue3';
             <p class="mt-2 text-sm text-blue-100">Use the panel to complete your profile and manage your share application.</p>
         </div>
 
-        <div class="mt-6 overflow-hidden bg-white shadow-sm sm:rounded-lg ring-1 ring-gray-100">
-            <div class="p-6 text-gray-900">
-                Your account is ready. Start from Share Application in the left panel.
+        <div class="mt-6 bg-white p-6 shadow-sm sm:rounded-2xl ring-1 ring-gray-100">
+            <div class="mb-3 flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">My Applications</h3>
+                <Link :href="route('applications.wizard')" class="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                    Apply for shares &rarr;
+                </Link>
             </div>
+            <ApplicationsTable :applications="applications" />
         </div>
     </PanelLayout>
 </template>

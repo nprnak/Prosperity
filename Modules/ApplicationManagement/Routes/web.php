@@ -12,6 +12,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/applications/{application}/submit', [ApplicationWizardController::class, 'submit'])->name('applications.submit');
     });
 
+    // Ownership of {application} is enforced by ShareApplicationPolicy::view.
+    Route::get('/applications/{application}', [ApplicationWizardController::class, 'show'])
+        ->whereNumber('application')->name('applications.show');
+    Route::get('/applications/{application}/voucher-image', [ApplicationWizardController::class, 'voucherImage'])
+        ->whereNumber('application')->name('applications.voucher-image');
+
     Route::middleware('can:application.view-any')->group(function () {
         Route::get('/admin/applications', [AdminApplicationsController::class, 'index'])->name('admin.applications');
         Route::get('/admin/applications/{application}', [AdminApplicationsController::class, 'show'])->name('admin.applications.show');

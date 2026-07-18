@@ -1,0 +1,69 @@
+- generic [ref=f5e4]:
+  - navigation [ref=f5e5]:
+    - generic [ref=f5e7]:
+      - generic [ref=f5e8]:
+        - link [ref=f5e10] [cursor=pointer]:
+          - /url: http://localhost:8000/dashboard
+        - link "Dashboard" [ref=f5e14] [cursor=pointer]:
+          - /url: http://localhost:8000/dashboard
+      - generic [ref=f5e15]:
+        - button "Notifications" [ref=f5e18] [cursor=pointer]
+        - button "Shirish Pokhrel" [ref=f5e25] [cursor=pointer]
+  - main [ref=f5e28]:
+    - generic [ref=f5e29]:
+      - generic [ref=f5e31]:
+        - generic [ref=f5e32]:
+          - paragraph [ref=f5e33]: Prosperity CMS
+          - heading "User Panel" [level=1] [ref=f5e34]
+        - generic [ref=f5e35]: Manage settings and share application
+      - generic [ref=f5e37]:
+        - generic [ref=f5e39]:
+          - heading "Navigation" [level=2] [ref=f5e41]
+          - navigation [ref=f5e42]:
+            - link "🏠 Dashboard" [ref=f5e43] [cursor=pointer]:
+              - /url: http://localhost:8000/dashboard
+              - generic [ref=f5e44]: 🏠
+              - generic [ref=f5e45]: Dashboard
+            - link "🧾 Share Application" [ref=f5e46] [cursor=pointer]:
+              - /url: http://localhost:8000/applications/wizard
+              - generic [ref=f5e47]: 🧾
+              - generic [ref=f5e48]: Share Application
+            - link "👤 Profile" [ref=f5e49] [cursor=pointer]:
+              - /url: http://localhost:8000/profile
+              - generic [ref=f5e50]: 👤
+              - generic [ref=f5e51]: Profile
+            - link "⚙️ Settings" [ref=f5e52] [cursor=pointer]:
+              - /url: http://localhost:8000/settings
+              - generic [ref=f5e53]: ⚙️
+              - generic [ref=f5e54]: Settings
+        - generic [ref=f5e55]:
+          - generic [ref=f5e56]:
+            - heading "Welcome Back" [level=2] [ref=f5e57]
+            - paragraph [ref=f5e58]: Use the panel to complete your profile and manage your share application.
+          - generic [ref=f5e59]:
+            - generic [ref=f5e60]:
+              - heading "My Applications" [level=3] [ref=f5e61]
+              - link "Apply for shares →" [ref=f5e62] [cursor=pointer]:
+                - /url: http://localhost:8000/applications/wizard
+            - table [ref=f5e64]:
+              - rowgroup [ref=f5e65]:
+                - row [ref=f5e66]:
+                  - columnheader "No" [ref=f5e67]
+                  - columnheader "Issue" [ref=f5e68]
+                  - columnheader "Status" [ref=f5e69]
+                  - columnheader "Shares" [ref=f5e70]
+                  - columnheader "Total" [ref=f5e71]
+                  - columnheader "Actions" [ref=f5e72]
+              - rowgroup [ref=f5e73]:
+                - row [ref=f5e74]:
+                  - cell "PHL-2083-000001" [ref=f5e75]
+                  - cell "PHL-2082/83" [ref=f5e76]
+                  - cell "Submitted" [ref=f5e77]
+                  - cell "100" [ref=f5e79]
+                  - cell "रु 10000.00" [ref=f5e80]
+                  - cell [ref=f5e81]:
+                    - link "View" [ref=f5e82] [cursor=pointer]:
+                      - /url: http://localhost:8000/applications/1
+                    - text: "|"
+                    - link "Print" [ref=f5e83] [cursor=pointer]:
+                      - /url: http://localhost:8000/applications/1?print=1

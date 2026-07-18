@@ -67,6 +67,16 @@ const statusLabel = (status) => {
           <p class="text-sm text-gray-700"><span class="font-medium">Status:</span> {{ statusLabel(application.status) }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Issue Code:</span> {{ application.issue_code || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">ASBA Reference:</span> {{ application.asba_reference || '-' }}</p>
+          <p class="text-sm text-gray-700">
+            <span class="font-medium">Bank Voucher:</span>
+            <a
+              v-if="application.has_bank_voucher_image"
+              :href="route('applications.voucher-image', application.id)"
+              target="_blank"
+              class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+            >View uploaded voucher</a>
+            <template v-else>Not uploaded</template>
+          </p>
           <p class="text-sm text-gray-700"><span class="font-medium">Shares Applied:</span> {{ application.shares_applied }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Amount Per Share:</span> {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ application.amount_per_share }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Total Declared:</span> {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ application.total_amount_declared }}</p>

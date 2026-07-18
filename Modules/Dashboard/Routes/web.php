@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
 use Modules\Dashboard\Controllers\AdminDashboardController;
 
 Route::get('/dashboard', function () {
@@ -26,7 +28,9 @@ Route::get('/dashboard', function () {
         return redirect()->route('approver.dashboard');
     }
 
-    return redirect()->route('applications.wizard');
+    return Inertia::render('Dashboard', [
+        'applications' => app(ShareApplicationRepository::class)->listForUser($user->id),
+    ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware(['auth', 'verified'])->group(function () {

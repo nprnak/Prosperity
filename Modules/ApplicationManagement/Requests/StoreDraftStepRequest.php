@@ -23,6 +23,7 @@ class StoreDraftStepRequest extends FormRequest
             'payload.share_heir_mobile' => ['nullable', 'string', 'max:50'],
             'payload.share_offering_id' => ['required', 'integer', 'exists:share_offerings,id'],
             'payload.asba_reference' => ['nullable', 'string', 'max:100'],
+            'payload.bank_voucher_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'payload.shares_applied' => ['required', 'integer', 'min:1'],
             'payload.declaration_accepted' => ['nullable', 'boolean'],
         ];

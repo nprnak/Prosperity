@@ -1,0 +1,165 @@
+- generic [ref=f3e4]:
+  - navigation [ref=f3e5]:
+    - generic [ref=f3e7]:
+      - generic [ref=f3e8]:
+        - link [ref=f3e10] [cursor=pointer]:
+          - /url: http://localhost:8000/dashboard
+        - link "Dashboard" [ref=f3e14] [cursor=pointer]:
+          - /url: http://localhost:8000/dashboard
+      - generic [ref=f3e15]:
+        - button "Notifications" [ref=f3e18] [cursor=pointer]
+        - button "Shirish Pokhrel" [ref=f3e25] [cursor=pointer]
+  - main [ref=f3e28]:
+    - generic [ref=f3e29]:
+      - generic [ref=f3e31]:
+        - generic [ref=f3e32]:
+          - paragraph [ref=f3e33]: Prosperity CMS
+          - heading "User Panel" [level=1] [ref=f3e34]
+        - generic [ref=f3e35]: Manage settings and share application
+      - generic [ref=f3e37]:
+        - generic [ref=f3e39]:
+          - heading "Navigation" [level=2] [ref=f3e41]
+          - navigation [ref=f3e42]:
+            - link "🏠 Dashboard" [ref=f3e43] [cursor=pointer]:
+              - /url: http://localhost:8000/dashboard
+              - generic [ref=f3e44]: 🏠
+              - generic [ref=f3e45]: Dashboard
+            - link "🧾 Share Application" [ref=f3e46] [cursor=pointer]:
+              - /url: http://localhost:8000/applications/wizard
+              - generic [ref=f3e47]: 🧾
+              - generic [ref=f3e48]: Share Application
+            - link "👤 Profile" [ref=f3e49] [cursor=pointer]:
+              - /url: http://localhost:8000/profile
+              - generic [ref=f3e50]: 👤
+              - generic [ref=f3e51]: Profile
+            - link "⚙️ Settings" [ref=f3e52] [cursor=pointer]:
+              - /url: http://localhost:8000/settings
+              - generic [ref=f3e53]: ⚙️
+              - generic [ref=f3e54]: Settings
+        - generic [ref=f3e56]:
+          - generic [ref=f3e57]:
+            - link "← Back to Applications" [ref=f3e58] [cursor=pointer]:
+              - /url: http://localhost:8000/applications/wizard
+            - button "🖨️ Print Form" [ref=f3e59] [cursor=pointer]
+          - generic [ref=f3e60]:
+            - generic [ref=f3e61]:
+              - generic [ref=f3e62]:
+                - generic [ref=f3e63]: PROSPERITY
+                - generic [ref=f3e64]: — Holdings Limited —
+              - heading "संस्थापक शेयर खरीद दरखास्त फाराम" [level=1] [ref=f3e66]
+              - img "Applicant photo" [ref=f3e68]
+            - generic [ref=f3e69]:
+              - generic [ref=f3e70]: सि.नं.
+              - generic [ref=f3e72]:
+                - generic [ref=f3e73]: "मिति: 2026-07-18"
+                - generic [ref=f3e74]: "दरखास्त नं: PHL-2083-000001"
+            - generic [ref=f3e75]:
+              - generic [ref=f3e76]: श्री सञ्चालक समिति, प्रोस्पेरिटी होल्डिङ्स लिमिटेड का.म.न.पा.- ११, काठमाडौँ।
+              - table [ref=f3e77]:
+                - rowgroup [ref=f3e78]:
+                  - row [ref=f3e79]:
+                    - cell "हितग्राही खाता नं" [ref=f3e80]: हितग्राहीखाता नं
+                    - cell "DP ID" [ref=f3e81]
+                    - cell "1" [ref=f3e82]
+                    - cell "3" [ref=f3e83]
+                    - cell "0" [ref=f3e84]
+                    - cell "1" [ref=f3e85]
+                    - cell "2" [ref=f3e86]
+                    - cell "3" [ref=f3e87]
+                    - cell "4" [ref=f3e88]
+                    - cell "5" [ref=f3e89]
+                  - row [ref=f3e90]:
+                    - cell "Client ID" [ref=f3e91]
+                    - cell "6" [ref=f3e92]
+                    - cell "7" [ref=f3e93]
+                    - cell "8" [ref=f3e94]
+                    - cell "9" [ref=f3e95]
+                    - cell "0" [ref=f3e96]
+                    - cell "1" [ref=f3e97]
+                    - cell "2" [ref=f3e98]
+                    - cell "3" [ref=f3e99]
+            - paragraph [ref=f3e100]: "विषय: संस्थापक शेयर खरीद गर्ने सम्बन्धमा ।"
+            - paragraph [ref=f3e101]: महोदय,
+            - paragraph [ref=f3e102]: उपरोक्त सम्बन्धमा त्यस कम्पनीको संस्थापक समुहको शेयरमा लगानी गर्न इच्छुक भएकोले प्रति शेयर रू. 100.00/- का दरले हुन आउने शेयर कित्ता 100 वापत रकम रू. 10000.00 (अक्षरेपि 10,000 Rupaiya Matra) जम्मा गरेको रसिद यसै साथ संलग्न गरी तल उल्लेखित विवरण सहित यो निवेदन पेश गरेको छु/छौँ । मेरो नाममा शेयर जारी गरिदिनु हुन अनुरोध गर्दछु/ गर्दछौँ।
+            - table [ref=f3e103]:
+              - rowgroup [ref=f3e104]:
+                - row [ref=f3e105]:
+                  - cell "आवेदन गरेको शेयर संख्या" [ref=f3e106]
+                  - cell "100" [ref=f3e107]
+                  - cell "अक्षरमा" [ref=f3e108]
+                  - cell "100" [ref=f3e109]
+                - row [ref=f3e110]:
+                  - cell "भुक्तानी गरेको रकम रू." [ref=f3e111]
+                  - cell "10000.00" [ref=f3e112]
+                  - cell "अक्षरेपि" [ref=f3e113]
+                  - cell "10,000 Rupaiya Matra" [ref=f3e114]
+                - row [ref=f3e115]:
+                  - 'cell "नाम: प्रोस्पेरिटी होल्डिङ्स लिमिटेड / PROSPERITY HOLDINGS LIMITED" [ref=f3e116]'
+                  - 'cell "बैंकको नाम: सिद्धार्थ बैंक लिमिटेड, ईमाडोल शाखा" [ref=f3e117]'
+                - row [ref=f3e118]:
+                  - 'cell "चल्ती खाता नं: ५५५११४५३८४१" [ref=f3e119]'
+                  - cell "भुक्तानी मिति:" [ref=f3e120]
+                  - cell "भुक्तानी प्रकार:IPS / मोबाईल बैंकिङ् / चेक" [ref=f3e121]
+                - row [ref=f3e122]:
+                  - cell "चेक खिचिएको/भुक्तानी गरिएको बैंक:" [ref=f3e123]
+                  - 'cell "कारोबार कोड / चेक नं: IPS-2083-00123" [ref=f3e124]'
+                - row [ref=f3e125]:
+                  - cell "आवेदकको नाम, थर" [ref=f3e126]: आवेदककोनाम, थर
+                  - 'cell "नेपालीमा श्री: शिरीष पोखरेल" [ref=f3e127]'
+                  - 'cell "उमेर(बर्ष): 31" [ref=f3e128]'
+                  - 'cell "राष्ट्रियता: Nepali" [ref=f3e129]'
+                - row [ref=f3e130]:
+                  - cell "In English Mr.:Shirish Pokhrel" [ref=f3e131]
+                  - 'cell "जन्म मिति: 1995-03-10" [ref=f3e132]'
+                  - 'cell "पेशा: Engineer" [ref=f3e133]'
+                - row [ref=f3e134]:
+                  - 'cell "बुबाको नाम, थर: Krishna Pokhrel" [ref=f3e135]'
+                  - 'cell "बाजेको नाम, थर: Tej Pokhrel" [ref=f3e136]'
+                  - cell "विवाहित" [ref=f3e137]
+                - row [ref=f3e138]:
+                  - cell "पति/पत्नीको नाम, थर:" [ref=f3e139]
+                  - 'cell "शैक्षिक योग्यता: Bachelor''s Degree" [ref=f3e140]'
+                  - 'cell "पेशा: Engineer" [ref=f3e141]'
+                - row [ref=f3e142]:
+                  - cell "स्थायी ठेगाना (As per NID)" [ref=f3e143]: स्थायी ठेगाना(As per NID)
+                  - 'cell "जिल्ला: Kathmandu" [ref=f3e144]'
+                  - 'cell "गा.पा./न.पा.: Kathmandu" [ref=f3e145]'
+                  - 'cell "वडा नं: 5 टोल/मार्ग: Baluwatar" [ref=f3e146]'
+                - row [ref=f3e147]:
+                  - cell "अस्थायी ठेगाना" [ref=f3e148]
+                  - 'cell "जिल्ला: Kathmandu" [ref=f3e149]'
+                  - 'cell "गा.पा./न.पा.: Kathmandu" [ref=f3e150]'
+                  - 'cell "वडा नं: 5 टोल/मार्ग: Baluwatar" [ref=f3e151]'
+                - row [ref=f3e152]:
+                  - 'cell "ना.प्रा.प.नं: 12-01-71-04523" [ref=f3e153]'
+                  - 'cell "जारी जिल्ला: Kathmandu" [ref=f3e154]'
+                  - 'cell "जारी मिति: 2012-05-15" [ref=f3e155]'
+                  - 'cell "मोबाईल नं: 9841000000" [ref=f3e156]'
+                - row [ref=f3e157]:
+                  - 'cell "राष्ट्रिय परिचय पत्र नं: 123-456-7890" [ref=f3e158]'
+                  - 'cell "PAN: 601234567" [ref=f3e159]'
+                  - 'cell "इमेल: shirish@yopmail.com" [ref=f3e160]'
+                - row [ref=f3e161]:
+                  - cell "लगानीको स्रोत:पारिश्रमिक/लाभांश/सम्पत्ति विक्री/घर बहाल/शेयर कारोवार/अन्य" [ref=f3e162]
+                - row [ref=f3e163]:
+                  - 'cell "शेयर हकवालाको नाम, थर: Sita Pokhrel" [ref=f3e164]'
+                  - 'cell "नाता: Wife" [ref=f3e165]'
+                  - 'cell "मोबाईल नं: 9841000000" [ref=f3e166]'
+                - row [ref=f3e167]:
+                  - cell "व्यावसायीक वा कार्य-अनुभव:" [ref=f3e168]
+                - row [ref=f3e169]:
+                  - cell "संस्थाको नाम:" [ref=f3e170]
+                  - cell "ठेगाना:" [ref=f3e171]
+                  - 'cell "पद: बर्ष:" [ref=f3e172]'
+                - row [ref=f3e173]:
+                  - cell "संस्थाको नाम:" [ref=f3e174]
+                  - cell "ठेगाना:" [ref=f3e175]
+                  - 'cell "पद: बर्ष:" [ref=f3e176]'
+            - paragraph [ref=f3e177]: "स्व:घोषणा: म/हामीले लगानी गरेको रकम कुनै पनि प्रचलित ऐन वा कानुनको बर्खिलाप हुने गरि आर्जन नगरेको, म/हामी कालो सूचीमा नपरेको र सो शेयर खरिद गर्न योग्य रहेको घोषणा गर्दछु/गर्दछौँ । साथै, धितोपत्रमा गरिने लगानीमा जोखिमपूर्ण हुन सक्ने भएकोले यस्तो जोखिम म/हामी स्वयंले लिने गरी यो मन्जुरी गरेको घोषणा गर्दछु/गर्दछौँ ।"
+            - list [ref=f3e178]:
+              - listitem [ref=f3e179]: "- व्यक्तिको हकमा: नागरीकता, राष्ट्रिय परिचयपत्र, PAN र १ प्रति फोटो अनिवार्य संलग्न हुनुपर्नेछ । साथै, उल्लेखित विवरणहरू अनिवार्य भर्नुपर्नेछ ।"
+              - listitem [ref=f3e180]: "- कम्पनीको हकमा: कम्पनी दर्ता प्रमाणपत्र, प्यान, शेयरमा लगानी गर्ने सम्बन्धी सञ्चालक समितिको निर्णय/अख्तियारनामा र कम्पनीको प्रवन्धपत्र तथा नियमावलीको प्रतिलिपि।"
+            - paragraph [ref=f3e181]: मैले/हामीले यस दरखास्त फारम राम्ररी पढी जानी बुझी यसै साथ संलग्न गरेका कागजातहरू स्वयंले प्रमाणीत गरी फारममा खुलाएको विवरण साँचो हो । साथै, शेयर खरिद तथा बाँडफाँड सम्बन्धमा सञ्चालक समितिको निर्णय अनुसार हुने मन्जुर गर्दछु/गर्दछौँ । सो विवरण गलत ठहरिएमा प्रचलित नेपालको कानून बमोजिम पालन गर्न मेरो/हाम्रो मन्जुरी छ ।
+            - generic [ref=f3e182]:
+              - generic [ref=f3e183]: "सम्पर्क सञ्चालक/ कम्पनी प्रतिनिधि : ............................................."
+              - generic [ref=f3e184]: .................................. निवेदकको दस्तखत

@@ -1,0 +1,59 @@
+- generic [ref=e24]:
+  - navigation [ref=e25]:
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - link [ref=e30] [cursor=pointer]:
+          - /url: http://localhost:8000/dashboard
+        - link "Dashboard" [ref=e34] [cursor=pointer]:
+          - /url: http://localhost:8000/dashboard
+      - generic [ref=e35]:
+        - button "Notifications" [ref=e38] [cursor=pointer]
+        - button "Shirish Pokhrel" [ref=e45] [cursor=pointer]
+  - main [ref=e48]:
+    - generic [ref=e49]:
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - paragraph [ref=e53]: Prosperity CMS
+          - heading "User Panel" [level=1] [ref=e54]
+        - generic [ref=e55]: Manage settings and share application
+      - generic [ref=e57]:
+        - generic [ref=e59]:
+          - heading "Navigation" [level=2] [ref=e61]
+          - navigation [ref=e62]:
+            - link "🏠 Dashboard" [ref=e63] [cursor=pointer]:
+              - /url: http://localhost:8000/dashboard
+              - generic [ref=e64]: 🏠
+              - generic [ref=e65]: Dashboard
+            - link "🧾 Share Application" [ref=e66] [cursor=pointer]:
+              - /url: http://localhost:8000/applications/wizard
+              - generic [ref=e67]: 🧾
+              - generic [ref=e68]: Share Application
+            - link "👤 Profile" [ref=e69] [cursor=pointer]:
+              - /url: http://localhost:8000/profile
+              - generic [ref=e70]: 👤
+              - generic [ref=e71]: Profile
+            - link "⚙️ Settings" [ref=e72] [cursor=pointer]:
+              - /url: http://localhost:8000/settings
+              - generic [ref=e73]: ⚙️
+              - generic [ref=e74]: Settings
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - heading "Welcome Back" [level=2] [ref=e77]
+            - paragraph [ref=e78]: Use the panel to complete your profile and manage your share application.
+          - generic [ref=e79]:
+            - generic [ref=e80]:
+              - heading "My Applications" [level=3] [ref=e81]
+              - link "Apply for shares →" [ref=e82] [cursor=pointer]:
+                - /url: http://localhost:8000/applications/wizard
+            - table [ref=e84]:
+              - rowgroup [ref=e85]:
+                - row [ref=e86]:
+                  - columnheader "No" [ref=e87]
+                  - columnheader "Issue" [ref=e88]
+                  - columnheader "Status" [ref=e89]
+                  - columnheader "Shares" [ref=e90]
+                  - columnheader "Total" [ref=e91]
+                  - columnheader "Actions" [ref=e92]
+              - rowgroup [ref=e93]:
+                - row [ref=e94]:
+                  - cell "No applications yet." [ref=e95]

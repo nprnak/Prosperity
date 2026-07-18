@@ -4,7 +4,9 @@ namespace Modules\ApplicationManagement\Services;
 
 use App\Models\User;
 use App\Services\NumberGeneratorService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicationManagement\Models\ShareApplication;
@@ -90,6 +92,16 @@ class ApplicationWizardService
             'total_amount_declared' => $totalAmount,
             'asba_reference' => $payload['asba_reference'] ?? $application->asba_reference,
         ]);
+
+        if (($payload['bank_voucher_image'] ?? null) instanceof UploadedFile) {
+            if ($application->bank_voucher_image) {
+                Storage::disk('private')->delete($application->bank_voucher_image);
+            }
+
+            $application->bank_voucher_image = $payload['bank_voucher_image']
+                ->store('applications/'.$applicant->id, 'private');
+        }
+
         $application->save();
 
         return $application;

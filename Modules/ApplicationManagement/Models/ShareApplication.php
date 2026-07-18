@@ -56,9 +56,13 @@ class ShareApplication extends Model
 
     protected $fillable = [
         'applicant_id','share_offering_id','application_number','shares_applied','amount_per_share','total_amount_declared',
-        'status','issue_code','asba_reference','blocked_amount','blocked_at','refunded_amount','refunded_at',
+        'status','issue_code','asba_reference','bank_voucher_image','blocked_amount','blocked_at','refunded_amount','refunded_at',
         'submitted_at','reviewed_by','reviewed_at','verified_by','verified_at','approved_by','approved_at','rejection_reason',
     ];
+
+    protected $hidden = ['bank_voucher_image'];
+
+    protected $appends = ['has_bank_voucher_image'];
 
     protected $casts = [
         'amount_per_share' => 'decimal:2',
@@ -119,6 +123,11 @@ class ShareApplication extends Model
     public function events()
     {
         return $this->hasMany(\Modules\ApplicationManagement\Models\ApplicationEvent::class);
+    }
+
+    public function getHasBankVoucherImageAttribute(): bool
+    {
+        return $this->bank_voucher_image !== null;
     }
 
     public function canTransitionTo(string $targetStatus): bool

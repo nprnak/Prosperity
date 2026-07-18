@@ -1,0 +1,135 @@
+- generic [ref=f2e4]:
+  - navigation [ref=f2e5]:
+    - generic [ref=f2e7]:
+      - generic [ref=f2e8]:
+        - link [ref=f2e10] [cursor=pointer]:
+          - /url: http://localhost:8000/dashboard
+        - link "Dashboard" [ref=f2e14] [cursor=pointer]:
+          - /url: http://localhost:8000/dashboard
+      - generic [ref=f2e15]:
+        - button "Notifications" [ref=f2e18] [cursor=pointer]
+        - button "Shirish Pokhrel" [ref=f2e25] [cursor=pointer]
+  - main [ref=f2e28]:
+    - generic [ref=f2e29]:
+      - generic [ref=f2e31]:
+        - generic [ref=f2e32]:
+          - paragraph [ref=f2e33]: Prosperity CMS
+          - heading "User Panel" [level=1] [ref=f2e34]
+        - generic [ref=f2e35]: Manage settings and share application
+      - generic [ref=f2e37]:
+        - generic [ref=f2e39]:
+          - heading "Navigation" [level=2] [ref=f2e41]
+          - navigation [ref=f2e42]:
+            - link "🏠 Dashboard" [ref=f2e43] [cursor=pointer]:
+              - /url: http://localhost:8000/dashboard
+              - generic [ref=f2e44]: 🏠
+              - generic [ref=f2e45]: Dashboard
+            - link "🧾 Share Application" [ref=f2e46] [cursor=pointer]:
+              - /url: http://localhost:8000/applications/wizard
+              - generic [ref=f2e47]: 🧾
+              - generic [ref=f2e48]: Share Application
+            - link "👤 Profile" [ref=f2e49] [cursor=pointer]:
+              - /url: http://localhost:8000/profile
+              - generic [ref=f2e50]: 👤
+              - generic [ref=f2e51]: Profile
+            - link "⚙️ Settings" [ref=f2e52] [cursor=pointer]:
+              - /url: http://localhost:8000/settings
+              - generic [ref=f2e53]: ⚙️
+              - generic [ref=f2e54]: Settings
+        - generic [ref=f2e56]:
+          - generic [ref=f2e57]:
+            - heading "Share Application Portal" [level=3] [ref=f2e58]
+            - paragraph [ref=f2e59]: Register first, login, complete your full profile, then apply for shares from the same account.
+          - generic [ref=f2e60]:
+            - generic [ref=f2e61]:
+              - heading "Share Details" [level=4] [ref=f2e62]
+              - generic [ref=f2e63]:
+                - generic [ref=f2e64]:
+                  - generic [ref=f2e65]: Share Offering *
+                  - combobox [ref=f2e66]:
+                    - option "Prosperity Holdings Limited · Founder Share Issue (2082/83) · रु 100.00/share" [selected]
+                  - paragraph [ref=f2e67]: 10–10000 shares per applicant, closes 2026-10-16
+                - generic [ref=f2e68]:
+                  - generic [ref=f2e69]: Shares Applied
+                  - spinbutton [ref=f2e70]: "100"
+                - generic [ref=f2e71]:
+                  - generic [ref=f2e72]:
+                    - text: "Rate:"
+                    - strong [ref=f2e73]: रु 100.00
+                    - text: per share
+                  - text: "|"
+                  - generic [ref=f2e74]:
+                    - text: "Total payable:"
+                    - strong [ref=f2e75]: रु 10000.00
+                - generic [ref=f2e76]:
+                  - generic [ref=f2e77]: ASBA Reference
+                  - textbox "Enter bank reference if available" [ref=f2e78]: IPS-2083-00123
+            - generic [ref=f2e79]:
+              - heading "Investment and Heir Details" [level=4] [ref=f2e80]
+              - generic [ref=f2e81]:
+                - generic [ref=f2e82]:
+                  - generic [ref=f2e83]: Investment Source
+                  - combobox [ref=f2e84]:
+                    - option "Salary" [selected]
+                    - option "Dividend"
+                    - option "Property Sale"
+                    - option "House Rent"
+                    - option "Share Trading"
+                    - option "Other"
+                - generic [ref=f2e85]:
+                  - generic [ref=f2e86]: Other Investment Source
+                  - textbox "Only fill if source is Other" [ref=f2e87]
+                - generic [ref=f2e88]:
+                  - generic [ref=f2e89]: Share Heir Name
+                  - textbox "e.g. Sita Sharma" [ref=f2e90]: Sita Pokhrel
+                - generic [ref=f2e91]:
+                  - generic [ref=f2e92]: Heir Relation
+                  - textbox "e.g. Daughter" [ref=f2e93]: Wife
+                - generic [ref=f2e94]:
+                  - generic [ref=f2e95]: Heir Mobile
+                  - textbox "e.g. 98XXXXXXXX" [ref=f2e96]: "9841000000"
+            - generic [ref=f2e98]:
+              - checkbox "I confirm that the profile and share application information provided above is true and complete." [checked] [ref=f2e99]
+              - generic [ref=f2e100]: I confirm that the profile and share application information provided above is true and complete.
+            - generic [ref=f2e101]:
+              - button "Save Application Draft" [ref=f2e102] [cursor=pointer]
+              - button "Submit Application" [disabled] [ref=f2e103]
+          - generic [ref=f2e104]:
+            - heading "How to Pay" [level=3] [ref=f2e105]
+            - paragraph [ref=f2e106]: Pay the total amount using any of the methods below, then keep your reference/voucher number — finance staff will verify it against your application.
+            - generic [ref=f2e107]:
+              - generic [ref=f2e109]:
+                - generic [ref=f2e110]: Bank Deposit
+                - generic [ref=f2e111]: Nepal Bank Limited
+                - generic [ref=f2e112]: Prosperity Holdings Limited · A/C 01234567890123
+                - paragraph [ref=f2e113]: Deposit the total amount at any branch and keep the voucher number as your payment reference.
+              - generic [ref=f2e115]:
+                - generic [ref=f2e116]: ConnectIPS
+                - paragraph [ref=f2e117]: Transfer to the Prosperity Holdings account and note the transaction ID as your payment reference.
+              - generic [ref=f2e119]:
+                - generic [ref=f2e120]: eSewa
+                - paragraph [ref=f2e121]: Scan the QR from the eSewa app and enter the total amount, then note the transaction code.
+          - generic [ref=f2e122]:
+            - heading "My Applications" [level=3] [ref=f2e123]
+            - table [ref=f2e125]:
+              - rowgroup [ref=f2e126]:
+                - row [ref=f2e127]:
+                  - columnheader "No" [ref=f2e128]
+                  - columnheader "Issue" [ref=f2e129]
+                  - columnheader "Status" [ref=f2e130]
+                  - columnheader "Shares" [ref=f2e131]
+                  - columnheader "Total" [ref=f2e132]
+                  - columnheader "Actions" [ref=f2e133]
+              - rowgroup [ref=f2e134]:
+                - row [ref=f2e147]:
+                  - cell "PHL-2083-000001" [ref=f2e148]
+                  - cell "PHL-2082/83" [ref=f2e139]
+                  - cell "Submitted" [ref=f2e149]
+                  - cell "100" [ref=f2e142]
+                  - cell "रु 10000.00" [ref=f2e143]
+                  - cell [ref=f2e144]:
+                    - link "View" [ref=f2e145] [cursor=pointer]:
+                      - /url: http://localhost:8000/applications/1
+                    - text: "|"
+                    - link "Print" [ref=f2e146] [cursor=pointer]:
+                      - /url: http://localhost:8000/applications/1?print=1

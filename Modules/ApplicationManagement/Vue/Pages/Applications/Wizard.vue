@@ -1,8 +1,9 @@
 <script setup>
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import InputError from '@/Components/InputError.vue';
+import ApplicationsTable from '@/Components/ApplicationsTable.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   draft: Object,
@@ -23,10 +24,21 @@ const form = useForm({
     share_heir_mobile: props.draft?.applicant?.nominees?.[0]?.mobile || '',
     share_offering_id: props.draft?.share_offering_id || props.offerings[0]?.id || null,
     asba_reference: props.draft?.asba_reference || '',
+    bank_voucher_image: null,
     shares_applied: props.draft?.shares_applied || 1,
     declaration_accepted: false,
   },
 });
+
+const voucherPreview = ref(null);
+
+const onVoucherChange = (event) => {
+  const file = event.target.files[0] || null;
+  form.payload.bank_voucher_image = file;
+
+  if (voucherPreview.value) URL.revokeObjectURL(voucherPreview.value);
+  voucherPreview.value = file ? URL.createObjectURL(file) : null;
+};
 
 const hasDraft = computed(() => Boolean(props.draft?.id));
 const profileReady = computed(() => props.profileStatus === 'approved');
@@ -69,28 +81,6 @@ const submitFinal = () => {
     declaration_accepted: form.payload.declaration_accepted,
     asba_reference: form.payload.asba_reference,
   }).post(route('applications.submit', id));
-};
-
-const statusLabel = (status) => {
-  const labels = {
-    draft: 'Draft',
-    submitted: 'Submitted',
-    sent_to_bank: 'Sent To Bank',
-    bank_accepted: 'Bank Accepted',
-    blocked: 'Amount Blocked',
-    payment_pending: 'Payment Pending',
-    payment_verified: 'Payment Verified',
-    approved: 'Approved',
-    allotted: 'Allotted',
-    partially_allotted: 'Partially Allotted',
-    not_allotted: 'Not Allotted',
-    refund_initiated: 'Refund Initiated',
-    refund_completed: 'Refund Completed',
-    demat_credited: 'Demat Credited',
-    rejected: 'Rejected',
-  };
-
-  return labels[status] || status;
 };
 </script>
 
@@ -172,6 +162,27 @@ const statusLabel = (status) => {
               <label class="mb-1 block text-sm font-medium text-gray-700">ASBA Reference</label>
               <input v-model="form.payload.asba_reference" type="text" placeholder="Enter bank reference if available" :class="inputClass('asba_reference')" />
               <InputError :message="payloadError('asba_reference')" class="mt-1" />
+            </div>
+            <div class="md:col-span-3">
+              <label class="mb-1 block text-sm font-medium text-gray-700">Bank Voucher Image</label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                @change="onVoucherChange"
+                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"
+              />
+              <InputError :message="payloadError('bank_voucher_image')" class="mt-1" />
+              <p class="mt-1 text-xs text-gray-500">
+                Upload a photo or screenshot of your payment voucher/receipt (JPG, PNG or WebP, max 5&nbsp;MB), then save the draft.
+              </p>
+              <div v-if="voucherPreview" class="mt-2">
+                <img :src="voucherPreview" alt="Bank voucher preview" class="max-h-48 rounded-lg border border-gray-200 object-contain" />
+              </div>
+              <p v-else-if="draft?.has_bank_voucher_image" class="mt-2 text-sm text-emerald-700">
+                ✓ Voucher uploaded —
+                <a :href="route('applications.voucher-image', draft.id)" target="_blank" class="font-medium underline hover:text-emerald-800">view current image</a>.
+                Choosing a new file replaces it on save.
+              </p>
             </div>
           </div>
         </section>
@@ -256,18 +267,7 @@ const statusLabel = (status) => {
 
       <div class="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-gray-100">
         <h3 class="font-semibold mb-3 text-gray-900">My Applications</h3>
-        <table class="w-full text-sm">
-          <thead><tr class="text-left text-gray-600"><th>No</th><th>Issue</th><th>Status</th><th>Shares</th><th>Total</th></tr></thead>
-          <tbody>
-            <tr v-for="app in applications" :key="app.id" class="border-t">
-              <td class="py-2">{{ app.application_number }}</td>
-              <td class="py-2">{{ app.issue_code || '-' }}</td>
-              <td class="py-2">{{ statusLabel(app.status) }}</td>
-              <td class="py-2">{{ app.shares_applied }}</td>
-              <td class="py-2">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ app.total_amount_declared }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <ApplicationsTable :applications="applications" />
       </div>
     </div>
   </PanelLayout>

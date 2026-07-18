@@ -3,8 +3,10 @@
 namespace Modules\ApplicationManagement\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\NepaliAmountWordsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
@@ -38,6 +40,47 @@ class ApplicationWizardController extends Controller
             'offerings' => $offerings->openNow(),
             'paymentMethods' => $paymentMethods->active(['id', 'name', 'account_name', 'account_number', 'bank_name', 'instructions', 'qr_image_path']),
         ]);
+    }
+
+    public function show(Request $request, ShareApplication $application, NepaliAmountWordsService $words)
+    {
+        Gate::authorize('view', $application);
+
+        $application->load([
+            'applicant.permanentAddress',
+            'applicant.temporaryAddress',
+            'applicant.nominees',
+            'applicant.sourcesOfFunds',
+            'applicant.experiences',
+            'offering.company',
+            'paymentTransactions' => fn ($query) => $query->latest(),
+        ]);
+
+        $isOwner = $application->applicant?->user_id === $request->user()->id;
+
+        return Inertia::render('Applications/Show', [
+            'application' => $application,
+            'amountInWords' => $words->toWords((string) $application->total_amount_declared),
+            'sharesInWords' => str_replace(' Rupaiya Matra', '', $words->toWords($application->shares_applied)),
+            // The document route serves the logged-in user's own file, so only offer it to the owner.
+            'photoUrl' => $isOwner ? route('profile.documents.show', 'photo') : null,
+            'voucherImageUrl' => $application->bank_voucher_image
+                ? route('applications.voucher-image', $application->id)
+                : null,
+        ]);
+    }
+
+    public function voucherImage(ShareApplication $application)
+    {
+        Gate::authorize('view', $application);
+
+        abort_unless(
+            $application->bank_voucher_image
+                && Storage::disk('private')->exists($application->bank_voucher_image),
+            404,
+        );
+
+        return response()->file(Storage::disk('private')->path($application->bank_voucher_image));
     }
 
     public function storeDraft(StoreDraftStepRequest $request)

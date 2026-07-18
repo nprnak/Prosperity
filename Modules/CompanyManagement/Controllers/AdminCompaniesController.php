@@ -3,6 +3,7 @@
 namespace Modules\CompanyManagement\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Modules\CompanyManagement\Models\Company;
 use Modules\CompanyManagement\Models\ShareOffering;
@@ -26,16 +27,23 @@ class AdminCompaniesController extends Controller
 
     public function store(StoreCompanyRequest $request)
     {
-        $company = $this->companies->create($request->validated());
+        $company = $this->companies->create($this->payload($request));
 
         return back()->with('success', 'Company created: '.$company->name);
     }
 
     public function update(StoreCompanyRequest $request, Company $company)
     {
-        $this->companies->update($company, $request->validated());
+        $this->companies->update($company, $this->payload($request, $company));
 
         return back()->with('success', 'Company updated: '.$company->name);
+    }
+
+    public function logo(Company $company)
+    {
+        abort_unless($company->logo_path && Storage::disk('private')->exists($company->logo_path), 404);
+
+        return Storage::disk('private')->response($company->logo_path);
     }
 
     public function destroy(Company $company)
@@ -69,5 +77,19 @@ class AdminCompaniesController extends Controller
         $offering->delete();
 
         return back()->with('success', 'Offering deleted.');
+    }
+
+    protected function payload(StoreCompanyRequest $request, ?Company $company = null): array
+    {
+        $data = $request->safe()->except('logo');
+
+        if ($request->hasFile('logo')) {
+            if ($company?->logo_path) {
+                Storage::disk('private')->delete($company->logo_path);
+            }
+            $data['logo_path'] = $request->file('logo')->store('companies', 'private');
+        }
+
+        return $data;
     }
 }

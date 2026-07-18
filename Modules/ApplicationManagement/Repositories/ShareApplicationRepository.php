@@ -35,7 +35,9 @@ class ShareApplicationRepository extends Repository
             'applicant',
             'reviewer:id,name,email',
             'allotment',
-            'paymentTransactions' => fn ($query) => $query->with('voucher')->latest(),
+            'paymentTransactions' => fn ($query) => $query
+                ->with(['voucher', 'checker:id,name', 'verifier:id,name', 'approver:id,name'])
+                ->latest(),
             'events' => fn ($query) => $query->with('actor:id,name')->latest(),
         ]);
     }

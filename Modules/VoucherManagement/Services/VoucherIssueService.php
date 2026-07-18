@@ -35,11 +35,23 @@ class VoucherIssueService
             'generated_at' => now(),
         ]);
 
+        $application->load(['applicant', 'offering.company']);
+        $company = $application->offering?->company;
+
+        $logoDataUri = null;
+        if ($company?->logo_path && Storage::disk('private')->exists($company->logo_path)) {
+            $logoDataUri = 'data:'.Storage::disk('private')->mimeType($company->logo_path)
+                .';base64,'.base64_encode(Storage::disk('private')->get($company->logo_path));
+        }
+
         $pdf = Pdf::loadView('pdf.receipt', [
-            'application' => $application->load('applicant'),
+            'application' => $application,
             'payment' => $payment,
             'voucher' => $voucher,
-            'amountInWords' => $this->words->toWords($payment->amount),
+            'companyName' => $company?->name ?? \Modules\SettingsManagement\Models\Setting::get('org_name', 'Prosperity Holdings Limited'),
+            'companyAddress' => $company?->address ?? \Modules\SettingsManagement\Models\Setting::get('org_address'),
+            'logoDataUri' => $logoDataUri,
+            'amountInEnglishWords' => $this->words->toEnglishWords($payment->amount),
             'verificationUrl' => $this->qr->verificationUrl($voucher),
             'verificationQr' => $this->qr->qrDataUri($voucher),
         ]);

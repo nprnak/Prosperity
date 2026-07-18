@@ -56,24 +56,32 @@ class FinanceController extends Controller
             'issued_by' => $request->user()->id,
         ]);
 
-        if ($application->status === ShareApplication::STATUS_SUBMITTED) {
-            $application->update([
-                'status' => ShareApplication::STATUS_BLOCKED,
-                'blocked_amount' => $payment->amount,
-                'blocked_at' => now(),
-            ]);
-
-            $this->events->record($application, $request->user()->id,
-                ShareApplication::STATUS_SUBMITTED, ShareApplication::STATUS_BLOCKED,
-                'Payment recorded and marked as blocked by finance.');
-        }
-
         return back()->with('success', 'Payment recorded: receipt '.$payment->receipt_number);
     }
 
+    /**
+     * Two-officer sign-off: the first "verified" click checks the payment
+     * (checked_by); a second, different finance officer's click re-verifies it
+     * (verified_by) and only then does the payment count as verified.
+     */
     public function verifyPayment(VerifyPaymentRequest $request, PaymentTransaction $payment)
     {
         $status = $request->validated('status');
+
+        if ($status === 'verified' && ! $payment->checked_by) {
+            $payment->update([
+                'checked_by' => $request->user()->id,
+                'checked_at' => now(),
+                'notes' => $request->validated('notes'),
+            ]);
+
+            return back()->with('success', 'Payment checked. Awaiting re-verification by another finance officer.');
+        }
+
+        if ($status === 'verified') {
+            abort_if($payment->checked_by === $request->user()->id, 422,
+                'A different finance officer must re-verify this payment.');
+        }
 
         $payment->update([
             'verification_status' => $status,

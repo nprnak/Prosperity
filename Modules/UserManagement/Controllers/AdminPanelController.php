@@ -31,7 +31,7 @@ class AdminPanelController extends Controller
             'adminUsers' => $this->users->countByRole('admin'),
             'financeUsers' => $this->users->countByRole('finance_staff'),
             'approverUsers' => $this->users->countByRole('approver'),
-            'applicantUsers' => $this->users->countByRole('user'),
+            'applicantUsers' => $this->users->countByRole('applicant'),
             'totalApplications' => $this->applications->query()->count(),
             'pendingApplications' => $this->applications->countByStatus([
                 ...ShareApplicationRepository::PENDING_STATUSES,
@@ -56,7 +56,7 @@ class AdminPanelController extends Controller
             'admin' => $this->users->listByRole('admin'),
             'finance_staff' => $this->users->listByRole('finance_staff'),
             'approver' => $this->users->listByRole('approver'),
-            'user' => $this->users->listByRole('user'),
+            'applicant' => $this->users->listByRole('applicant'),
         ];
 
         $workflowCounts = [

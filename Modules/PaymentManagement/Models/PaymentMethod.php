@@ -14,9 +14,14 @@ class PaymentMethod extends Model
     public const STATUS_INACTIVE = 'inactive';
 
     protected $fillable = [
-        'name', 'account_name', 'account_number', 'bank_name',
+        'company_id', 'name', 'account_name', 'account_number', 'bank_name',
         'instructions', 'qr_image_path', 'status', 'sort_order',
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(\Modules\CompanyManagement\Models\Company::class);
+    }
 
     public function transactions()
     {

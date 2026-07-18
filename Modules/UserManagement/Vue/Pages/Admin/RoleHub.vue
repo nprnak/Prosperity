@@ -26,10 +26,10 @@ const roleMeta = {
     usersRoute: () => route('admin.users', { role: 'approver' }),
     actionLabel: 'Manage Approver Users',
   },
-  user: {
+  applicant: {
     title: 'Applicant Users',
     color: 'emerald',
-    usersRoute: () => route('admin.users', { role: 'user' }),
+    usersRoute: () => route('admin.users', { role: 'applicant' }),
     actionLabel: 'Manage Applicant Users',
   },
 };

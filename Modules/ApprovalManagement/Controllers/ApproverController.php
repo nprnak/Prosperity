@@ -22,11 +22,22 @@ class ApproverController extends Controller
     {
     }
 
+    /**
+     * Two-person workflow: finance verifies the payment (first person), then
+     * the approver signs off directly (second person) — the optional
+     * reviewer/verifier stages are also accepted if a deployment uses them.
+     */
+    public const APPROVABLE_STATUSES = [
+        ShareApplication::STATUS_PAYMENT_VERIFIED,
+        ShareApplication::STATUS_REVIEWED,
+        ShareApplication::STATUS_VERIFIED,
+    ];
+
     public function dashboard(Request $request)
     {
         return Inertia::render('Approver/Dashboard', [
             'applications' => $this->applications->listByStatus(
-                ShareApplication::STATUS_VERIFIED,
+                self::APPROVABLE_STATUSES,
                 ['applicant', 'paymentTransactions', 'reviewer', 'verifier'],
             ),
         ]);
@@ -34,7 +45,7 @@ class ApproverController extends Controller
 
     public function approve(ApproveApplicationRequest $request, ShareApplication $application, VoucherIssueService $voucherIssuer)
     {
-        abort_unless($application->status === ShareApplication::STATUS_VERIFIED, 422);
+        abort_unless(in_array($application->status, self::APPROVABLE_STATUSES, true), 422);
 
         $payment = $application->paymentTransactions()->where('verification_status', 'verified')->latest()->firstOrFail();
         $payment->update(['approved_by' => $request->user()->id]);

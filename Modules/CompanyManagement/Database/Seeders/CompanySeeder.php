@@ -23,6 +23,15 @@ class CompanySeeder extends Seeder
             ]
         );
 
+        // Backfill the print-form details on installs seeded before these columns existed.
+        $company->fill([
+            'name_np' => $company->name_np ?? 'प्रोस्पेरिटी होल्डिङ्स लिमिटेड',
+            'address' => $company->address ?? 'Kathmandu Metropolitan City - 11, Kathmandu',
+            'address_np' => $company->address_np ?? 'का.म.न.पा.- ११, काठमाडौँ।',
+            'bank_name' => $company->bank_name ?? 'Nepal Bank Limited',
+            'bank_account_number' => $company->bank_account_number ?? '01234567890123',
+        ])->save();
+
         ShareOffering::firstOrCreate(
             ['company_id' => $company->id, 'fiscal_year' => '2082/83'],
             [

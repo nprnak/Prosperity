@@ -27,23 +27,25 @@ class ApplicationWizardController extends Controller
     ) {
     }
 
-    public function index(Request $request, ShareOfferingRepository $offerings, PaymentMethodRepository $paymentMethods)
+    public function index(Request $request, ShareOfferingRepository $offerings)
     {
         $applicantProfile = $this->profiles->findByUserId($request->user()->id);
 
         return Inertia::render('Applications/Wizard', [
             'draft' => $this->applications->latestDraftForUser($request->user()->id),
-            'applications' => $this->applications->listForUser($request->user()->id),
             'profile' => $applicantProfile,
             'profileCompleted' => $applicantProfile?->isProfileComplete() ?? false,
             'profileStatus' => $applicantProfile->profile_status ?? Profile::PROFILE_INCOMPLETE,
             'offerings' => $offerings->openNow(),
-            'paymentMethods' => $paymentMethods->active(['id', 'name', 'account_name', 'account_number', 'bank_name', 'instructions', 'qr_image_path']),
         ]);
     }
 
-    public function show(Request $request, ShareApplication $application, NepaliAmountWordsService $words)
-    {
+    public function show(
+        Request $request,
+        ShareApplication $application,
+        NepaliAmountWordsService $words,
+        PaymentMethodRepository $paymentMethods,
+    ) {
         Gate::authorize('view', $application);
 
         $application->load([
@@ -54,12 +56,19 @@ class ApplicationWizardController extends Controller
             'applicant.experiences',
             'offering.company',
             'paymentTransactions' => fn ($query) => $query->latest(),
+            'paymentTransactions.paymentMethod:id,name,account_name,account_number,bank_name',
         ]);
 
         $isOwner = $application->applicant?->user_id === $request->user()->id;
 
+        // The company account the money was collected into: the method used on
+        // the payment if recorded, otherwise the first active method.
+        $collectionAccount = $application->paymentTransactions->first()?->paymentMethod
+            ?? $paymentMethods->active(['id', 'name', 'account_name', 'account_number', 'bank_name'])->first();
+
         return Inertia::render('Applications/Show', [
             'application' => $application,
+            'collectionAccount' => $collectionAccount?->only(['name', 'account_name', 'account_number', 'bank_name']),
             'amountInWords' => $words->toWords((string) $application->total_amount_declared),
             'sharesInWords' => str_replace(' Rupaiya Matra', '', $words->toWords($application->shares_applied)),
             // The document route serves the logged-in user's own file, so only offer it to the owner.

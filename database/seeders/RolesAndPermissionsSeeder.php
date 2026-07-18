@@ -52,8 +52,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'voucher.download',
         ],
         'finance_staff' => [
+            'application.view-any',
             'payment.record',
             'payment.verify',
+            'payment.view-any',
         ],
         'reviewer' => [
             'application.review',

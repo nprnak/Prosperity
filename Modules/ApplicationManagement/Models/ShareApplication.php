@@ -56,7 +56,8 @@ class ShareApplication extends Model
 
     protected $fillable = [
         'applicant_id','share_offering_id','application_number','shares_applied','amount_per_share','total_amount_declared',
-        'status','issue_code','asba_reference','bank_voucher_image','blocked_amount','blocked_at','refunded_amount','refunded_at',
+        'status','issue_code','asba_reference','bank_voucher_image','payment_type','payment_deposited_bank','payment_deposited_ref_no',
+        'declaration_accepted','blocked_amount','blocked_at','refunded_amount','refunded_at',
         'submitted_at','reviewed_by','reviewed_at','verified_by','verified_at','approved_by','approved_at','rejection_reason',
     ];
 
@@ -65,6 +66,7 @@ class ShareApplication extends Model
     protected $appends = ['has_bank_voucher_image'];
 
     protected $casts = [
+        'declaration_accepted' => 'boolean',
         'amount_per_share' => 'decimal:2',
         'total_amount_declared' => 'decimal:2',
         'blocked_amount' => 'decimal:2',

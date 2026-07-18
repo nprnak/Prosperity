@@ -1,17 +1,14 @@
 <script setup>
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import InputError from '@/Components/InputError.vue';
-import ApplicationsTable from '@/Components/ApplicationsTable.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   draft: Object,
-  applications: Array,
   profileCompleted: Boolean,
   profileStatus: { type: String, default: 'incomplete' },
   offerings: { type: Array, default: () => [] },
-  paymentMethods: { type: Array, default: () => [] },
 });
 
 const form = useForm({
@@ -24,9 +21,12 @@ const form = useForm({
     share_heir_mobile: props.draft?.applicant?.nominees?.[0]?.mobile || '',
     share_offering_id: props.draft?.share_offering_id || props.offerings[0]?.id || null,
     asba_reference: props.draft?.asba_reference || '',
+    payment_type: props.draft?.payment_type || '',
+    payment_deposited_bank: props.draft?.payment_deposited_bank || '',
+    payment_deposited_ref_no: props.draft?.payment_deposited_ref_no || '',
     bank_voucher_image: null,
     shares_applied: props.draft?.shares_applied || 1,
-    declaration_accepted: false,
+    declaration_accepted: Boolean(props.draft?.declaration_accepted),
   },
 });
 
@@ -83,7 +83,7 @@ watch(selectedOffering, (offering) => {
   if (offering && form.payload.shares_applied < offering.min_shares) {
     form.payload.shares_applied = offering.min_shares;
   }
-});
+}, { immediate: true });
 
 watch([maxApplicable, () => form.payload.shares_applied], ([max, shares]) => {
   if (max !== null && max > 0 && Number(shares) > max) {
@@ -213,6 +213,26 @@ const submitFinal = () => {
               <input v-model="form.payload.asba_reference" type="text" placeholder="Enter bank reference if available" :class="inputClass('asba_reference')" />
               <InputError :message="payloadError('asba_reference')" class="mt-1" />
             </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Payment Type</label>
+              <select v-model="form.payload.payment_type" :class="inputClass('payment_type')">
+                <option value="">Select payment type</option>
+                <option value="connect_ips">ConnectIPS</option>
+                <option value="mobile_banking">Mobile Banking</option>
+                <option value="cheque">Cheque</option>
+              </select>
+              <InputError :message="payloadError('payment_type')" class="mt-1" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Paying Bank</label>
+              <input v-model="form.payload.payment_deposited_bank" type="text" placeholder="e.g. Nepal Bank Limited" :class="inputClass('payment_deposited_bank')" />
+              <InputError :message="payloadError('payment_deposited_bank')" class="mt-1" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700">Transaction Code / Cheque No</label>
+              <input v-model="form.payload.payment_deposited_ref_no" type="text" placeholder="e.g. 1234567 or cheque number" :class="inputClass('payment_deposited_ref_no')" />
+              <InputError :message="payloadError('payment_deposited_ref_no')" class="mt-1" />
+            </div>
             <div class="md:col-span-3">
               <label class="mb-1 block text-sm font-medium text-gray-700">Bank Voucher Image</label>
               <input
@@ -296,33 +316,6 @@ const submitFinal = () => {
         </div>
       </div>
 
-      <div v-if="profileReady && paymentMethods.length" class="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-gray-100">
-        <h3 class="font-semibold mb-1 text-gray-900">How to Pay</h3>
-        <p class="text-sm text-gray-500 mb-4">Pay the total amount using any of the methods below, then keep your reference/voucher number — finance staff will verify it against your application.</p>
-        <div class="grid gap-4 md:grid-cols-2">
-          <div v-for="method in paymentMethods" :key="method.id" class="rounded-xl border border-gray-200 p-4 flex gap-4">
-            <img
-              v-if="method.qr_image_path"
-              :src="route('payment-methods.qr', method.id)"
-              :alt="`${method.name} QR code`"
-              class="h-24 w-24 rounded object-contain border border-gray-100"
-            />
-            <div class="text-sm">
-              <div class="font-semibold text-gray-900">{{ method.name }}</div>
-              <div v-if="method.bank_name" class="text-gray-600">{{ method.bank_name }}</div>
-              <div v-if="method.account_number" class="text-gray-600">
-                {{ method.account_name ? method.account_name + ' · ' : '' }}A/C {{ method.account_number }}
-              </div>
-              <p v-if="method.instructions" class="mt-1 text-gray-500">{{ method.instructions }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-gray-100">
-        <h3 class="font-semibold mb-3 text-gray-900">My Applications</h3>
-        <ApplicationsTable :applications="applications" />
-      </div>
     </div>
   </PanelLayout>
 </template>

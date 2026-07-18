@@ -16,7 +16,7 @@ class PaymentTransactionRepository extends Repository
 
     public function listForAdmin(): Collection
     {
-        return $this->query()->with('share_application.applicant')->latest()->get();
+        return $this->query()->with('shareApplication.applicant')->latest()->get();
     }
 
     public function pendingCount(): int

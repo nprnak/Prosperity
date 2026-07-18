@@ -16,6 +16,7 @@ class StorePaymentMethodRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'company_id' => ['nullable', 'integer', Rule::exists('companies', 'id')],
             'name' => ['required', 'string', 'max:255'],
             'account_name' => ['nullable', 'string', 'max:255'],
             'account_number' => ['nullable', 'string', 'max:100'],

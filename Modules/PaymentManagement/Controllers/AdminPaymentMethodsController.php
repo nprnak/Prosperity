@@ -5,6 +5,7 @@ namespace Modules\PaymentManagement\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Modules\CompanyManagement\Models\Company;
 use Modules\PaymentManagement\Models\PaymentMethod;
 use Modules\PaymentManagement\Repositories\PaymentMethodRepository;
 use Modules\PaymentManagement\Requests\StorePaymentMethodRequest;
@@ -19,6 +20,7 @@ class AdminPaymentMethodsController extends Controller
     {
         return Inertia::render('Admin/PaymentMethods', [
             'methods' => $this->methods->listForAdmin(),
+            'companies' => Company::query()->orderBy('name')->get(['id', 'name', 'code']),
         ]);
     }
 

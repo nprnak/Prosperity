@@ -14,7 +14,8 @@ class Company extends Model
     public const STATUS_INACTIVE = 'inactive';
 
     protected $fillable = [
-        'name', 'code', 'description', 'logo_path', 'status',
+        'name', 'name_np', 'code', 'description', 'address', 'address_np',
+        'bank_name', 'bank_account_number', 'logo_path', 'status',
     ];
 
     public function offerings()

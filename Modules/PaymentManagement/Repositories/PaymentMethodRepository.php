@@ -21,6 +21,7 @@ class PaymentMethodRepository extends Repository
     public function listForAdmin(): Collection
     {
         return $this->query()
+            ->with('company:id,name,code')
             ->withCount('transactions')
             ->orderBy('sort_order')
             ->orderBy('name')

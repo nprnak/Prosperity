@@ -25,4 +25,48 @@ class NepaliAmountWordsService
 
         return number_format($number).' Rupaiya Matra';
     }
+
+    /**
+     * English words using the Nepali numbering system (crore/lakh),
+     * e.g. 1500000 -> "Fifteen Lakh" — used on the payment receipt as
+     * "Nepalese Rupees Fifteen Lakh Only".
+     */
+    public function toEnglishWords(string|float|int $amount): string
+    {
+        $number = (int) floor((float) $amount);
+
+        if ($number === 0) {
+            return 'Zero';
+        }
+
+        $parts = [];
+
+        foreach ([['Crore', 10000000], ['Lakh', 100000], ['Thousand', 1000], ['Hundred', 100]] as [$label, $value]) {
+            if ($number >= $value) {
+                $parts[] = $this->englishBelowHundred(intdiv($number, $value)).' '.$label;
+                $number %= $value;
+            }
+        }
+
+        if ($number > 0) {
+            $parts[] = $this->englishBelowHundred($number);
+        }
+
+        return implode(' ', $parts);
+    }
+
+    private function englishBelowHundred(int $number): string
+    {
+        $ones = [
+            '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+            'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen',
+        ];
+        $tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+        if ($number < 20) {
+            return $ones[$number];
+        }
+
+        return trim($tens[intdiv($number, 10)].' '.$ones[$number % 10]);
+    }
 }

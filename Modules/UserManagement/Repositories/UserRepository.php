@@ -46,7 +46,7 @@ class UserRepository extends Repository
 
     public function ensureDefaultRoles(): void
     {
-        foreach (['admin', 'finance_staff', 'approver', 'user'] as $roleName) {
+        foreach (['admin', 'finance_staff', 'approver', 'applicant'] as $roleName) {
             Role::findOrCreate($roleName, 'web');
         }
     }

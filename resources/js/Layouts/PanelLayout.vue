@@ -9,36 +9,54 @@ const isAdmin = computed(() =>
   page.props.auth?.user?.roles?.some((role) => role.name === 'admin') ?? false,
 );
 
-const adminMenuItems = [
-  { label: 'Dashboard', icon: '📊', route: 'admin.dashboard', startsWith: '/admin/dashboard' },
-  { label: 'Role Hub', icon: '🧩', route: 'admin.roles.hub', startsWith: '/admin/roles/hub' },
-  { label: 'Users', icon: '👥', route: 'admin.users', startsWith: '/admin/users' },
-  { label: 'Companies', icon: '🏢', route: 'admin.companies', startsWith: '/admin/companies' },
-  { label: 'Applications', icon: '📝', route: 'admin.applications', startsWith: '/admin/applications' },
-  { label: 'Payments', icon: '💳', route: 'admin.payments', startsWith: '/admin/payments' },
-  { label: 'Payment Methods', icon: '🏦', route: 'admin.payment-methods', startsWith: '/admin/payment-methods' },
-  { label: 'Allotments', icon: '📋', route: 'admin.allotments', startsWith: '/admin/allotments' },
-  { label: 'Reports', icon: '📈', route: 'admin.reports', startsWith: '/admin/reports' },
-  { label: 'Admin Settings', icon: '⚙️', route: 'admin.credentials', startsWith: '/admin/credentials' },
-  { label: 'Site Settings', icon: '🏛️', route: 'admin.settings', startsWith: '/admin/settings' },
-  { label: 'Activity Log', icon: '🔍', route: 'admin.logs', startsWith: '/admin/logs' },
-  { label: 'Share Application', icon: '🧾', route: 'applications.wizard', startsWith: '/applications' },
+const permissions = computed(() => page.props.auth?.permissions || []);
+const can = (permission) => !permission || permissions.value.includes(permission);
+
+// Staff items appear only when the user holds the matching permission —
+// admins hold every permission, so they still see the full menu.
+const staffMenuItems = [
+  { label: 'Dashboard', icon: '📊', route: 'admin.dashboard', startsWith: '/admin/dashboard', permission: 'dashboard.view-admin' },
+  { label: 'Role Hub', icon: '🧩', route: 'admin.roles.hub', startsWith: '/admin/roles/hub', permission: 'user.manage' },
+  { label: 'Users', icon: '👥', route: 'admin.users', startsWith: '/admin/users', permission: 'user.manage' },
+  { label: 'Companies', icon: '🏢', route: 'admin.companies', startsWith: '/admin/companies', permission: 'company.manage' },
+  { label: 'Applications', icon: '📝', route: 'admin.applications', startsWith: '/admin/applications', permission: 'application.view-any' },
+  { label: 'Payments', icon: '💳', route: 'admin.payments', startsWith: '/admin/payments', permission: 'payment.view-any' },
+  { label: 'Payment Methods', icon: '🏦', route: 'admin.payment-methods', startsWith: '/admin/payment-methods', permission: 'payment-method.manage' },
+  { label: 'Approvals', icon: '✅', route: 'approver.dashboard', startsWith: '/approver', permission: 'application.approve' },
+  { label: 'Allotments', icon: '📋', route: 'admin.allotments', startsWith: '/admin/allotments', permission: 'allotment.manage' },
+  { label: 'Reports', icon: '📈', route: 'admin.reports', startsWith: '/admin/reports', permission: 'report.view' },
+  { label: 'Admin Settings', icon: '⚙️', route: 'admin.credentials', startsWith: '/admin/credentials', permission: 'settings.manage' },
+  { label: 'Site Settings', icon: '🏛️', route: 'admin.settings', startsWith: '/admin/settings', permission: 'settings.manage' },
+  { label: 'Activity Log', icon: '🔍', route: 'admin.logs', startsWith: '/admin/logs', permission: 'audit.view' },
+];
+
+const personalMenuItems = [
+  { label: 'Share Application', icon: '🧾', route: 'applications.wizard', startsWith: '/applications', permission: 'application.submit' },
   { label: 'Profile', icon: '👤', route: 'profile.edit', startsWith: '/profile' },
   { label: 'Settings', icon: '🛠️', route: 'settings.edit', startsWith: '/settings' },
 ];
 
-const userMenuItems = [
-  { label: 'Dashboard ', icon: '🏠', route: 'dashboard', startsWith: '/dashboard' },
-  { label: 'Share Application', icon: '🧾', route: 'applications.wizard', startsWith: '/applications' },
-  { label: 'Profile', icon: '👤', route: 'profile.edit', startsWith: '/profile' },
-  { label: 'Settings', icon: '⚙️', route: 'settings.edit', startsWith: '/settings' },
-];
+const visibleStaffItems = computed(() => staffMenuItems.filter((item) => can(item.permission)));
+const isStaff = computed(() => visibleStaffItems.value.length > 0);
 
-const menuItems = computed(() => (isAdmin.value ? adminMenuItems : userMenuItems));
+const menuItems = computed(() => {
+  if (isStaff.value) {
+    return [...visibleStaffItems.value, ...personalMenuItems.filter((item) => can(item.permission))];
+  }
 
-const panelHeading = computed(() => (isAdmin.value ? 'Admin Panel' : 'User Panel'));
+  return [
+    { label: 'Dashboard ', icon: '🏠', route: 'dashboard', startsWith: '/dashboard' },
+    ...personalMenuItems.filter((item) => can(item.permission)),
+  ];
+});
+
+const panelHeading = computed(() => (isAdmin.value ? 'Admin Panel' : isStaff.value ? 'Staff Panel' : 'User Panel'));
 const panelSubheading = computed(() =>
-  isAdmin.value ? 'Access admin modules and user-side options' : 'Manage settings and share application',
+  isAdmin.value
+    ? 'Access admin modules and user-side options'
+    : isStaff.value
+      ? 'Modules available to your role'
+      : 'Manage settings and share application',
 );
 const panelHeaderClass = 'bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500';
 const activeClass = computed(() =>

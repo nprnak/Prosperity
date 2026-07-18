@@ -9,9 +9,19 @@ const props = defineProps({
   sharesInWords: String,
   photoUrl: String,
   voucherImageUrl: String,
+  collectionAccount: Object,
 });
 
 const applicant = computed(() => props.application?.applicant || {});
+const company = computed(() => props.application?.offering?.company || {});
+
+const accountHolderName = computed(
+  () => props.collectionAccount?.account_name
+    || [company.value.name_np, (company.value.name || '').toUpperCase()].filter(Boolean).join(' / '),
+);
+// Collection account details fall back to the company's own bank account.
+const collectionBankName = computed(() => props.collectionAccount?.bank_name || company.value.bank_name);
+const collectionAccountNumber = computed(() => props.collectionAccount?.account_number || company.value.bank_account_number);
 const permanent = computed(() => applicant.value.permanent_address || {});
 const temporary = computed(() => applicant.value.temporary_address || {});
 const nominee = computed(() => applicant.value.nominees?.[0] || {});
@@ -67,7 +77,7 @@ const otherSourceText = computed(
 );
 
 const paymentModeLabel = computed(() => {
-  const mode = (payment.value.payment_mode || '').toLowerCase();
+  const mode = (props.application.payment_type || payment.value.payment_mode || '').toLowerCase();
   const labels = {
     ips: 'IPS',
     connect_ips: 'IPS',
@@ -110,9 +120,17 @@ onMounted(() => {
       <div class="print-area mx-auto max-w-4xl bg-white p-6 text-[13px] leading-snug text-black shadow-sm ring-1 ring-gray-200 sm:p-8 print:max-w-none print:p-0 print:shadow-none print:ring-0">
         <!-- Header -->
         <div class="flex items-start justify-between gap-4">
-          <div class="shrink-0">
-            <div class="text-xl font-extrabold tracking-wide text-indigo-900">PROSPERITY</div>
-            <div class="text-[11px] font-medium tracking-widest text-gray-600">— Holdings Limited —</div>
+          <div class="flex shrink-0 items-center gap-3">
+            <img
+              v-if="company.logo_path"
+              :src="route('companies.logo', company.id)"
+              :alt="`${company.name} logo`"
+              class="h-14 w-14 object-contain"
+            />
+            <div>
+              <div class="text-xl font-extrabold uppercase tracking-wide text-indigo-900">{{ company.name || $page.props.settings?.org_name }}</div>
+              <div v-if="company.name_np" class="text-[11px] font-medium tracking-widest text-gray-600">— {{ company.name_np }} —</div>
+            </div>
           </div>
           <div class="pt-2 text-center">
             <h1 class="inline-block border-b-2 border-black text-lg font-bold">संस्थापक शेयर खरीद दरखास्त फाराम</h1>
@@ -138,8 +156,8 @@ onMounted(() => {
         <div class="mt-2 flex items-start justify-between gap-4">
           <div>
             श्री सञ्चालक समिति,<br />
-            प्रोस्पेरिटी होल्डिङ्स लिमिटेड<br />
-            का.म.न.पा.- ११, काठमाडौँ।
+            {{ company.name_np || company.name }}<br />
+            {{ company.address_np || company.address }}
           </div>
           <!-- Beneficiary (demat) account boxes -->
           <table class="border-collapse text-center">
@@ -161,7 +179,7 @@ onMounted(() => {
 
         <p class="mt-3">महोदय,</p>
         <p class="mt-1 text-justify indent-8">
-          उपरोक्त सम्बन्धमा त्यस कम्पनीको संस्थापक समुहको शेयरमा लगानी गर्न इच्छुक भएकोले प्रति शेयर रू. {{ application.amount_per_share || '१००' }}/- का दरले हुन आउने शेयर कित्ता
+          उपरोक्त सम्बन्धमा त्यस कम्पनीको संस्थापक समुहको शेयरमा लगानी गर्न इच्छुक भएकोले प्रति शेयर रू. {{ application.amount_per_share || '..........' }}/- का दरले हुन आउने शेयर कित्ता
           <span class="border-b border-dotted border-black px-2 font-semibold">{{ application.shares_applied }}</span>
           वापत रकम रू. <span class="border-b border-dotted border-black px-2 font-semibold">{{ application.total_amount_declared }}</span>
           (अक्षरेपि <span class="border-b border-dotted border-black px-2 font-semibold">{{ amountInWords }}</span>) जम्मा गरेको
@@ -185,14 +203,14 @@ onMounted(() => {
             </tr>
             <tr>
               <td colspan="2" class="border border-black px-2 py-1">
-                <span class="font-semibold">नाम:</span> प्रोस्पेरिटी होल्डिङ्स लिमिटेड / PROSPERITY HOLDINGS LIMITED
+                <span class="font-semibold">नाम:</span> {{ accountHolderName }}
               </td>
               <td colspan="2" class="border border-black px-2 py-1">
-                <span class="font-semibold">बैंकको नाम:</span> सिद्धार्थ बैंक लिमिटेड, ईमाडोल शाखा
+                <span class="font-semibold">बैंकको नाम:</span> {{ collectionBankName }}
               </td>
             </tr>
             <tr>
-              <td colspan="2" class="border border-black px-2 py-1"><span class="font-semibold">चल्ती खाता नं:</span> ५५५११४५३८४१</td>
+              <td colspan="2" class="border border-black px-2 py-1"><span class="font-semibold">चल्ती खाता नं:</span> {{ collectionAccountNumber }}</td>
               <td class="border border-black px-2 py-1"><span class="font-semibold">भुक्तानी मिति:</span> {{ formatDate(payment.payment_date) }}</td>
               <td class="border border-black px-2 py-1">
                 <span class="font-semibold">भुक्तानी प्रकार:</span>
@@ -202,10 +220,10 @@ onMounted(() => {
             </tr>
             <tr>
               <td colspan="2" class="border border-black px-2 py-1">
-                <span class="font-semibold">चेक खिचिएको/भुक्तानी गरिएको बैंक:</span> {{ payment.bank_name }}
+                <span class="font-semibold">चेक खिचिएको/भुक्तानी गरिएको बैंक:</span> {{ application.payment_deposited_bank || payment.bank_name }}
               </td>
               <td colspan="2" class="border border-black px-2 py-1">
-                <span class="font-semibold">कारोबार कोड / चेक नं:</span> {{ payment.payment_reference_no || payment.cheque_no || application.asba_reference }}
+                <span class="font-semibold">कारोबार कोड / चेक नं:</span> {{ application.payment_deposited_ref_no || payment.payment_reference_no || payment.cheque_no || application.asba_reference }}
               </td>
             </tr>
             <tr>

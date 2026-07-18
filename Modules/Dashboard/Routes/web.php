@@ -13,7 +13,8 @@ Route::get('/dashboard', function () {
     }
 
     if ($user?->hasRole('finance_staff')) {
-        return redirect()->route('finance.dashboard');
+        // Finance reviews applications in the shared admin-style list.
+        return redirect()->route('admin.applications');
     }
 
     if ($user?->hasRole('reviewer')) {

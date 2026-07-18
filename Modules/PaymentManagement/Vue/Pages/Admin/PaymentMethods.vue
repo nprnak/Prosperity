@@ -4,10 +4,10 @@ import InputError from '@/Components/InputError.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
-const props = defineProps({ methods: Array });
+const props = defineProps({ methods: Array, companies: Array });
 
 const blankMethod = {
-    name: '', account_name: '', account_number: '', bank_name: '',
+    company_id: null, name: '', account_name: '', account_number: '', bank_name: '',
     instructions: '', qr_image: null, status: 'active', sort_order: 0,
 };
 
@@ -17,6 +17,7 @@ const editingId = ref(null);
 const startEdit = (method) => {
     editingId.value = method.id;
     Object.assign(form, {
+        company_id: method.company_id || null,
         name: method.name,
         account_name: method.account_name || '',
         account_number: method.account_number || '',
@@ -63,6 +64,16 @@ const destroy = (method) => {
       <div class="bg-white p-5 rounded-lg shadow">
         <h3 class="font-semibold text-base mb-4">{{ editingId ? 'Edit payment method' : 'Add payment method' }}</h3>
         <div class="grid gap-4 md:grid-cols-3">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Company</label>
+            <select v-model="form.company_id" class="w-full rounded-lg border border-gray-300 px-3 py-2">
+              <option :value="null">— No company —</option>
+              <option v-for="company in companies" :key="company.id" :value="company.id">
+                {{ company.name }} ({{ company.code }})
+              </option>
+            </select>
+            <InputError :message="form.errors.company_id" class="mt-1" />
+          </div>
           <div>
             <label class="mb-1 block text-sm font-medium text-gray-700">Name *</label>
             <input v-model="form.name" placeholder="e.g. eSewa, Bank Deposit" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
@@ -111,6 +122,7 @@ const destroy = (method) => {
             <tr class="text-left text-xs text-gray-500 uppercase border-b">
               <th class="px-4 py-3">QR</th>
               <th class="px-4 py-3">Name</th>
+              <th class="px-4 py-3">Company</th>
               <th class="px-4 py-3">Bank / Account</th>
               <th class="px-4 py-3">Payments</th>
               <th class="px-4 py-3">Status</th>
@@ -124,6 +136,7 @@ const destroy = (method) => {
                 <span v-else class="text-xs text-gray-400">none</span>
               </td>
               <td class="px-4 py-3 font-medium">{{ method.name }}</td>
+              <td class="px-4 py-3 text-gray-600">{{ method.company?.name || '—' }}</td>
               <td class="px-4 py-3 text-gray-600">
                 {{ method.bank_name || '—' }}<span v-if="method.account_number"> · {{ method.account_number }}</span>
               </td>
@@ -140,7 +153,7 @@ const destroy = (method) => {
               </td>
             </tr>
             <tr v-if="!methods.length">
-              <td colspan="6" class="px-4 py-6 text-center text-sm text-gray-500">No payment methods configured yet.</td>
+              <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500">No payment methods configured yet.</td>
             </tr>
           </tbody>
         </table>

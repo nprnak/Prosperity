@@ -105,6 +105,10 @@ class ApplicationWizardService
             'amount_per_share' => $offering->share_rate,
             'total_amount_declared' => $totalAmount,
             'asba_reference' => $payload['asba_reference'] ?? $application->asba_reference,
+            'payment_type' => $payload['payment_type'] ?? $application->payment_type,
+            'payment_deposited_bank' => $payload['payment_deposited_bank'] ?? $application->payment_deposited_bank,
+            'payment_deposited_ref_no' => $payload['payment_deposited_ref_no'] ?? $application->payment_deposited_ref_no,
+            'declaration_accepted' => (bool) ($payload['declaration_accepted'] ?? false),
         ]);
 
         if (($payload['bank_voucher_image'] ?? null) instanceof UploadedFile) {
@@ -167,6 +171,24 @@ class ApplicationWizardService
         $application->save();
 
         $this->events->record($application, $user->id, $fromStatus, ShareApplication::STATUS_SUBMITTED, 'Application submitted by applicant.');
+
+        // The declared payment goes straight into finance's verification queue
+        // as a pending transaction — no separate "record payment" step needed.
+        if (! $application->paymentTransactions()->exists()) {
+            $isCheque = $application->payment_type === 'cheque';
+
+            $application->paymentTransactions()->create([
+                'receipt_number' => $this->numbers->generateReceiptNumber(),
+                'amount' => $application->total_amount_declared,
+                'payment_mode' => ['connect_ips' => 'ips', 'mobile_banking' => 'mobile_banking', 'cheque' => 'cheque'][$application->payment_type] ?? 'online_transfer',
+                'bank_name' => $application->payment_deposited_bank,
+                'payment_reference_no' => $isCheque ? null : $application->payment_deposited_ref_no,
+                'cheque_no' => $isCheque ? $application->payment_deposited_ref_no : null,
+                'payment_date' => now()->toDateString(),
+                'verification_status' => 'pending',
+                'issued_by' => $user->id,
+            ]);
+        }
 
         if ($application->applicant?->email) {
             Notification::route('mail', $application->applicant->email)

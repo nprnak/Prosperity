@@ -5,12 +5,14 @@ namespace Modules\PaymentManagement\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\CompanyManagement\Models\Company;
 
 class PaymentMethod extends Model
 {
     use HasFactory, SoftDeletes;
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_INACTIVE = 'inactive';
 
     protected $fillable = [
@@ -20,7 +22,7 @@ class PaymentMethod extends Model
 
     public function company()
     {
-        return $this->belongsTo(\Modules\CompanyManagement\Models\Company::class);
+        return $this->belongsTo(Company::class);
     }
 
     public function transactions()

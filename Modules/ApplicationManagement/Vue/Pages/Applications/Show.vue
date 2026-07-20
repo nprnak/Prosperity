@@ -39,12 +39,10 @@ const formatDate = (value) => (value ? String(value).slice(0, 10) : '');
 
 const submittedDate = computed(() => formatDate(props.application?.submitted_at));
 
-const titleNp = computed(() => {
-  const title = (applicant.value.title || '').toLowerCase().replace('.', '');
-  if (title === 'mrs') return 'श्रीमती';
-  if (title === 'ms' || title === 'miss') return 'सुश्री';
-  return 'श्री';
-});
+// Nepali labels come from the Title/MaritalStatus/EducationLevel enums via the
+// Profile model's appends; the fallbacks below are print-form defaults for a
+// profile that never filled the field in.
+const titleNp = computed(() => applicant.value.title_label_np || 'श्री');
 
 const titleEn = computed(() => {
   const title = (applicant.value.title || '').toLowerCase().replace('.', '');
@@ -53,11 +51,9 @@ const titleEn = computed(() => {
   return 'Mr.';
 });
 
-const maritalNp = computed(() => {
-  const status = (applicant.value.marital_status || '').toLowerCase();
-  if (!status) return 'विवाहित/अविवाहित';
-  return status === 'married' ? 'विवाहित' : 'अविवाहित';
-});
+const maritalNp = computed(() => applicant.value.marital_status_label_np || 'विवाहित/अविवाहित');
+
+const educationNp = computed(() => applicant.value.education_label_np || '');
 
 const sourceLabels = {
   salary: 'पारिश्रमिक',
@@ -249,7 +245,7 @@ onMounted(() => {
             </tr>
             <tr>
               <td colspan="2" class="border border-black px-2 py-1"><span class="font-semibold">पति/पत्नीको नाम, थर:</span> {{ applicant.spouse_name }}</td>
-              <td class="border border-black px-2 py-1"><span class="font-semibold">शैक्षिक योग्यता:</span> {{ applicant.education }}</td>
+              <td class="border border-black px-2 py-1"><span class="font-semibold">शैक्षिक योग्यता:</span> {{ educationNp }}</td>
               <td class="border border-black px-2 py-1"><span class="font-semibold">पेशा:</span> {{ applicant.occupation }}</td>
             </tr>
             <tr>

@@ -8,6 +8,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\PaymentManagement\Models\PaymentTransaction;
+use Modules\SettingsManagement\Models\Setting;
 use Modules\VoucherManagement\Models\Voucher;
 use Modules\VoucherManagement\Repositories\VoucherRepository;
 
@@ -22,8 +23,7 @@ class VoucherIssueService
         private NumberGeneratorService $numbers,
         private NepaliAmountWordsService $words,
         private VoucherQrService $qr,
-    ) {
-    }
+    ) {}
 
     public function issue(ShareApplication $application, PaymentTransaction $payment, int $generatedBy): Voucher
     {
@@ -48,8 +48,8 @@ class VoucherIssueService
             'application' => $application,
             'payment' => $payment,
             'voucher' => $voucher,
-            'companyName' => $company?->name ?? \Modules\SettingsManagement\Models\Setting::get('org_name', 'Prosperity Holdings Limited'),
-            'companyAddress' => $company?->address ?? \Modules\SettingsManagement\Models\Setting::get('org_address'),
+            'companyName' => $company?->name ?? Setting::get('org_name', 'Prosperity Holdings Limited'),
+            'companyAddress' => $company?->address ?? Setting::get('org_address'),
             'logoDataUri' => $logoDataUri,
             'amountInEnglishWords' => $this->words->toEnglishWords($payment->amount),
             'verificationUrl' => $this->qr->verificationUrl($voucher),

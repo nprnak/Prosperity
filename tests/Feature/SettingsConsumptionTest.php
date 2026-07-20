@@ -7,13 +7,17 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicantManagement\Enums\ProfileStatus;
+use Modules\ApplicantManagement\Models\Profile;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\SettingsManagement\Models\Setting;
+use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
 class SettingsConsumptionTest extends TestCase
 {
+    use CreatesProfiles;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -28,7 +32,7 @@ class SettingsConsumptionTest extends TestCase
         Storage::fake('private');
         Setting::set('max_upload_size_kb', '100', 'application');
 
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         $this->actingAs($admin)->post('/admin/payment-methods', [
             'name' => 'eSewa',
@@ -51,14 +55,14 @@ class SettingsConsumptionTest extends TestCase
         $applicant = $this->approvedApplicant($user);
 
         // an already-submitted application fills the quota of one
-        $this->application($applicant, ShareApplication::STATUS_SUBMITTED, 'APP-1');
-        $draft = $this->application($applicant, ShareApplication::STATUS_DRAFT, 'DRAFT-000001');
+        $this->application($applicant, ApplicationStatus::Submitted, 'APP-1');
+        $draft = $this->application($applicant, ApplicationStatus::Draft, 'DRAFT-000001');
 
         $this->actingAs($user)
             ->post("/applications/{$draft->id}/submit", ['declaration_accepted' => true])
             ->assertSessionHasErrors('profile');
 
-        $this->assertSame(ShareApplication::STATUS_DRAFT, $draft->fresh()->status);
+        $this->assertSame(ApplicationStatus::Draft, $draft->fresh()->status);
 
         // raising the cap allows the submission through
         Setting::set('max_applications_per_user', '5', 'application');
@@ -67,33 +71,20 @@ class SettingsConsumptionTest extends TestCase
             ->post("/applications/{$draft->id}/submit", ['declaration_accepted' => true])
             ->assertSessionHasNoErrors();
 
-        $this->assertSame(ShareApplication::STATUS_SUBMITTED, $draft->fresh()->status);
+        $this->assertSame(ApplicationStatus::Submitted, $draft->fresh()->status);
     }
 
-    protected function approvedApplicant(User $user): Applicant
+    protected function approvedApplicant(User $user): Profile
     {
-        $applicant = Applicant::create([
-            'user_id' => $user->id,
-            'full_name_nepali' => 'परीक्षण',
-            'full_name_english' => 'Applicant '.$user->id,
-            'date_of_birth' => '1990-01-01',
-            'age' => 36,
-            'father_name' => 'F',
-            'grandfather_name' => 'GF',
-            'marital_status' => 'single',
-            'permanent_district' => 'KTM',
-            'permanent_municipality' => 'KMC',
-            'permanent_ward' => '1',
-            'mobile_number' => '98000000'.$user->id,
-        ]);
+        $applicant = $this->minimalProfile($user);
 
         // profile_status is intentionally not mass-assignable
-        $applicant->forceFill(['profile_status' => Applicant::PROFILE_APPROVED])->save();
+        $applicant->forceFill(['profile_status' => ProfileStatus::Approved])->save();
 
         return $applicant;
     }
 
-    protected function application(Applicant $applicant, string $status, string $number): ShareApplication
+    protected function application(Profile $applicant, ApplicationStatus $status, string $number): ShareApplication
     {
         return ShareApplication::create([
             'applicant_id' => $applicant->id,

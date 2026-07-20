@@ -2,8 +2,6 @@
 
 namespace App\Providers;
 
-use Modules\PaymentManagement\Models\PaymentTransaction;
-use Modules\ApplicationManagement\Models\ShareApplication;
 use App\Models\User;
 use App\Observers\PaymentTransactionObserver;
 use App\Observers\ShareApplicationObserver;
@@ -11,6 +9,8 @@ use App\Observers\UserObserver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Modules\ApplicationManagement\Models\ShareApplication;
+use Modules\PaymentManagement\Models\PaymentTransaction;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,7 +32,9 @@ class AppServiceProvider extends ServiceProvider
         PaymentTransaction::observe(PaymentTransactionObserver::class);
         User::observe(UserObserver::class);
 
-        // Admin role bypasses all Gates.
-        Gate::before(fn ($user, $ability) => $user->hasRole('admin') ? true : null);
+        // Grants every permission. Note this is a *permission* shortcut only:
+        // WorkflowService still bars a super admin from taking more than one
+        // stage of the same record.
+        Gate::before(fn ($user, $ability) => $user->hasRole('super_admin') ? true : null);
     }
 }

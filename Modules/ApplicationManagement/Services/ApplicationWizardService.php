@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApplicationManagement\Notifications\ApplicationSubmittedNotification;
 use Modules\ApplicationManagement\Repositories\ApplicationEventRepository;
@@ -27,8 +28,7 @@ class ApplicationWizardService
         private ApplicationEventRepository $events,
         private ProfileRepository $profiles,
         private NumberGeneratorService $numbers,
-    ) {
-    }
+    ) {}
 
     /**
      * @throws ValidationException
@@ -166,11 +166,11 @@ class ApplicationWizardService
         }
 
         $fromStatus = $application->status;
-        $application->status = ShareApplication::STATUS_SUBMITTED;
+        $application->status = ApplicationStatus::Submitted;
         $application->submitted_at = now();
         $application->save();
 
-        $this->events->record($application, $user->id, $fromStatus, ShareApplication::STATUS_SUBMITTED, 'Application submitted by applicant.');
+        $this->events->record($application, $user->id, $fromStatus, ApplicationStatus::Submitted, 'Application submitted by applicant.');
 
         // The declared payment goes straight into finance's verification queue
         // as a pending transaction — no separate "record payment" step needed.

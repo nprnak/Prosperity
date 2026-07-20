@@ -122,10 +122,6 @@ const statusBadge = (status) => ({
         <h2 class="text-xl font-semibold text-gray-900">Companies &amp; Share Offerings</h2>
       </div>
 
-      <div v-if="$page.props.flash?.success" class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-        {{ $page.props.flash.success }}
-      </div>
-
       <div class="bg-white p-5 rounded-lg shadow">
         <h3 class="font-semibold text-base mb-4">{{ editingCompanyId ? 'Edit company' : 'Add company' }}</h3>
         <div class="grid gap-4 md:grid-cols-4">

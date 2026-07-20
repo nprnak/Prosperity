@@ -4,14 +4,13 @@ namespace Modules\ApplicantManagement\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Modules\ApplicantManagement\Enums\ProfileStatus;
 use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 
 class ApplicantProfileSubmissionController extends Controller
 {
-    public function __construct(private ProfileRepository $profiles)
-    {
-    }
+    public function __construct(private ProfileRepository $profiles) {}
 
     /**
      * Applicant submits their own profile for KYC review.
@@ -26,14 +25,21 @@ class ApplicantProfileSubmissionController extends Controller
             ]);
         }
 
-        if (! in_array($applicant->profile_status, [Profile::PROFILE_INCOMPLETE, Profile::PROFILE_REJECTED], true)) {
+        if (! $applicant->profile_status->isEditableByApplicant()) {
             return back()->withErrors([
-                'profile' => 'Your profile is already '.$applicant->profile_status.'.',
+                'profile' => 'Your profile is already '.$applicant->profile_status->labelEn().'.',
             ]);
         }
 
+        // A profile coming back after a return or rejection starts a fresh
+        // cycle, so earlier sign-offs no longer count toward the act-once rule
+        // and three people must sign the corrected version.
+        if ($applicant->profile_status !== ProfileStatus::Incomplete) {
+            $applicant->restartWorkflowCycle();
+        }
+
         $applicant->forceFill([
-            'profile_status' => Profile::PROFILE_SUBMITTED,
+            'profile_status' => ProfileStatus::Submitted,
             'profile_submitted_at' => now(),
             'profile_rejection_reason' => null,
         ])->save();

@@ -5,14 +5,17 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicantManagement\Enums\ProfileStatus;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\CompanyManagement\Models\Company;
 use Modules\CompanyManagement\Models\ShareOffering;
+use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
 class CompanyOfferingTest extends TestCase
 {
+    use CreatesProfiles;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -44,20 +47,7 @@ class CompanyOfferingTest extends TestCase
     {
         $user = User::factory()->create()->assignRole('applicant');
 
-        Applicant::create([
-            'user_id' => $user->id,
-            'full_name_nepali' => 'परीक्षण',
-            'full_name_english' => 'Applicant '.$user->id,
-            'date_of_birth' => '1990-01-01',
-            'age' => 36,
-            'father_name' => 'F',
-            'grandfather_name' => 'GF',
-            'marital_status' => 'single',
-            'permanent_district' => 'KTM',
-            'permanent_municipality' => 'KMC',
-            'permanent_ward' => '1',
-            'mobile_number' => '98000000'.$user->id,
-        ])->forceFill(['profile_status' => Applicant::PROFILE_APPROVED])->save();
+        $this->minimalProfile($user)->forceFill(['profile_status' => ProfileStatus::Approved])->save();
 
         return $user;
     }
@@ -67,13 +57,13 @@ class CompanyOfferingTest extends TestCase
         $applicant = User::factory()->create()->assignRole('applicant');
         $this->actingAs($applicant)->get('/admin/companies')->assertForbidden();
 
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
         $this->actingAs($admin)->get('/admin/companies')->assertOk();
     }
 
     public function test_admin_can_create_company_and_offering(): void
     {
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         $this->actingAs($admin)->post('/admin/companies', [
             'name' => 'New Ventures Ltd', 'code' => 'NVL', 'status' => 'active',
@@ -156,6 +146,6 @@ class CompanyOfferingTest extends TestCase
             'declaration_accepted' => true,
         ])->assertSessionHasErrors('profile');
 
-        $this->assertSame(ShareApplication::STATUS_DRAFT, $application->fresh()->status);
+        $this->assertSame(ApplicationStatus::Draft, $application->fresh()->status);
     }
 }

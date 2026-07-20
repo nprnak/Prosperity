@@ -4,12 +4,16 @@ namespace Modules\ApplicantManagement\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Modules\ApplicantManagement\Enums\EducationLevel;
+use Modules\ApplicantManagement\Enums\Gender;
+use Modules\ApplicantManagement\Enums\MaritalStatus;
+use Modules\ApplicantManagement\Enums\SourceOfFunds;
+use Modules\ApplicantManagement\Enums\Title;
 use Modules\ApplicantManagement\Models\Profile;
+use Modules\SettingsManagement\Models\Setting;
 
 class ApplicantProfileUpdateRequest extends FormRequest
 {
-    public const SOURCE_TYPES = ['salary', 'dividend', 'property_sale', 'house_rent', 'share_trading', 'other'];
-
     public function authorize(): bool
     {
         return $this->user() !== null;
@@ -19,18 +23,18 @@ class ApplicantProfileUpdateRequest extends FormRequest
     {
         return [
             // 1. Personal information
-            'title' => ['nullable', 'in:Mr.,Mrs.,Ms.'],
+            'title' => ['nullable', Rule::enum(Title::class)],
             'full_name_np' => ['required', 'string', 'max:255'],
             'date_of_birth' => ['required', 'date', 'before:today'],
-            'gender' => ['required', 'in:male,female,other'],
+            'gender' => ['required', Rule::enum(Gender::class)],
             'nationality' => ['required', 'string', 'max:100'],
-            'marital_status' => ['nullable', 'in:single,married,divorced,widowed'],
+            'marital_status' => ['nullable', Rule::enum(MaritalStatus::class)],
             'father_name' => ['required', 'string', 'max:255'],
             'mother_name' => ['required', 'string', 'max:255'],
             'grandfather_name' => ['required', 'string', 'max:255'],
             'spouse_name' => ['nullable', 'string', 'max:255'],
             'occupation' => ['nullable', 'string', 'max:255'],
-            'education' => ['required', 'string', 'max:255'],
+            'education' => ['required', Rule::enum(EducationLevel::class)],
 
             // 2. Contact
             'mobile' => ['required', 'string', 'max:50'],
@@ -67,7 +71,7 @@ class ApplicantProfileUpdateRequest extends FormRequest
 
             // 7. Source of investment
             'sources' => ['required', 'array', 'min:1'],
-            'sources.*' => ['string', Rule::in(self::SOURCE_TYPES)],
+            'sources.*' => ['string', Rule::enum(SourceOfFunds::class)],
             'source_other_description' => [
                 'nullable', 'string', 'max:255',
                 Rule::requiredIf(fn () => in_array('other', (array) $this->input('sources', []), true)),
@@ -116,7 +120,7 @@ class ApplicantProfileUpdateRequest extends FormRequest
      */
     protected function documentRules(string $documentType, bool $imageOnly = false): array
     {
-        $maxKb = (int) \Modules\SettingsManagement\Models\Setting::get('max_upload_size_kb', 5120);
+        $maxKb = (int) Setting::get('max_upload_size_kb', 5120);
 
         $alreadyUploaded = Profile::query()
             ->where('user_id', $this->user()?->id)

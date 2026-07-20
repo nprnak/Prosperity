@@ -13,9 +13,7 @@ use Modules\UserManagement\Repositories\UserRepository;
 
 class AdminUsersController extends Controller
 {
-    public function __construct(private UserRepository $users)
-    {
-    }
+    public function __construct(private UserRepository $users) {}
 
     public function index(Request $request): Response
     {

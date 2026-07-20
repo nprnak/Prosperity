@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use Modules\ApplicantManagement\Models\Profile;
+use Modules\ApplicantManagement\Enums\ProfileStatus;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
@@ -24,8 +24,7 @@ class ApplicationWizardController extends Controller
         private ApplicationWizardService $wizard,
         private ShareApplicationRepository $applications,
         private ProfileRepository $profiles,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request, ShareOfferingRepository $offerings)
     {
@@ -33,9 +32,10 @@ class ApplicationWizardController extends Controller
 
         return Inertia::render('Applications/Wizard', [
             'draft' => $this->applications->latestDraftForUser($request->user()->id),
+            'activeApplication' => $this->applications->activeForUser($request->user()->id),
             'profile' => $applicantProfile,
             'profileCompleted' => $applicantProfile?->isProfileComplete() ?? false,
-            'profileStatus' => $applicantProfile->profile_status ?? Profile::PROFILE_INCOMPLETE,
+            'profileStatus' => $applicantProfile->profile_status ?? ProfileStatus::Incomplete,
             'offerings' => $offerings->openNow(),
         ]);
     }

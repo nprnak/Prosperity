@@ -5,14 +5,16 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\PaymentManagement\Models\PaymentTransaction;
 use Modules\VoucherManagement\Models\Voucher;
+use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
 class RbacTest extends TestCase
 {
+    use CreatesProfiles;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -55,7 +57,7 @@ class RbacTest extends TestCase
 
     public function test_approver_can_access_approver_and_allotment_pages_but_not_finance_or_admin(): void
     {
-        $approver = $this->userWithRole('approver');
+        $approver = $this->userWithRole('application_approver');
 
         $this->actingAs($approver)->get('/approver/dashboard')->assertOk();
         $this->actingAs($approver)->get('/allotments/register')->assertOk();
@@ -65,7 +67,7 @@ class RbacTest extends TestCase
 
     public function test_admin_can_access_everything(): void
     {
-        $admin = $this->userWithRole('admin');
+        $admin = $this->userWithRole('super_admin');
 
         foreach (['/admin/dashboard', '/admin/users', '/admin/applications', '/admin/payments', '/admin/allotments', '/admin/reports', '/admin/settings', '/admin/logs', '/finance/dashboard', '/approver/dashboard', '/allotments/register', '/applications/wizard'] as $uri) {
             $this->actingAs($admin)->get($uri)->assertOk();
@@ -100,7 +102,7 @@ class RbacTest extends TestCase
         $voucher = $this->voucherFor($owner);
 
         // 404 (missing pdf file), never 403: authorization passed.
-        $response = $this->actingAs($this->userWithRole('approver'))
+        $response = $this->actingAs($this->userWithRole('application_approver'))
             ->get("/vouchers/{$voucher->id}/download");
 
         $this->assertNotSame(403, $response->status());
@@ -108,25 +110,12 @@ class RbacTest extends TestCase
 
     protected function draftApplicationFor(User $user): ShareApplication
     {
-        $applicant = Applicant::create([
-            'user_id' => $user->id,
-            'full_name_nepali' => 'परीक्षण',
-            'full_name_english' => 'Test Applicant '.$user->id,
-            'date_of_birth' => '1990-01-01',
-            'age' => 36,
-            'father_name' => 'Father',
-            'grandfather_name' => 'Grandfather',
-            'marital_status' => 'single',
-            'permanent_district' => 'Kathmandu',
-            'permanent_municipality' => 'KMC',
-            'permanent_ward' => '1',
-            'mobile_number' => '98000000'.$user->id,
-        ]);
+        $applicant = $this->minimalProfile($user);
 
         return ShareApplication::create([
             'applicant_id' => $applicant->id,
             'application_number' => 'DRAFT-TEST-'.$user->id,
-            'status' => ShareApplication::STATUS_DRAFT,
+            'status' => ApplicationStatus::Draft,
             'shares_applied' => 10,
             'amount_per_share' => '100.00',
             'total_amount_declared' => '1000.00',

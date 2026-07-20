@@ -8,6 +8,7 @@ const props = defineProps({
   draft: Object,
   profileCompleted: Boolean,
   profileStatus: { type: String, default: 'incomplete' },
+  activeApplication: { type: Object, default: null },
   offerings: { type: Array, default: () => [] },
 });
 
@@ -42,6 +43,15 @@ const onVoucherChange = (event) => {
 
 const hasDraft = computed(() => Boolean(props.draft?.id));
 const profileReady = computed(() => props.profileStatus === 'approved');
+// The three KYC sign-off stages all read as "under review" to the applicant.
+const profileInReview = computed(() => ['submitted', 'verified', 'reviewed'].includes(props.profileStatus));
+const profileReturned = computed(() => props.profileStatus === 'returned');
+
+// An application already in the chain is not editable; show its progress
+// instead of a fresh wizard.
+const applicationInReview = computed(() => Boolean(props.activeApplication)
+    && !['returned', 'draft'].includes(props.activeApplication.status));
+const applicationReturned = computed(() => props.activeApplication?.status === 'returned');
 
 const selectedOffering = computed(
   () => props.offerings.find((offering) => offering.id === form.payload.share_offering_id) || null,
@@ -126,13 +136,35 @@ const submitFinal = () => {
         </p>
       </div>
 
-      <div v-if="!profileReady" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
+      <div v-if="applicationInReview" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
+        <h4 class="text-lg font-semibold">Application Under Review</h4>
+        <p class="mt-2 text-sm">
+          Application {{ activeApplication.application_number }} is
+          <span class="font-semibold">{{ activeApplication.status_label }}</span>
+          and cannot be edited while the review team works through it.
+          You will be notified if anything needs changing.
+        </p>
+      </div>
+
+      <div v-else-if="applicationReturned" class="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 shadow-sm">
+        <h4 class="text-lg font-semibold">Application Returned for Correction</h4>
+        <p class="mt-2 text-sm">
+          Application {{ activeApplication.application_number }} was returned so you can correct it.
+          Once resubmitted it goes back through all three review stages.
+        </p>
+      </div>
+
+      <div v-else-if="!profileReady" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
         <h4 class="text-lg font-semibold">
-          {{ profileStatus === 'submitted' ? 'Profile Under Review' : 'Profile Approval Required' }}
+          {{ profileInReview ? 'Profile Under Review' : profileReturned ? 'Profile Returned for Correction' : 'Profile Approval Required' }}
         </h4>
         <p class="mt-2 text-sm">
-          <template v-if="profileStatus === 'submitted'">
-            Your profile has been submitted and is being reviewed. You can apply for shares as soon as it is approved.
+          <template v-if="profileInReview">
+            Your profile is with the review team and cannot be edited right now.
+            You can apply for shares as soon as it is approved.
+          </template>
+          <template v-else-if="profileReturned">
+            Your profile was returned so you can correct it. Update it and submit again — it then goes back through all three review stages.
           </template>
           <template v-else-if="!profileCompleted">
             Your share application is locked until your profile is complete with all required information, education, address, and documents, and has been approved.

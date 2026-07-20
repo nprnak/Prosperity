@@ -10,9 +10,7 @@ use Modules\ApplicationManagement\Models\ShareApplication;
 
 class ApplicationsReportExport implements FromQuery, WithHeadings, WithMapping
 {
-    public function __construct(private readonly Builder $query)
-    {
-    }
+    public function __construct(private readonly Builder $query) {}
 
     public function query()
     {
@@ -55,7 +53,7 @@ class ApplicationsReportExport implements FromQuery, WithHeadings, WithMapping
             $application->total_amount_declared,
             $application->verified_amount ?? '0.00',
             $application->allotment?->shares_allotted ?? 0,
-            $application->status,
+            $application->status->value,
             $application->created_at?->toDateString(),
         ];
     }

@@ -11,9 +11,7 @@ use Modules\VoucherManagement\Repositories\VoucherRepository;
 
 class VoucherController extends Controller
 {
-    public function __construct(private VoucherRepository $vouchers)
-    {
-    }
+    public function __construct(private VoucherRepository $vouchers) {}
 
     public function download(Voucher $voucher)
     {

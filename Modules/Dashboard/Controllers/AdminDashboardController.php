@@ -15,8 +15,7 @@ class AdminDashboardController extends Controller
         private ShareApplicationRepository $applications,
         private PaymentTransactionRepository $payments,
         private ShareAllotmentRepository $allotments,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {

@@ -57,7 +57,7 @@ class AuditLogTest extends TestCase
 
     public function test_admin_logs_page_shows_activity_and_filters_by_log_name(): void
     {
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         activity('auth')->event('login')->causedBy($admin)->log('User logged in');
         activity('settings')->causedBy($admin)->log('Site settings updated');

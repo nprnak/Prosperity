@@ -2,27 +2,26 @@
 
 namespace Modules\ApprovalManagement\Notifications;
 
-use Modules\ApplicationManagement\Models\ShareApplication;
-use Modules\VoucherManagement\Models\Voucher;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
+use Modules\ApplicationManagement\Models\ShareApplication;
+use Modules\VoucherManagement\Models\Voucher;
 
 class ApplicationApprovedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(private readonly ShareApplication $application, private readonly ?Voucher $voucher)
-    {
-    }
+    public function __construct(private readonly ShareApplication $application, private readonly ?Voucher $voucher) {}
 
     public function via(object $notifiable): array
     {
         // mail goes to the applicant's contact address via an on-demand route;
         // the linked user account gets the in-app copy.
-        return $notifiable instanceof \App\Models\User ? ['database'] : ['mail'];
+        return $notifiable instanceof User ? ['database'] : ['mail'];
     }
 
     public function toArray(object $notifiable): array

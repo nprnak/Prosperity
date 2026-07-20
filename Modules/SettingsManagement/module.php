@@ -1,5 +1,7 @@
 <?php
 
+use Modules\SettingsManagement\Providers\SettingsManagementServiceProvider;
+
 return [
 
     'name' => 'SettingsManagement',
@@ -13,7 +15,7 @@ return [
 
     // Extra service providers to register for this module.
     'providers' => [
-        Modules\SettingsManagement\Providers\SettingsManagementServiceProvider::class,
+        SettingsManagementServiceProvider::class,
     ],
 
 ];

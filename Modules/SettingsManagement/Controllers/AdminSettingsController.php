@@ -3,9 +3,9 @@
 namespace Modules\SettingsManagement\Controllers;
 
 use App\Http\Controllers\Controller;
+use Inertia\Inertia;
 use Modules\SettingsManagement\Models\Setting;
 use Modules\SettingsManagement\Requests\UpdateSettingsRequest;
-use Inertia\Inertia;
 
 class AdminSettingsController extends Controller
 {

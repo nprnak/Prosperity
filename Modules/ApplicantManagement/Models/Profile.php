@@ -3,18 +3,20 @@
 namespace Modules\ApplicantManagement\Models;
 
 use App\Models\User;
-use Modules\ApplicationManagement\Models\ShareApplication;
+use App\Workflow\Concerns\HasWorkflow;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Modules\ApplicantManagement\Enums\EducationLevel;
+use Modules\ApplicantManagement\Enums\Gender;
+use Modules\ApplicantManagement\Enums\MaritalStatus;
+use Modules\ApplicantManagement\Enums\ProfileStatus;
+use Modules\ApplicantManagement\Enums\Title;
+use Modules\ApplicationManagement\Models\ShareApplication;
 
 class Profile extends Model
 {
     use HasFactory;
-
-    public const PROFILE_INCOMPLETE = 'incomplete';
-    public const PROFILE_SUBMITTED = 'submitted';
-    public const PROFILE_APPROVED = 'approved';
-    public const PROFILE_REJECTED = 'rejected';
+    use HasWorkflow;
 
     /**
      * Document types the KYC review requires before a profile can be submitted.
@@ -60,6 +62,11 @@ class Profile extends Model
     ];
 
     protected $casts = [
+        'title' => Title::class,
+        'gender' => Gender::class,
+        'marital_status' => MaritalStatus::class,
+        'education' => EducationLevel::class,
+        'profile_status' => ProfileStatus::class,
         'date_of_birth' => 'date:Y-m-d',
         'citizenship_issued_date' => 'date:Y-m-d',
         'asba_consent' => 'boolean',
@@ -69,7 +76,7 @@ class Profile extends Model
         'profile_reviewed_at' => 'datetime',
     ];
 
-    protected $appends = ['age'];
+    protected $appends = ['age', 'title_label_np', 'marital_status_label_np', 'education_label_np', 'pending_stage_label', 'can_send_back', 'profile_status_label'];
 
     public function user()
     {
@@ -121,9 +128,50 @@ class Profile extends Model
         return $this->hasMany(ProfileExperience::class);
     }
 
+    public function workflowSubject(): string
+    {
+        return 'profile';
+    }
+
+    public function workflowStatusColumn(): string
+    {
+        return 'profile_status';
+    }
+
+    public function workflowStatusEnum(): string
+    {
+        return ProfileStatus::class;
+    }
+
     public function getAgeAttribute(): ?int
     {
         return $this->date_of_birth?->age;
+    }
+
+    /** Human wording for the KYC status, so views never re-map it. */
+    public function getProfileStatusLabelAttribute(): ?string
+    {
+        return $this->profile_status?->labelEn();
+    }
+
+    /**
+     * Nepali labels for the printed share application form, which renders
+     * these fields in Nepali only. Null when the field is unset — the print
+     * view supplies its own placeholder in that case.
+     */
+    public function getTitleLabelNpAttribute(): ?string
+    {
+        return $this->title?->labelNp();
+    }
+
+    public function getMaritalStatusLabelNpAttribute(): ?string
+    {
+        return $this->marital_status?->labelNp();
+    }
+
+    public function getEducationLabelNpAttribute(): ?string
+    {
+        return $this->education?->labelNp();
     }
 
     public function document(string $type): ?ProfileDocument
@@ -182,6 +230,6 @@ class Profile extends Model
 
     public function isProfileApproved(): bool
     {
-        return $this->profile_status === self::PROFILE_APPROVED;
+        return $this->profile_status === ProfileStatus::Approved;
     }
 }

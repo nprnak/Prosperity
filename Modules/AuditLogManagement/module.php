@@ -1,5 +1,7 @@
 <?php
 
+use Modules\AuditLogManagement\Providers\AuditLogManagementServiceProvider;
+
 return [
 
     'name' => 'AuditLogManagement',
@@ -13,7 +15,7 @@ return [
 
     // Extra service providers to register for this module.
     'providers' => [
-        Modules\AuditLogManagement\Providers\AuditLogManagementServiceProvider::class,
+        AuditLogManagementServiceProvider::class,
     ],
 
 ];

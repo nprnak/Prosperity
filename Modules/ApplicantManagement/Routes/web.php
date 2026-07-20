@@ -9,9 +9,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/profile/submit', [ApplicantProfileSubmissionController::class, 'store'])
         ->name('profile.submit');
 
-    Route::middleware('can:profile.review')->group(function () {
+    // Any KYC stage role reaches the queue; WorkflowService decides which
+    // records that person may actually act on.
+    Route::middleware('permission:profile.verify|profile.review|profile.approve')->group(function () {
         Route::get('/applicants/review', [ApplicantProfileReviewController::class, 'queue'])->name('applicants.review');
-        Route::post('/applicants/{applicant}/profile/approve', [ApplicantProfileReviewController::class, 'approve'])->name('applicants.profile.approve');
-        Route::post('/applicants/{applicant}/profile/reject', [ApplicantProfileReviewController::class, 'reject'])->name('applicants.profile.reject');
+        Route::post('/applicants/{applicant}/profile/act', [ApplicantProfileReviewController::class, 'act'])->name('applicants.profile.act');
     });
 });

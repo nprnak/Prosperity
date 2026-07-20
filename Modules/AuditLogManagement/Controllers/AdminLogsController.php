@@ -10,9 +10,7 @@ use Spatie\Activitylog\Models\Activity;
 
 class AdminLogsController extends Controller
 {
-    public function __construct(private ActivityLogRepository $logs)
-    {
-    }
+    public function __construct(private ActivityLogRepository $logs) {}
 
     public function index(Request $request)
     {

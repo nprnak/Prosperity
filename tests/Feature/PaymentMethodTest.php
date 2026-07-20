@@ -7,13 +7,15 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\PaymentManagement\Models\PaymentMethod;
+use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
 class PaymentMethodTest extends TestCase
 {
+    use CreatesProfiles;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -28,14 +30,14 @@ class PaymentMethodTest extends TestCase
         $finance = User::factory()->create()->assignRole('finance_staff');
         $this->actingAs($finance)->get('/admin/payment-methods')->assertForbidden();
 
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
         $this->actingAs($admin)->get('/admin/payment-methods')->assertOk();
     }
 
     public function test_admin_can_create_method_with_qr_image(): void
     {
         Storage::fake('private');
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         $this->actingAs($admin)->post('/admin/payment-methods', [
             'name' => 'eSewa',
@@ -85,7 +87,7 @@ class PaymentMethodTest extends TestCase
             'payment_date' => now(), 'payment_method_id' => $method->id,
         ]);
 
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
         $this->actingAs($admin)->delete("/admin/payment-methods/{$method->id}")->assertStatus(422);
         $this->assertNotNull($method->fresh());
     }
@@ -94,25 +96,12 @@ class PaymentMethodTest extends TestCase
     {
         $user = User::factory()->create()->assignRole('applicant');
 
-        $applicant = Applicant::create([
-            'user_id' => $user->id,
-            'full_name_nepali' => 'परीक्षण',
-            'full_name_english' => 'Applicant '.$user->id,
-            'date_of_birth' => '1990-01-01',
-            'age' => 36,
-            'father_name' => 'F',
-            'grandfather_name' => 'GF',
-            'marital_status' => 'single',
-            'permanent_district' => 'KTM',
-            'permanent_municipality' => 'KMC',
-            'permanent_ward' => '1',
-            'mobile_number' => '98000000'.$user->id,
-        ]);
+        $applicant = $this->minimalProfile($user);
 
         return ShareApplication::create([
             'applicant_id' => $applicant->id,
             'application_number' => 'APP-TEST-'.$user->id,
-            'status' => ShareApplication::STATUS_SUBMITTED,
+            'status' => ApplicationStatus::Submitted,
             'shares_applied' => 10,
             'amount_per_share' => '100.00',
             'total_amount_declared' => '1000.00',

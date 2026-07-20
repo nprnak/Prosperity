@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\VerifyEmailWithOtp;
+use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -12,7 +13,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable;
 
     /**
@@ -73,7 +74,11 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function requiresTwoFactor(): bool
     {
-        return $this->hasAnyRole(['admin', 'finance_staff', 'reviewer', 'verifier', 'approver']);
+        return $this->hasAnyRole([
+            'super_admin', 'finance_staff',
+            'profile_verifier', 'profile_reviewer', 'profile_approver',
+            'application_verifier', 'application_reviewer', 'application_approver',
+        ]);
     }
 
     public function clearEmailOtp(): void

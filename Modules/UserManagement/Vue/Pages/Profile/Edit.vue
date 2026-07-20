@@ -19,15 +19,20 @@ const props = defineProps({
         type: Number,
         default: 0,
     },
+    reviewRemarks: {
+        type: String,
+        default: null,
+    },
 });
 
 const profileStatus = computed(() => props.profile?.profile_status ?? 'incomplete');
-const canSubmitForReview = computed(() => ['incomplete', 'rejected'].includes(profileStatus.value));
+const canSubmitForReview = computed(() => ['incomplete', 'rejected', 'returned'].includes(profileStatus.value));
+// The three sign-off stages all read as 'in review' to the applicant.
+const inReview = computed(() => ['submitted', 'verified', 'reviewed'].includes(profileStatus.value));
 
 const submitForm = useForm({});
 const submitForReview = () => submitForm.post(route('profile.submit'), { preserveScroll: true });
 
-const flashSuccess = computed(() => usePage().props.flash?.success);
 const profileError = computed(() => usePage().props.errors?.profile);
 </script>
 
@@ -55,9 +60,9 @@ const profileError = computed(() => usePage().props.errors?.profile);
             <div class="rounded-lg border p-4 flex items-start justify-between gap-4"
                 :class="{
                     'border-gray-300 bg-gray-50': profileStatus === 'incomplete',
-                    'border-amber-300 bg-amber-50': profileStatus === 'submitted',
+                    'border-amber-300 bg-amber-50': inReview,
                     'border-green-300 bg-green-50': profileStatus === 'approved',
-                    'border-red-300 bg-red-50': profileStatus === 'rejected',
+                    'border-red-300 bg-red-50': ['rejected', 'returned'].includes(profileStatus),
                 }">
                 <div class="text-sm">
                     <p class="font-semibold">
@@ -67,18 +72,18 @@ const profileError = computed(() => usePage().props.errors?.profile);
                     <p v-if="profileStatus === 'incomplete'" class="mt-1 text-gray-600">
                         Complete all required fields below, then submit your profile for review. You can apply for shares once it is approved.
                     </p>
-                    <p v-else-if="profileStatus === 'submitted'" class="mt-1 text-amber-700">
-                        Your profile is being reviewed. You will be notified by email once a decision is made.
+                    <p v-else-if="inReview" class="mt-1 text-amber-700">
+                        Your profile is with the review team and cannot be edited right now.
+                        You will be notified by email once a decision is made.
                     </p>
                     <p v-else-if="profileStatus === 'approved'" class="mt-1 text-green-700">
                         Your profile is approved. You can now apply for shares.
                     </p>
-                    <p v-else-if="profileStatus === 'rejected'" class="mt-1 text-red-700">
-                        Your profile needs changes: {{ profile?.profile_rejection_reason || 'see the email we sent you' }}.
+                    <p v-else-if="['rejected', 'returned'].includes(profileStatus)" class="mt-1 text-red-700">
+                        Your profile needs changes: {{ reviewRemarks || 'see the email we sent you' }}.
                         Update it below and submit again.
                     </p>
                     <p v-if="profileError" class="mt-1 font-medium text-red-700">{{ profileError }}</p>
-                    <p v-if="flashSuccess" class="mt-1 font-medium text-green-700">{{ flashSuccess }}</p>
                 </div>
                 <button
                     v-if="canSubmitForReview"

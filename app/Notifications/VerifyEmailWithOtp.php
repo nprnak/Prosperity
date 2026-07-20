@@ -7,9 +7,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 
 class VerifyEmailWithOtp extends VerifyEmail
 {
-    public function __construct(protected string $otp)
-    {
-    }
+    public function __construct(protected string $otp) {}
 
     protected function buildMailMessage($url): MailMessage
     {

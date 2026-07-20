@@ -8,7 +8,7 @@ use Modules\Dashboard\Controllers\AdminDashboardController;
 Route::get('/dashboard', function () {
     $user = auth()->user();
 
-    if ($user?->hasRole('admin')) {
+    if ($user?->hasRole('super_admin')) {
         return redirect()->route('admin.dashboard');
     }
 
@@ -17,15 +17,21 @@ Route::get('/dashboard', function () {
         return redirect()->route('admin.applications');
     }
 
-    if ($user?->hasRole('reviewer')) {
-        return redirect()->route('reviewer.dashboard');
+    // Stage staff land on the queue for the chain they work in. A user holding
+    // roles in both chains sees the KYC queue first.
+    if ($user?->hasAnyRole(['profile_verifier', 'profile_reviewer', 'profile_approver'])) {
+        return redirect()->route('applicants.review');
     }
 
-    if ($user?->hasRole('verifier')) {
+    if ($user?->hasRole('application_verifier')) {
         return redirect()->route('verifier.dashboard');
     }
 
-    if ($user?->hasRole('approver')) {
+    if ($user?->hasRole('application_reviewer')) {
+        return redirect()->route('reviewer.dashboard');
+    }
+
+    if ($user?->hasRole('application_approver')) {
         return redirect()->route('approver.dashboard');
     }
 

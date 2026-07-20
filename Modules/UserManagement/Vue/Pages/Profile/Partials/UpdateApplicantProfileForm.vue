@@ -9,6 +9,10 @@ const page = usePage();
 const profile = page.props.profile || {};
 const user = page.props.auth.user;
 const geography = page.props.geography || { provinces: [], districts: [], localLevels: [] };
+// Enum-backed option lists, shared from ProfileController::edit.
+const options = page.props.options || {
+    titles: [], genders: [], maritalStatuses: [], educationLevels: [], sourcesOfFunds: [],
+};
 
 const permanent = profile.permanent_address || {};
 const temporary = profile.temporary_address || {};
@@ -144,14 +148,7 @@ watch(() => form.permanent.district, () => resetCascade(form.permanent, 'distric
 watch(() => form.temporary.province, () => resetCascade(form.temporary, 'province'));
 watch(() => form.temporary.district, () => resetCascade(form.temporary, 'district'));
 
-const sourceOptions = [
-    { value: 'salary', label: 'Salary / Employment' },
-    { value: 'dividend', label: 'Dividend' },
-    { value: 'property_sale', label: 'Sale of Assets' },
-    { value: 'house_rent', label: 'House Rent' },
-    { value: 'share_trading', label: 'Share Trading' },
-    { value: 'other', label: 'Other' },
-];
+const sourceOptions = options.sourcesOfFunds;
 
 const documentSlots = [
     { input: 'citizenship_front', label: 'Citizenship Front', routeType: 'citizenship-front' },
@@ -187,12 +184,34 @@ const fieldClass = (field) => {
         : `${base} border-gray-300`;
 };
 
-const submit = () =>
+// Once a profile enters the review chain it belongs to the reviewers, not the
+// applicant — the server refuses edits too, this just stops them being offered.
+const locked = computed(() => !['incomplete', 'returned'].includes(profile.profile_status ?? 'incomplete'));
+
+const statusLabel = computed(() => ({
+    submitted: 'awaiting verification',
+    verified: 'awaiting review',
+    reviewed: 'awaiting final approval',
+    approved: 'approved',
+}[profile.profile_status] ?? 'under review'));
+
+const submit = () => {
+    if (locked.value) return;
     form.patch(route('profile.applicant.update'), { forceFormData: true, preserveScroll: true });
+};
 </script>
 
 <template>
     <form class="space-y-6" @submit.prevent="submit">
+        <p
+            v-if="locked"
+            class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+            <span class="font-semibold">This profile is {{ statusLabel }}.</span>
+            It is locked while the review team works through it. You will be notified if anything needs changing.
+        </p>
+
+        <fieldset :disabled="locked" class="space-y-6 disabled:opacity-70">
         <p
             v-if="page.props.status === 'applicant-profile-updated'"
             class="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700"
@@ -208,9 +227,7 @@ const submit = () =>
                     <label class="text-sm font-medium text-gray-700">Title</label>
                     <select v-model="form.title" :class="fieldClass('title')">
                         <option value="">—</option>
-                        <option value="Mr.">Mr.</option>
-                        <option value="Mrs.">Mrs.</option>
-                        <option value="Ms.">Ms.</option>
+                        <option v-for="option in options.titles" :key="option.value" :value="option.value">{{ option.label }}</option>
                     </select>
                 </div>
                 <div>
@@ -236,9 +253,7 @@ const submit = () =>
                     <label class="text-sm font-medium text-gray-700">Gender *</label>
                     <select v-model="form.gender" :class="fieldClass('gender')">
                         <option value="" disabled>Select gender</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
+                        <option v-for="option in options.genders" :key="option.value" :value="option.value">{{ option.label }}</option>
                     </select>
                     <InputError class="mt-1" :message="form.errors.gender" />
                 </div>
@@ -250,10 +265,7 @@ const submit = () =>
                 <div>
                     <label class="text-sm font-medium text-gray-700">Marital Status</label>
                     <select v-model="form.marital_status" :class="fieldClass('marital_status')">
-                        <option value="single">Single</option>
-                        <option value="married">Married</option>
-                        <option value="divorced">Divorced</option>
-                        <option value="widowed">Widowed</option>
+                        <option v-for="option in options.maritalStatuses" :key="option.value" :value="option.value">{{ option.label }}</option>
                     </select>
                 </div>
                 <div>
@@ -281,7 +293,12 @@ const submit = () =>
                 </div>
                 <div>
                     <label class="text-sm font-medium text-gray-700">Education *</label>
-                    <TextInput v-model="form.education" type="text" placeholder="e.g. Bachelor's Degree" :class="fieldClass('education')" />
+                    <select v-model="form.education" :class="fieldClass('education')">
+                        <option value="" disabled>Select education level</option>
+                        <option v-for="option in options.educationLevels" :key="option.value" :value="option.value">
+                            {{ option.label }} ({{ option.label_np }})
+                        </option>
+                    </select>
                     <InputError class="mt-1" :message="form.errors.education" />
                 </div>
             </div>
@@ -598,7 +615,9 @@ const submit = () =>
             <InputError class="mt-1" :message="form.errors['declarations.information_true'] || form.errors['declarations.funds_legal'] || form.errors['declarations.terms']" />
         </section>
 
-        <div class="flex items-center gap-4">
+        </fieldset>
+
+        <div v-if="!locked" class="flex items-center gap-4">
             <PrimaryButton :disabled="form.processing">Save Profile</PrimaryButton>
             <p v-if="form.recentlySuccessful" class="text-sm text-gray-600">Profile saved.</p>
         </div>

@@ -12,9 +12,7 @@ class ProfileApprovedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(private readonly Profile $applicant)
-    {
-    }
+    public function __construct(private readonly Profile $applicant) {}
 
     public function via(object $notifiable): array
     {

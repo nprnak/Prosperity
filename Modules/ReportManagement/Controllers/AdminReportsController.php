@@ -7,7 +7,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
-use Modules\ApplicationManagement\Models\ShareApplication;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\CompanyManagement\Repositories\CompanyRepository;
 use Modules\CompanyManagement\Repositories\ShareOfferingRepository;
 use Modules\PaymentManagement\Repositories\PaymentMethodRepository;
@@ -16,9 +16,7 @@ use Modules\ReportManagement\Repositories\ApplicationsReportRepository;
 
 class AdminReportsController extends Controller
 {
-    public function __construct(private ApplicationsReportRepository $reports)
-    {
-    }
+    public function __construct(private ApplicationsReportRepository $reports) {}
 
     public function index(
         Request $request,
@@ -36,7 +34,7 @@ class AdminReportsController extends Controller
             'options' => [
                 'companies' => $companies->query()->orderBy('name')->get(['id', 'name']),
                 'offerings' => $offerings->listForFilters(),
-                'statuses' => ShareApplication::STATUS_FLOW,
+                'statuses' => array_column(ApplicationStatus::flow(), 'value'),
                 'paymentMethods' => $paymentMethods->query()->orderBy('name')->get(['id', 'name']),
             ],
         ]);

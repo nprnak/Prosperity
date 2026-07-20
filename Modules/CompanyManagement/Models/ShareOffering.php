@@ -12,9 +12,13 @@ class ShareOffering extends Model
     use HasFactory, SoftDeletes;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_UPCOMING = 'upcoming';
+
     public const STATUS_OPEN = 'open';
+
     public const STATUS_CLOSED = 'closed';
+
     public const STATUS_COMPLETED = 'completed';
 
     public const STATUSES = [

@@ -3,57 +3,80 @@
 namespace Modules\ApplicantManagement\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Workflow\WorkflowService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Modules\ApplicantManagement\Enums\ProfileStatus;
 use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Notifications\ProfileApprovedNotification;
-use Modules\ApplicantManagement\Notifications\ProfileRejectedNotification;
+use Modules\ApplicantManagement\Notifications\ProfileReturnedNotification;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
-use Modules\ApplicantManagement\Requests\RejectProfileRequest;
+use Modules\ApplicantManagement\Requests\ProfileWorkflowActionRequest;
 
+/**
+ * KYC review: verifier → reviewer → approver.
+ *
+ * One endpoint serves all three stages. Which stage the actor occupies is
+ * derived from the profile's status, and WorkflowService decides whether they
+ * may take it — so a user holding several stage roles needs no handling here.
+ */
 class ApplicantProfileReviewController extends Controller
 {
-    public function __construct(private ProfileRepository $profiles)
-    {
-    }
+    public function __construct(
+        private ProfileRepository $profiles,
+        private WorkflowService $workflow,
+    ) {}
 
     public function queue(Request $request)
     {
         return Inertia::render('Applicants/ReviewQueue', [
-            'pending' => $this->profiles->pendingReviewQueue(),
+            'pending' => $this->profiles->pendingForUser($request->user()),
             'recentlyReviewed' => $this->profiles->recentlyReviewed(),
         ]);
     }
 
-    public function approve(Request $request, Profile $applicant)
+    public function act(ProfileWorkflowActionRequest $request, Profile $applicant)
     {
-        abort_unless($applicant->profile_status === Profile::PROFILE_SUBMITTED, 422);
+        $before = $applicant->profile_status;
 
-        $applicant->forceFill([
-            'profile_status' => Profile::PROFILE_APPROVED,
-            'profile_reviewed_by' => $request->user()->id,
-            'profile_reviewed_at' => now(),
-            'profile_rejection_reason' => null,
-        ])->save();
+        $this->workflow->act(
+            $applicant,
+            $request->user(),
+            $request->action(),
+            $request->validated('remarks'),
+            $request,
+        );
 
-        $applicant->user?->notify(new ProfileApprovedNotification($applicant));
+        $applicant->refresh();
 
-        return back()->with('success', 'Profile approved: '.$applicant->full_name_en);
+        $this->notifyApplicant($applicant, $before);
+
+        return back()->with('success', $this->message($applicant));
     }
 
-    public function reject(RejectProfileRequest $request, Profile $applicant)
+    /**
+     * The applicant hears about outcomes needing their attention and about the
+     * final approval — not about each internal stage passing.
+     */
+    private function notifyApplicant(Profile $applicant, ProfileStatus $before): void
     {
-        abort_unless($applicant->profile_status === Profile::PROFILE_SUBMITTED, 422);
+        if ($applicant->profile_status === $before) {
+            return;
+        }
 
-        $applicant->forceFill([
-            'profile_status' => Profile::PROFILE_REJECTED,
-            'profile_reviewed_by' => $request->user()->id,
-            'profile_reviewed_at' => now(),
-            'profile_rejection_reason' => $request->validated('rejection_reason'),
-        ])->save();
+        match ($applicant->profile_status) {
+            ProfileStatus::Approved => $applicant->user?->notify(new ProfileApprovedNotification($applicant)),
+            ProfileStatus::Returned => $applicant->user?->notify(new ProfileReturnedNotification($applicant)),
+            default => null,
+        };
+    }
 
-        $applicant->user?->notify(new ProfileRejectedNotification($applicant));
-
-        return back()->with('success', 'Profile rejected: '.$applicant->full_name_en);
+    private function message(Profile $applicant): string
+    {
+        return match ($applicant->profile_status) {
+            ProfileStatus::Approved => 'Profile approved: '.$applicant->full_name_en,
+            ProfileStatus::Returned => 'Profile returned to applicant: '.$applicant->full_name_en,
+            default => 'Profile moved to: '.$applicant->profile_status->labelEn(),
+        };
     }
 }

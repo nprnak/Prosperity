@@ -9,9 +9,7 @@ use Modules\AllotmentManagement\Repositories\ShareAllotmentRepository;
 
 class AdminAllotmentsController extends Controller
 {
-    public function __construct(private ShareAllotmentRepository $allotments)
-    {
-    }
+    public function __construct(private ShareAllotmentRepository $allotments) {}
 
     public function index(Request $request)
     {

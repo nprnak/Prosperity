@@ -5,26 +5,38 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
     /**
      * Granular permissions grouped by role.
      *
+     * Two independent three-stage review chains, each verifier → reviewer →
+     * approver. A user may hold several of these roles, but WorkflowService
+     * still requires three distinct people per record: whoever acts at one
+     * stage is barred from the others for that cycle. super_admin is not
+     * exempt from that rule.
+     *
      * Roles:
-     *   - applicant      : individual investor filling a share purchase application
-     *   - finance_staff  : records and verifies payment transactions
-     *   - reviewer       : first approval stage — reviews payment-verified applications
-     *   - verifier       : second approval stage — verifies reviewed applications
-     *   - approver       : director / authorised signatory who gives final approval
-     *   - admin          : full access (all permissions + Gate::before shortcut)
+     *   - applicant            : individual investor filling a share application
+     *   - finance_staff        : records and verifies payment transactions
+     *   - profile_verifier     : KYC stage 1
+     *   - profile_reviewer     : KYC stage 2
+     *   - profile_approver     : KYC stage 3 — makes the profile approved and complete
+     *   - application_verifier : application stage 1
+     *   - application_reviewer : application stage 2
+     *   - application_approver : application stage 3 — final sign-off, issues the voucher
+     *   - super_admin          : every permission (plus the Gate::before shortcut)
      *
      * `voucher.download` allows downloading vouchers the user owns (enforced by
      * VoucherPolicy); `voucher.download-any` bypasses the ownership check.
      */
     public const PERMISSIONS = [
         'company.manage',
+        'profile.verify',
         'profile.review',
+        'profile.approve',
         'application.submit',
         'application.view-any',
         'application.review',
@@ -57,27 +69,39 @@ class RolesAndPermissionsSeeder extends Seeder
             'payment.verify',
             'payment.view-any',
         ],
-        'reviewer' => [
-            'application.review',
+        'profile_verifier' => [
+            'profile.verify',
         ],
-        'verifier' => [
+        'profile_reviewer' => [
+            'profile.review',
+        ],
+        'profile_approver' => [
+            'profile.approve',
+        ],
+        'application_verifier' => [
+            'application.view-any',
             'application.verify',
         ],
-        'approver' => [
-            'profile.review',
+        'application_reviewer' => [
+            'application.view-any',
+            'application.review',
+        ],
+        'application_approver' => [
+            'application.view-any',
             'application.approve',
             'application.reject',
             'allotment.manage',
             'voucher.download',
             'voucher.download-any',
         ],
-        'admin' => self::PERMISSIONS,
+        'super_admin' => self::PERMISSIONS,
+
     ];
 
     public function run(): void
     {
         // Reset cached roles & permissions
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         foreach (self::PERMISSIONS as $permission) {
             Permission::firstOrCreate(['name' => $permission]);

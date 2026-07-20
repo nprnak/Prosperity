@@ -2,72 +2,61 @@
 
 namespace Modules\ApprovalManagement\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Enums\WorkflowStage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Notification;
-use Inertia\Inertia;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
-use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
-use Modules\ApprovalManagement\Concerns\RecordsStageTransitions;
 use Modules\ApprovalManagement\Notifications\ApplicationApprovedNotification;
-use Modules\ApprovalManagement\Requests\ApproveApplicationRequest;
-use Modules\ApprovalManagement\Requests\RejectApplicationRequest;
 use Modules\VoucherManagement\Services\VoucherIssueService;
 
-class ApproverController extends Controller
+/**
+ * Application stage 3: final sign-off. Approval here is what issues the
+ * voucher and notifies the applicant.
+ */
+class ApproverController extends ApplicationStageController
 {
-    use RecordsStageTransitions;
-
-    public function __construct(private ShareApplicationRepository $applications)
+    protected function stage(): WorkflowStage
     {
+        return WorkflowStage::Approver;
     }
 
-    /**
-     * Two-person workflow: finance verifies the payment (first person), then
-     * the approver signs off directly (second person) — the optional
-     * reviewer/verifier stages are also accepted if a deployment uses them.
-     */
-    public const APPROVABLE_STATUSES = [
-        ShareApplication::STATUS_PAYMENT_VERIFIED,
-        ShareApplication::STATUS_REVIEWED,
-        ShareApplication::STATUS_VERIFIED,
-    ];
-
-    public function dashboard(Request $request)
+    protected function view(): string
     {
-        return Inertia::render('Approver/Dashboard', [
-            'applications' => $this->applications->listByStatus(
-                self::APPROVABLE_STATUSES,
-                ['applicant', 'paymentTransactions', 'reviewer', 'verifier'],
-            ),
-        ]);
+        return 'Approver/Dashboard';
     }
 
-    public function approve(ApproveApplicationRequest $request, ShareApplication $application, VoucherIssueService $voucherIssuer)
+    protected function afterAct(Request $request, ShareApplication $application, ApplicationStatus $before): void
     {
-        abort_unless(in_array($application->status, self::APPROVABLE_STATUSES, true), 422);
-
-        $payment = $application->paymentTransactions()->where('verification_status', 'verified')->latest()->firstOrFail();
-        $payment->update(['approved_by' => $request->user()->id]);
-
-        $voucher = $voucherIssuer->issue($application, $payment, $request->user()->id);
-
-        $this->transition($request, $application, ShareApplication::STATUS_APPROVED,
-            'Application approved by approver.',
-            ['approved_by' => $request->user()->id, 'approved_at' => now(), 'rejection_reason' => null]);
-
-        if ($application->applicant?->email) {
-            Notification::route('mail', $application->applicant->email)
-                ->notify(new ApplicationApprovedNotification($application, $voucher));
+        if ($application->status === $before) {
+            return;
         }
 
-        $application->applicant?->user?->notify(new ApplicationApprovedNotification($application, $voucher));
+        if ($application->status === ApplicationStatus::Approved) {
+            $this->issueVoucher($request, $application);
 
-        return back()->with('success', 'Application approved and voucher generated.');
+            return;
+        }
+
+        parent::afterAct($request, $application, $before);
     }
 
-    public function reject(RejectApplicationRequest $request, ShareApplication $application)
+    private function issueVoucher(Request $request, ShareApplication $application): void
     {
-        return $this->rejectAtStage($request, $application, 'approval');
+        $payment = $application->paymentTransactions()
+            ->where('verification_status', 'verified')
+            ->latest()
+            ->firstOrFail();
+
+        $payment->update(['approved_by' => $request->user()->id]);
+
+        $voucher = app(VoucherIssueService::class)->issue($application, $payment, $request->user()->id);
+
+        $application->forceFill([
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+            'rejection_reason' => null,
+        ])->save();
+
+        $this->notifyApplicant($application, new ApplicationApprovedNotification($application, $voucher));
     }
 }

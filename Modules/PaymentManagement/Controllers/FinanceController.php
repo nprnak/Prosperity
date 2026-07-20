@@ -7,6 +7,7 @@ use App\Services\NumberGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApplicationManagement\Repositories\ApplicationEventRepository;
 use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
@@ -21,8 +22,7 @@ class FinanceController extends Controller
     public function __construct(
         private ShareApplicationRepository $applications,
         private ApplicationEventRepository $events,
-    ) {
-    }
+    ) {}
 
     public function dashboard(Request $request, PaymentMethodRepository $paymentMethods)
     {
@@ -30,12 +30,12 @@ class FinanceController extends Controller
 
         $applications = $this->applications->listByStatus(
             $status ?: [
-                ShareApplication::STATUS_SUBMITTED,
-                ShareApplication::STATUS_SENT_TO_BANK,
-                ShareApplication::STATUS_BANK_ACCEPTED,
-                ShareApplication::STATUS_BLOCKED,
-                ShareApplication::STATUS_PAYMENT_PENDING,
-                ShareApplication::STATUS_PAYMENT_VERIFIED,
+                ApplicationStatus::Submitted,
+                ApplicationStatus::SentToBank,
+                ApplicationStatus::BankAccepted,
+                ApplicationStatus::Blocked,
+                ApplicationStatus::PaymentPending,
+                ApplicationStatus::PaymentVerified,
             ],
             ['applicant', 'paymentTransactions'],
         );
@@ -100,7 +100,7 @@ class FinanceController extends Controller
                 'Payment verification updated by finance.');
         }
 
-        if ($application->status === ShareApplication::STATUS_PAYMENT_VERIFIED) {
+        if ($application->status === ApplicationStatus::PaymentVerified) {
             if ($application->applicant?->email) {
                 Notification::route('mail', $application->applicant->email)
                     ->notify(new PaymentVerifiedNotification($application));

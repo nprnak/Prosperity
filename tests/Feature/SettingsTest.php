@@ -49,13 +49,13 @@ class SettingsTest extends TestCase
         $this->actingAs($applicant)->get('/admin/settings')->assertForbidden();
         $this->actingAs($applicant)->put('/admin/settings', $this->validPayload())->assertForbidden();
 
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
         $this->actingAs($admin)->get('/admin/settings')->assertOk();
     }
 
     public function test_admin_can_update_settings_and_change_is_audit_logged(): void
     {
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         $this->actingAs($admin)
             ->put('/admin/settings', $this->validPayload([
@@ -77,7 +77,7 @@ class SettingsTest extends TestCase
 
     public function test_validation_rejects_bad_values(): void
     {
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         $this->actingAs($admin)
             ->put('/admin/settings', $this->validPayload([
@@ -91,7 +91,7 @@ class SettingsTest extends TestCase
     public function test_blank_mail_password_keeps_existing_value(): void
     {
         Setting::set('mail_password', 'secret-existing', 'mail');
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         $this->actingAs($admin)
             ->put('/admin/settings', $this->validPayload(['mail_password' => '']))
@@ -109,7 +109,7 @@ class SettingsTest extends TestCase
     public function test_mail_password_is_never_sent_to_the_page(): void
     {
         Setting::set('mail_password', 'secret-existing', 'mail');
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         $this->actingAs($admin)->get('/admin/settings')
             ->assertInertia(fn ($page) => $page

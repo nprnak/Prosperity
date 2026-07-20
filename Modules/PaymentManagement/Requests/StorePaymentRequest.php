@@ -3,6 +3,8 @@
 namespace Modules\PaymentManagement\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Modules\PaymentManagement\Models\PaymentMethod;
 
 class StorePaymentRequest extends FormRequest
 {
@@ -18,8 +20,8 @@ class StorePaymentRequest extends FormRequest
             'payment_mode' => ['required', 'in:cheque,self_cheque_deposit,online_transfer,cash,ips,mobile_banking'],
             'payment_method_id' => [
                 'nullable',
-                \Illuminate\Validation\Rule::exists('payment_methods', 'id')
-                    ->where('status', \Modules\PaymentManagement\Models\PaymentMethod::STATUS_ACTIVE),
+                Rule::exists('payment_methods', 'id')
+                    ->where('status', PaymentMethod::STATUS_ACTIVE),
             ],
             'bank_name' => ['nullable', 'string', 'max:255'],
             'payment_reference_no' => ['nullable', 'string', 'max:255'],

@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\ApplicantManagement\Enums\EducationLevel;
+use Modules\ApplicantManagement\Enums\Gender;
+use Modules\ApplicantManagement\Enums\MaritalStatus;
+use Modules\ApplicantManagement\Enums\SourceOfFunds;
+use Modules\ApplicantManagement\Enums\Title;
 use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicantManagement\Requests\ApplicantProfileUpdateRequest;
@@ -28,8 +33,7 @@ class ProfileController extends Controller
         private ProfileRepository $profiles,
         private GeographyRepository $geography,
         private UserRepository $users,
-    ) {
-    }
+    ) {}
 
     /**
      * Display the user's profile form.
@@ -47,7 +51,17 @@ class ProfileController extends Controller
             'status' => session('status'),
             'profile' => $profile,
             'completionPercent' => $profile?->completionPercent() ?? 0,
+            // Latest reviewer remarks, shown when a profile comes back for changes.
+            'reviewRemarks' => $profile?->latest_workflow_remarks,
             'geography' => $this->geography->flat(),
+            // Single source of truth for the KYC form's constrained fields.
+            'options' => [
+                'titles' => Title::options(),
+                'genders' => Gender::options(),
+                'maritalStatuses' => MaritalStatus::options(),
+                'educationLevels' => EducationLevel::options(),
+                'sourcesOfFunds' => SourceOfFunds::options(),
+            ],
         ]);
     }
 

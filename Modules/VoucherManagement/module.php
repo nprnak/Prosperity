@@ -1,5 +1,7 @@
 <?php
 
+use Modules\VoucherManagement\Providers\VoucherManagementServiceProvider;
+
 return [
 
     'name' => 'VoucherManagement',
@@ -13,7 +15,7 @@ return [
 
     // Extra service providers to register for this module.
     'providers' => [
-        Modules\VoucherManagement\Providers\VoucherManagementServiceProvider::class,
+        VoucherManagementServiceProvider::class,
     ],
 
 ];

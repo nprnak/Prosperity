@@ -5,6 +5,7 @@ namespace Modules\CompanyManagement\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Modules\CompanyManagement\Models\Company;
+use Modules\SettingsManagement\Models\Setting;
 
 class StoreCompanyRequest extends FormRequest
 {
@@ -26,7 +27,7 @@ class StoreCompanyRequest extends FormRequest
             'address_np' => ['nullable', 'string', 'max:255'],
             'bank_name' => ['nullable', 'string', 'max:255'],
             'bank_account_number' => ['nullable', 'string', 'max:100'],
-            'logo' => ['nullable', 'image', 'max:'.(int) \Modules\SettingsManagement\Models\Setting::get('max_upload_size_kb', 2048)],
+            'logo' => ['nullable', 'image', 'max:'.(int) Setting::get('max_upload_size_kb', 2048)],
             'description' => ['nullable', 'string', 'max:2000'],
             'status' => ['required', Rule::in([Company::STATUS_ACTIVE, Company::STATUS_INACTIVE])],
         ];

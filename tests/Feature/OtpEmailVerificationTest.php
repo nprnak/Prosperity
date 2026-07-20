@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\VerifyEmailWithOtp;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class OtpEmailVerificationTest extends TestCase
@@ -80,7 +82,7 @@ class OtpEmailVerificationTest extends TestCase
         $user->refresh();
         $this->assertNotNull($user->email_otp_code);
         $this->assertTrue($user->email_otp_expires_at->isFuture());
-        Notification::assertSentTo($user, \App\Notifications\VerifyEmailWithOtp::class);
+        Notification::assertSentTo($user, VerifyEmailWithOtp::class);
     }
 
     public function test_otp_fields_are_never_serialized(): void
@@ -95,7 +97,7 @@ class OtpEmailVerificationTest extends TestCase
     {
         $user = User::factory()->unverified()->create()->assignRole('applicant');
 
-        $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+        $url = URL::temporarySignedRoute(
             'verification.verify',
             now()->addMinutes(60),
             ['id' => $user->id, 'hash' => sha1($user->email)],

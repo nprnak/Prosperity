@@ -1,5 +1,7 @@
 <?php
 
+use Modules\ApplicationManagement\Providers\ApplicationManagementServiceProvider;
+
 return [
 
     'name' => 'ApplicationManagement',
@@ -13,7 +15,7 @@ return [
 
     // Extra service providers to register for this module.
     'providers' => [
-        Modules\ApplicationManagement\Providers\ApplicationManagementServiceProvider::class,
+        ApplicationManagementServiceProvider::class,
     ],
 
 ];

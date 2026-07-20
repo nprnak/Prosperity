@@ -2,6 +2,7 @@
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import WorkflowTimeline from '@/Components/WorkflowTimeline.vue';
 
 const props = defineProps({
   application: Object,
@@ -185,7 +186,18 @@ const statusLabel = (status) => {
       </section>
 
       <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Lifecycle Events</h2>
+        <h2 class="text-lg font-semibold text-gray-900">Review Trail</h2>
+        <p class="mt-1 mb-4 text-sm text-gray-600">
+          Every sign-off, return and send-back, with the remarks given at the time.
+        </p>
+        <WorkflowTimeline :events="application.workflow_events ?? []" order="asc" />
+      </section>
+
+      <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+        <h2 class="text-lg font-semibold text-gray-900">Payment &amp; Lifecycle Events</h2>
+        <p class="mt-1 mb-4 text-sm text-gray-600">
+          Status changes driven outside the review chain, such as payment verification.
+        </p>
         <div v-if="application.events?.length" class="space-y-3">
           <div v-for="event in application.events" :key="event.id" class="rounded-lg border border-gray-200 p-3">
             <p class="text-sm text-gray-900">

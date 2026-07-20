@@ -2,8 +2,8 @@
 
 namespace App\Observers;
 
-use Modules\ApplicantManagement\Models\Profile;
 use App\Models\User;
+use Modules\ApplicantManagement\Models\Profile;
 
 class UserObserver
 {

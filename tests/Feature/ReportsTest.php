@@ -5,13 +5,15 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\CompanyManagement\Models\Company;
+use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
 class ReportsTest extends TestCase
 {
+    use CreatesProfiles;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -21,24 +23,11 @@ class ReportsTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
     }
 
-    protected function applicationFor(Company $company, string $status = 'submitted'): ShareApplication
+    protected function applicationFor(Company $company, ApplicationStatus $status = ApplicationStatus::Submitted): ShareApplication
     {
         $user = User::factory()->create()->assignRole('applicant');
 
-        $applicant = Applicant::create([
-            'user_id' => $user->id,
-            'full_name_nepali' => 'परीक्षण',
-            'full_name_english' => 'Applicant '.$user->id,
-            'date_of_birth' => '1990-01-01',
-            'age' => 36,
-            'father_name' => 'F',
-            'grandfather_name' => 'GF',
-            'marital_status' => 'single',
-            'permanent_district' => 'KTM',
-            'permanent_municipality' => 'KMC',
-            'permanent_ward' => '1',
-            'mobile_number' => '98000000'.$user->id,
-        ]);
+        $applicant = $this->minimalProfile($user);
 
         $offering = $company->offerings()->create([
             'title' => 'IPO '.$company->code, 'fiscal_year' => '2082/83', 'total_shares' => 100000,
@@ -67,11 +56,11 @@ class ReportsTest extends TestCase
     {
         $alpha = Company::create(['name' => 'Alpha Ltd', 'code' => 'ALP', 'status' => 'active']);
         $beta = Company::create(['name' => 'Beta Ltd', 'code' => 'BET', 'status' => 'active']);
-        $this->applicationFor($alpha, 'submitted');
-        $this->applicationFor($alpha, 'approved');
-        $this->applicationFor($beta, 'submitted');
+        $this->applicationFor($alpha, ApplicationStatus::Submitted);
+        $this->applicationFor($alpha, ApplicationStatus::Approved);
+        $this->applicationFor($beta, ApplicationStatus::Submitted);
 
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         $all = $this->actingAs($admin)->get('/admin/reports');
         $all->assertOk();
@@ -85,7 +74,7 @@ class ReportsTest extends TestCase
     {
         $company = Company::create(['name' => 'Alpha Ltd', 'code' => 'ALP', 'status' => 'active']);
         $this->applicationFor($company);
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         $xlsx = $this->actingAs($admin)->get('/admin/reports/export?format=xlsx');
         $xlsx->assertOk();

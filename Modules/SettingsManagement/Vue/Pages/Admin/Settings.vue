@@ -22,10 +22,6 @@ const save = () => {
     <div class="space-y-6">
       <h2 class="text-xl font-semibold text-gray-900">Site Settings</h2>
 
-      <div v-if="$page.props.flash?.success" class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-        {{ $page.props.flash.success }}
-      </div>
-
       <!-- Organization -->
       <div class="bg-white p-5 rounded-lg shadow">
         <h3 class="font-semibold text-base mb-1">Organization</h3>

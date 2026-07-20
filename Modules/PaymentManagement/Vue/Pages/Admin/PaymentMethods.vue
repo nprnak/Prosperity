@@ -57,10 +57,6 @@ const destroy = (method) => {
     <div class="space-y-6">
       <h2 class="text-xl font-semibold text-gray-900">Payment Methods</h2>
 
-      <div v-if="$page.props.flash?.success" class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-        {{ $page.props.flash.success }}
-      </div>
-
       <div class="bg-white p-5 rounded-lg shadow">
         <h3 class="font-semibold text-base mb-4">{{ editingId ? 'Edit payment method' : 'Add payment method' }}</h3>
         <div class="grid gap-4 md:grid-cols-3">

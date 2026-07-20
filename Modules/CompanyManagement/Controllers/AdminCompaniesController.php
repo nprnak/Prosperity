@@ -13,9 +13,7 @@ use Modules\CompanyManagement\Requests\StoreShareOfferingRequest;
 
 class AdminCompaniesController extends Controller
 {
-    public function __construct(private CompanyRepository $companies)
-    {
-    }
+    public function __construct(private CompanyRepository $companies) {}
 
     public function index()
     {

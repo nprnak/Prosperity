@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\VerifyEmailWithOtp;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class EmailVerificationEnforcementTest extends TestCase
@@ -36,7 +38,7 @@ class EmailVerificationEnforcementTest extends TestCase
 
     public function test_registration_sends_verification_email(): void
     {
-        \Illuminate\Support\Facades\Notification::fake();
+        Notification::fake();
 
         $this->post('/register', [
             'name' => 'New User',
@@ -46,9 +48,9 @@ class EmailVerificationEnforcementTest extends TestCase
         ]);
 
         $user = User::where('email', 'new-user@example.com')->firstOrFail();
-        \Illuminate\Support\Facades\Notification::assertSentTo(
+        Notification::assertSentTo(
             $user,
-            \App\Notifications\VerifyEmailWithOtp::class,
+            VerifyEmailWithOtp::class,
         );
     }
 }

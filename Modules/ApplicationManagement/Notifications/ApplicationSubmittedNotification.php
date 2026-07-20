@@ -2,25 +2,24 @@
 
 namespace Modules\ApplicationManagement\Notifications;
 
-use Modules\ApplicationManagement\Models\ShareApplication;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Modules\ApplicationManagement\Models\ShareApplication;
 
 class ApplicationSubmittedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(private readonly ShareApplication $application)
-    {
-    }
+    public function __construct(private readonly ShareApplication $application) {}
 
     public function via(object $notifiable): array
     {
         // mail goes to the applicant's contact address via an on-demand route;
         // the linked user account gets the in-app copy.
-        return $notifiable instanceof \App\Models\User ? ['database'] : ['mail'];
+        return $notifiable instanceof User ? ['database'] : ['mail'];
     }
 
     public function toArray(object $notifiable): array

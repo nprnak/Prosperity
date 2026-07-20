@@ -26,7 +26,7 @@ class AdminUserSeeder extends Seeder
             if (! $user->email_verified_at) {
                 $user->forceFill(['email_verified_at' => now()])->save();
             }
-            $user->syncRoles(['admin']);
+            $user->syncRoles(['super_admin']);
             $this->command->info("✓ Admin user created: {$user->email}");
         }
 
@@ -62,7 +62,7 @@ class AdminUserSeeder extends Seeder
             if (! $user->email_verified_at) {
                 $user->forceFill(['email_verified_at' => now()])->save();
             }
-            $user->syncRoles(['approver']);
+            $user->syncRoles(['application_approver']);
             $this->command->info("✓ Approver user created: {$user->email}");
         }
 

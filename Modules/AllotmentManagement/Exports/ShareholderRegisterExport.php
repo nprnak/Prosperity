@@ -2,9 +2,9 @@
 
 namespace Modules\AllotmentManagement\Exports;
 
-use Modules\AllotmentManagement\Models\ShareAllotment;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Modules\AllotmentManagement\Models\ShareAllotment;
 
 class ShareholderRegisterExport implements FromCollection, WithHeadings
 {

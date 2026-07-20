@@ -9,9 +9,7 @@ use Modules\PaymentManagement\Repositories\PaymentTransactionRepository;
 
 class AdminPaymentsController extends Controller
 {
-    public function __construct(private PaymentTransactionRepository $payments)
-    {
-    }
+    public function __construct(private PaymentTransactionRepository $payments) {}
 
     public function index(Request $request)
     {

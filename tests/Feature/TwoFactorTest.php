@@ -26,7 +26,7 @@ class TwoFactorTest extends TestCase
 
     public function test_staff_login_is_challenged_for_a_second_factor(): void
     {
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
 
         $this->login($admin)->assertRedirect(route('two-factor.challenge'));
 
@@ -37,7 +37,7 @@ class TwoFactorTest extends TestCase
 
     public function test_correct_code_completes_the_login(): void
     {
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
         $this->login($admin);
 
         $this->post('/two-factor', ['code' => TwoFactorService::DUMMY_CODE])
@@ -48,7 +48,7 @@ class TwoFactorTest extends TestCase
 
     public function test_wrong_code_is_rejected(): void
     {
-        $admin = User::factory()->create()->assignRole('admin');
+        $admin = User::factory()->create()->assignRole('super_admin');
         $this->login($admin);
 
         $this->post('/two-factor', ['code' => '9999'])->assertSessionHasErrors('code');

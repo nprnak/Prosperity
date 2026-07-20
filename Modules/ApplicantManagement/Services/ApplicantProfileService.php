@@ -3,9 +3,11 @@
 namespace Modules\ApplicantManagement\Services;
 
 use App\Models\User;
+use App\Workflow\Exceptions\WorkflowException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Modules\ApplicantManagement\Enums\ProfileStatus;
 use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicantManagement\Requests\ApplicantProfileUpdateRequest;
@@ -39,9 +41,7 @@ class ApplicantProfileService
         'signature' => ['type' => 'signature', 'number_field' => null],
     ];
 
-    public function __construct(private ProfileRepository $profiles)
-    {
-    }
+    public function __construct(private ProfileRepository $profiles) {}
 
     public function update(User $user, ApplicantProfileUpdateRequest $request): Profile
     {
@@ -49,6 +49,15 @@ class ApplicantProfileService
 
         return DB::transaction(function () use ($user, $request, $validated) {
             $profile = $this->profiles->firstOrNewForUser($user->id);
+
+            // A profile in the hands of the review chain must not change under
+            // the stages that have already signed it off.
+            if ($profile->exists && ! $profile->profile_status->isEditableByApplicant()) {
+                throw new WorkflowException(
+                    'Your profile is with the review team ('
+                    .$profile->profile_status->labelEn().') and cannot be edited right now.'
+                );
+            }
 
             $profile->fill(Arr::only($validated, self::SCALAR_FIELDS));
 
@@ -61,7 +70,7 @@ class ApplicantProfileService
             $profile->declaration_accepted_at ??= now();
 
             if (blank($profile->profile_status)) {
-                $profile->profile_status = Profile::PROFILE_INCOMPLETE;
+                $profile->profile_status = ProfileStatus::Incomplete;
             }
 
             $profile->save();

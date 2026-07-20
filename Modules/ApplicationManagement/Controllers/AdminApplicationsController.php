@@ -11,9 +11,7 @@ use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
 
 class AdminApplicationsController extends Controller
 {
-    public function __construct(private ShareApplicationRepository $applications)
-    {
-    }
+    public function __construct(private ShareApplicationRepository $applications) {}
 
     public function index(Request $request): Response
     {

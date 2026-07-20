@@ -20,9 +20,7 @@ abstract class Repository
      */
     protected array $with = [];
 
-    public function __construct(protected Model $model)
-    {
-    }
+    public function __construct(protected Model $model) {}
 
     public function all(array $columns = ['*']): Collection
     {

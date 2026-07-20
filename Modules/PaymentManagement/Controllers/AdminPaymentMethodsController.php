@@ -12,9 +12,7 @@ use Modules\PaymentManagement\Requests\StorePaymentMethodRequest;
 
 class AdminPaymentMethodsController extends Controller
 {
-    public function __construct(private PaymentMethodRepository $methods)
-    {
-    }
+    public function __construct(private PaymentMethodRepository $methods) {}
 
     public function index()
     {

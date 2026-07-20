@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Modules\AllotmentManagement\Exports\ShareholderRegisterExport;
 use Modules\AllotmentManagement\Repositories\ShareAllotmentRepository;
 use Modules\AllotmentManagement\Requests\StoreAllotmentRequest;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApplicationManagement\Repositories\ApplicationEventRepository;
 use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
@@ -18,8 +19,7 @@ class ShareAllotmentController extends Controller
     public function __construct(
         private ShareAllotmentRepository $allotments,
         private ApplicationEventRepository $events,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request, ShareApplicationRepository $applications)
     {
@@ -28,7 +28,7 @@ class ShareAllotmentController extends Controller
 
         return Inertia::render('Allotments/Register', [
             'allotments' => $this->allotments->register($search, $sort),
-            'pendingApplications' => $applications->listByStatus(ShareApplication::STATUS_APPROVED, ['applicant']),
+            'pendingApplications' => $applications->listByStatus(ApplicationStatus::Approved, ['applicant']),
             'totalShares' => $this->allotments->totalShares(),
             'filters' => ['q' => $search, 'sort' => $sort],
         ]);
@@ -36,13 +36,13 @@ class ShareAllotmentController extends Controller
 
     public function store(StoreAllotmentRequest $request, ShareApplication $application)
     {
-        abort_unless(in_array($application->status, [ShareApplication::STATUS_APPROVED, ShareApplication::STATUS_ALLOTTED, ShareApplication::STATUS_PARTIALLY_ALLOTTED], true), 422);
+        abort_unless(in_array($application->status, [ApplicationStatus::Approved, ApplicationStatus::Allotted, ApplicationStatus::PartiallyAllotted], true), 422);
 
         $this->allotments->upsertForApplication($application, $request->validated());
 
         $targetStatus = (int) $request->validated('shares_allotted') < (int) $application->shares_applied
-            ? ShareApplication::STATUS_PARTIALLY_ALLOTTED
-            : ShareApplication::STATUS_ALLOTTED;
+            ? ApplicationStatus::PartiallyAllotted
+            : ApplicationStatus::Allotted;
 
         $fromStatus = $application->status;
         $application->update(['status' => $targetStatus]);
@@ -56,6 +56,6 @@ class ShareAllotmentController extends Controller
 
     public function export()
     {
-        return Excel::download(new ShareholderRegisterExport(), 'shareholder-register.xlsx');
+        return Excel::download(new ShareholderRegisterExport, 'shareholder-register.xlsx');
     }
 }

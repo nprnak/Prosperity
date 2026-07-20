@@ -7,13 +7,16 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
-use Modules\ApplicantManagement\Models\Applicant;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
-use Modules\ApprovalManagement\Notifications\ApplicationRejectedNotification;
+use Modules\ApprovalManagement\Notifications\ApplicationReturnedNotification;
+use Modules\VoucherManagement\Models\Voucher;
+use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
 class ApprovalWorkflowTest extends TestCase
 {
+    use CreatesProfiles;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -23,80 +26,116 @@ class ApprovalWorkflowTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
     }
 
-    public function test_application_travels_the_full_review_verify_approve_chain(): void
+    public function test_application_travels_the_full_verify_review_approve_chain(): void
     {
         Storage::fake('private');
         Notification::fake();
 
         $application = $this->paymentVerifiedApplication();
-        $reviewer = User::factory()->create()->assignRole('reviewer');
-        $verifier = User::factory()->create()->assignRole('verifier');
-        $approver = User::factory()->create()->assignRole('approver');
+        $verifier = User::factory()->create()->assignRole('application_verifier');
+        $reviewer = User::factory()->create()->assignRole('application_reviewer');
+        $approver = User::factory()->create()->assignRole('application_approver');
 
-        // 1. reviewer
-        $this->actingAs($reviewer)
-            ->post("/reviewer/applications/{$application->id}/review")
-            ->assertSessionHasNoErrors();
-        $application->refresh();
-        $this->assertSame(ShareApplication::STATUS_REVIEWED, $application->status);
-        $this->assertSame($reviewer->id, $application->reviewed_by);
-
-        // 2. verifier
+        // 1. verifier
         $this->actingAs($verifier)
-            ->post("/verifier/applications/{$application->id}/verify")
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Payment evidence matches.'])
             ->assertSessionHasNoErrors();
-        $application->refresh();
-        $this->assertSame(ShareApplication::STATUS_VERIFIED, $application->status);
-        $this->assertSame($verifier->id, $application->verified_by);
+        $this->assertSame(ApplicationStatus::Verified, $application->refresh()->status);
 
-        // 3. approver
+        // 2. reviewer
+        $this->actingAs($reviewer)
+            ->post("/reviewer/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Application consistent with KYC.'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(ApplicationStatus::Reviewed, $application->refresh()->status);
+
+        // 3. approver — final sign-off issues the voucher
         $this->actingAs($approver)
-            ->post("/approver/applications/{$application->id}/approve")
+            ->post("/approver/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Approved.'])
             ->assertSessionHasNoErrors();
         $application->refresh();
-        $this->assertSame(ShareApplication::STATUS_APPROVED, $application->status);
+        $this->assertSame(ApplicationStatus::Approved, $application->status);
         $this->assertSame($approver->id, $application->approved_by);
 
-        // the voucher generated on approval carries a verification code
-        $voucher = \Modules\VoucherManagement\Models\Voucher::firstOrFail();
-        $this->assertNotNull($voucher->verification_code);
-
-        // every transition is recorded with the actor's IP and browser
-        $events = $application->events()->orderBy('id')->get();
+        // three distinct signatures, each with remarks
+        $events = $application->workflowEvents()->reorder('id')->get();
         $this->assertCount(3, $events);
-        foreach ($events as $event) {
-            $this->assertArrayHasKey('ip', $event->meta);
-            $this->assertArrayHasKey('user_agent', $event->meta);
-        }
-        $this->assertSame(
-            [ShareApplication::STATUS_REVIEWED, ShareApplication::STATUS_VERIFIED, ShareApplication::STATUS_APPROVED],
-            $events->pluck('to_status')->all(),
-        );
+        $this->assertSame(3, $events->pluck('actor_id')->unique()->count());
+        $this->assertTrue($events->every(fn ($event) => filled($event->remarks)));
     }
 
     public function test_stages_cannot_be_skipped(): void
     {
         $application = $this->paymentVerifiedApplication();
-        $verifier = User::factory()->create()->assignRole('verifier');
-        $approver = User::factory()->create()->assignRole('approver');
 
-        // verifier cannot pick up an application that has not been reviewed
+        // awaiting the verifier, so the reviewer cannot pick it up
+        $this->actingAs(User::factory()->create()->assignRole('application_reviewer'))
+            ->post("/reviewer/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Skipping ahead.'])
+            ->assertSessionHasErrors('workflow');
+
+        // nor can the approver reach past both earlier stages
+        $this->actingAs(User::factory()->create()->assignRole('application_approver'))
+            ->post("/approver/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Straight to approval.'])
+            ->assertSessionHasErrors('workflow');
+
+        $this->assertSame(ApplicationStatus::PaymentVerified, $application->fresh()->status);
+    }
+
+    public function test_one_person_cannot_take_two_stages_of_the_same_application(): void
+    {
+        $application = $this->paymentVerifiedApplication();
+
+        $wearer = User::factory()->create()
+            ->assignRole('application_verifier')
+            ->assignRole('application_reviewer');
+
+        $this->actingAs($wearer)
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Verified by me.'])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($wearer)
+            ->post("/reviewer/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'And reviewed by me.'])
+            ->assertSessionHasErrors('workflow');
+
+        $this->assertSame(ApplicationStatus::Verified, $application->fresh()->status);
+    }
+
+    public function test_remarks_are_required_on_every_action(): void
+    {
+        $application = $this->paymentVerifiedApplication();
+
+        $this->actingAs(User::factory()->create()->assignRole('application_verifier'))
+            ->post("/verifier/applications/{$application->id}/act", ['action' => 'approve'])
+            ->assertSessionHasErrors('remarks');
+    }
+
+    public function test_reviewer_can_send_an_application_back_one_stage(): void
+    {
+        $application = $this->paymentVerifiedApplication();
+        $verifier = User::factory()->create()->assignRole('application_verifier');
+
         $this->actingAs($verifier)
-            ->post("/verifier/applications/{$application->id}/verify")
-            ->assertStatus(422);
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Looks right.']);
 
-        // approver can no longer approve straight from payment_verified
-        $this->actingAs($approver)
-            ->post("/approver/applications/{$application->id}/approve")
-            ->assertStatus(422);
+        $this->actingAs(User::factory()->create()->assignRole('application_reviewer'))
+            ->post("/reviewer/applications/{$application->id}/act",
+                ['action' => 'send_back', 'remarks' => 'Payment reference does not match.'])
+            ->assertSessionHasNoErrors();
 
-        $this->assertSame(ShareApplication::STATUS_PAYMENT_VERIFIED, $application->fresh()->status);
+        $this->assertSame(ApplicationStatus::PaymentVerified, $application->fresh()->status);
     }
 
     public function test_stage_dashboards_are_permission_gated(): void
     {
-        $reviewer = User::factory()->create()->assignRole('reviewer');
-        $verifier = User::factory()->create()->assignRole('verifier');
+        $reviewer = User::factory()->create()->assignRole('application_reviewer');
+        $verifier = User::factory()->create()->assignRole('application_verifier');
 
         $this->actingAs($reviewer)->get('/reviewer/dashboard')->assertOk();
         $this->actingAs($reviewer)->get('/verifier/dashboard')->assertForbidden();
@@ -106,41 +145,55 @@ class ApprovalWorkflowTest extends TestCase
         $this->actingAs($verifier)->get('/reviewer/dashboard')->assertForbidden();
     }
 
-    public function test_reviewer_only_rejects_applications_in_their_stage(): void
+    public function test_verifier_can_return_an_application_to_the_applicant(): void
     {
         Notification::fake();
 
         $application = $this->paymentVerifiedApplication(email: 'applicant@example.com');
-        $reviewer = User::factory()->create()->assignRole('reviewer');
+        $verifier = User::factory()->create()->assignRole('application_verifier');
 
-        $this->actingAs($reviewer)
-            ->post("/reviewer/applications/{$application->id}/reject", ['rejection_reason' => 'Documents unreadable.'])
+        $this->actingAs($verifier)
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'return_to_applicant', 'remarks' => 'Documents unreadable.'])
             ->assertSessionHasNoErrors();
 
-        $application->refresh();
-        $this->assertSame(ShareApplication::STATUS_REJECTED, $application->status);
-        $this->assertSame('Documents unreadable.', $application->rejection_reason);
-        Notification::assertSentOnDemand(ApplicationRejectedNotification::class);
+        $this->assertSame(ApplicationStatus::Returned, $application->fresh()->status);
+        Notification::assertSentOnDemand(ApplicationReturnedNotification::class);
 
-        // already rejected — no longer in the review stage
-        $this->actingAs($reviewer)
-            ->post("/reviewer/applications/{$application->id}/reject", ['rejection_reason' => 'Again.'])
-            ->assertStatus(422);
+        // with the applicant now, so no stage can act on it
+        $this->actingAs($verifier)
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Changed my mind.'])
+            ->assertSessionHasErrors('workflow');
     }
 
-    public function test_reviewer_dashboard_lists_only_payment_verified_applications(): void
+    public function test_application_queue_paginates(): void
+    {
+        foreach (range(1, 16) as $ignored) {
+            $this->paymentVerifiedApplication();
+        }
+
+        $this->actingAs(User::factory()->create()->assignRole('application_verifier'))
+            ->get('/verifier/dashboard')
+            ->assertInertia(fn ($page) => $page
+                ->has('applications.data', 15)
+                ->where('applications.total', 16)
+            );
+    }
+
+    public function test_verifier_dashboard_lists_only_applications_awaiting_that_stage(): void
     {
         $pending = $this->paymentVerifiedApplication();
         $draft = $this->paymentVerifiedApplication();
-        $draft->update(['status' => ShareApplication::STATUS_DRAFT]);
+        $draft->update(['status' => ApplicationStatus::Draft]);
 
-        $reviewer = User::factory()->create()->assignRole('reviewer');
+        $verifier = User::factory()->create()->assignRole('application_verifier');
 
-        $this->actingAs($reviewer)->get('/reviewer/dashboard')
+        $this->actingAs($verifier)->get('/verifier/dashboard')
             ->assertInertia(fn ($page) => $page
-                ->component('Reviewer/Dashboard', false)
-                ->has('applications', 1)
-                ->where('applications.0.id', $pending->id)
+                ->component('Verifier/Dashboard', false)
+                ->has('applications.data', 1)
+                ->where('applications.data.0.id', $pending->id)
             );
     }
 
@@ -148,26 +201,12 @@ class ApprovalWorkflowTest extends TestCase
     {
         $user = User::factory()->create()->assignRole('applicant');
 
-        $applicant = Applicant::create([
-            'user_id' => $user->id,
-            'full_name_nepali' => 'परीक्षण',
-            'full_name_english' => 'Applicant '.$user->id,
-            'date_of_birth' => '1990-01-01',
-            'age' => 36,
-            'father_name' => 'F',
-            'grandfather_name' => 'GF',
-            'marital_status' => 'single',
-            'permanent_district' => 'KTM',
-            'permanent_municipality' => 'KMC',
-            'permanent_ward' => '1',
-            'mobile_number' => '98000000'.$user->id,
-            'email' => $email,
-        ]);
+        $applicant = $this->minimalProfile($user, ['email' => $email]);
 
         $application = ShareApplication::create([
             'applicant_id' => $applicant->id,
             'application_number' => 'APP-TEST-'.$user->id,
-            'status' => ShareApplication::STATUS_PAYMENT_VERIFIED,
+            'status' => ApplicationStatus::PaymentVerified,
             'shares_applied' => 10,
             'amount_per_share' => '100.00',
             'total_amount_declared' => '1000.00',

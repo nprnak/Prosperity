@@ -58,7 +58,7 @@ class ApplicantProfileUpdateRequest extends FormRequest
             'citizenship_number' => ['required', 'string', 'max:50'],
             'citizenship_issued_district' => ['nullable', 'string', 'max:255'],
             'citizenship_issued_date' => ['nullable', 'date', 'before_or_equal:today'],
-            'national_id_number' => ['required', 'string', 'max:50'],
+            'national_id_number' => ['required', 'digits:10'],
             'pan_number' => ['nullable', 'string', 'max:50'],
 
             // 6. Documents — required until a copy is on file.

@@ -5,12 +5,10 @@ namespace Modules\UserManagement\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\ApplicantManagement\Enums\EducationLevel;
@@ -22,6 +20,7 @@ use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicantManagement\Requests\ApplicantProfileUpdateRequest;
 use Modules\ApplicantManagement\Services\ApplicantProfileService;
+use Modules\ApplicantManagement\Services\ProfileDocumentService;
 use Modules\SettingsManagement\Repositories\GeographyRepository;
 use Modules\UserManagement\Repositories\UserRepository;
 use Modules\UserManagement\Requests\ProfileUpdateRequest;
@@ -108,48 +107,21 @@ class ProfileController extends Controller
         return Redirect::route('profile.edit')->with('status', 'applicant-profile-updated');
     }
 
-    public function document(Request $request, string $type): BinaryFileResponse|RedirectResponse
+    /**
+     * The applicant's own uploads. Reviewers reach the same files through
+     * ApplicantProfileReviewController, which authorises via ProfilePolicy.
+     */
+    public function document(Request $request, string $type, ProfileDocumentService $documents): BinaryFileResponse
     {
         $user = $request->user();
 
         abort_unless($user instanceof User, 403);
 
-        $typeByRoute = [
-            'photo' => 'photo',
-            'citizenship-front' => 'citizenship_front',
-            'citizenship-back' => 'citizenship_back',
-            'national-id' => 'national_id',
-            'pan' => 'pan',
-            'signature' => 'signature',
-        ];
-
-        $documentType = $typeByRoute[$type] ?? null;
-
-        abort_unless($documentType !== null, 404);
-
         $profile = $this->profiles->findByUserId($user->id);
 
         abort_unless($profile instanceof Profile, 404);
 
-        $path = $profile->documents()->where('document_type', $documentType)->value('file_path');
-
-        abort_unless(is_string($path) && $path !== '', 404);
-
-        if (! Storage::disk('private')->exists($path)) {
-            throw new FileNotFoundException($path);
-        }
-
-        $filename = basename($path);
-        $absolutePath = storage_path('app/private/'.$path);
-        $mode = $request->query('mode');
-
-        if ($mode === 'download') {
-            return response()->download($absolutePath, $filename);
-        }
-
-        return response()->file($absolutePath, [
-            'Content-Disposition' => 'inline; filename="'.$filename.'"',
-        ]);
+        return $documents->respond($profile, $type, $request->query('mode') === 'download');
     }
 
     /**

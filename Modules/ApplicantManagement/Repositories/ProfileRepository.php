@@ -38,6 +38,19 @@ class ProfileRepository extends Repository
     }
 
     /**
+     * A profile already resolved by route binding, loaded with everything the
+     * reviewer's detail page renders — the same relation set the KYC form
+     * uses, plus the trail and the owning user.
+     */
+    public function loadForReview(Profile $profile): Profile
+    {
+        return $profile->load([
+            'permanentAddress', 'temporaryAddress', 'documents', 'sourcesOfFunds',
+            'nominees', 'experiences', 'user:id,name,email', 'workflowEvents.actor:id,name',
+        ]);
+    }
+
+    /**
      * The KYC queue for one member of staff: profiles sitting at a stage they
      * hold, minus any the act-once rule bars them from.
      *

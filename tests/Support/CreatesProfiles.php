@@ -59,7 +59,8 @@ trait CreatesProfiles
             'mother_name' => 'Mother',
             'education' => EducationLevel::Bachelors,
             'citizenship_number' => 'CTZ-'.$user->id,
-            'national_id_number' => 'NID-'.$user->id,
+            // national_id_number is validated as exactly 10 digits.
+            'national_id_number' => sprintf('90%08d', $user->id),
             // boid is char(16) and unique.
             'boid' => sprintf('13010000%08d', $user->id),
             'bank_name' => 'Test Bank',

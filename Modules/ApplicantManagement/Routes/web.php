@@ -13,6 +13,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // records that person may actually act on.
     Route::middleware('permission:profile.verify|profile.review|profile.approve')->group(function () {
         Route::get('/applicants/review', [ApplicantProfileReviewController::class, 'queue'])->name('applicants.review');
+
+        // The detail page and its documents are further gated by ProfilePolicy::view.
+        Route::get('/applicants/{applicant}/profile', [ApplicantProfileReviewController::class, 'show'])->name('applicants.profile.show');
+        Route::get('/applicants/{applicant}/profile/documents/{type}', [ApplicantProfileReviewController::class, 'document'])->name('applicants.profile.documents.show');
+
         Route::post('/applicants/{applicant}/profile/act', [ApplicantProfileReviewController::class, 'act'])->name('applicants.profile.act');
     });
 });

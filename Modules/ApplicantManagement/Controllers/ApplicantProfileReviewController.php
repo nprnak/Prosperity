@@ -5,6 +5,7 @@ namespace Modules\ApplicantManagement\Controllers;
 use App\Http\Controllers\Controller;
 use App\Workflow\WorkflowService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Modules\ApplicantManagement\Enums\ProfileStatus;
 use Modules\ApplicantManagement\Models\Profile;
@@ -12,6 +13,7 @@ use Modules\ApplicantManagement\Notifications\ProfileApprovedNotification;
 use Modules\ApplicantManagement\Notifications\ProfileReturnedNotification;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicantManagement\Requests\ProfileWorkflowActionRequest;
+use Modules\ApplicantManagement\Services\ProfileDocumentService;
 
 /**
  * KYC review: verifier → reviewer → approver.
@@ -35,6 +37,32 @@ class ApplicantProfileReviewController extends Controller
         ]);
     }
 
+    /**
+     * The record a stage decides on. Actions live here rather than on the
+     * queue, so a sign-off is only ever given beside the evidence for it.
+     */
+    public function show(Request $request, Profile $applicant)
+    {
+        Gate::authorize('view', $applicant);
+
+        return Inertia::render('Applicants/ProfileShow', [
+            'applicant' => $this->profiles->loadForReview($applicant),
+            'completionChecks' => $applicant->completionChecks(),
+            'completionPercent' => $applicant->completionPercent(),
+            // The act-once rule and stage permissions decide this, not the
+            // route gate — a queue holder can open a record they cannot act on.
+            'canAct' => $this->workflow->mayAct($applicant, $request->user()),
+            'documentTypes' => Profile::REQUIRED_DOCUMENT_TYPES,
+        ]);
+    }
+
+    public function document(Request $request, Profile $applicant, string $type, ProfileDocumentService $documents)
+    {
+        Gate::authorize('view', $applicant);
+
+        return $documents->respond($applicant, $type, $request->query('mode') === 'download');
+    }
+
     public function act(ProfileWorkflowActionRequest $request, Profile $applicant)
     {
         $before = $applicant->profile_status;
@@ -51,7 +79,9 @@ class ApplicantProfileReviewController extends Controller
 
         $this->notifyApplicant($applicant, $before);
 
-        return back()->with('success', $this->message($applicant));
+        // Back to the queue rather than the detail page: whichever way this
+        // went, the record has left this reviewer's hands.
+        return redirect()->route('applicants.review')->with('success', $this->message($applicant));
     }
 
     /**

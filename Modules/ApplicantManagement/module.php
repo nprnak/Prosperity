@@ -1,5 +1,7 @@
 <?php
 
+use Modules\ApplicantManagement\Providers\ApplicantManagementServiceProvider;
+
 return [
 
     'name' => 'ApplicantManagement',
@@ -12,6 +14,8 @@ return [
     // Routes/api.php; override the paths here if needed.
 
     // Extra service providers to register for this module.
-    'providers' => [],
+    'providers' => [
+        ApplicantManagementServiceProvider::class,
+    ],
 
 ];

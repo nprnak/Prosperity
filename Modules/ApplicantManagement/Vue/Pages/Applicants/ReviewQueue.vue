@@ -1,9 +1,8 @@
 <script setup>
 import Pagination from '@/Components/Pagination.vue';
-import StageActions from '@/Components/StageActions.vue';
 import WorkflowTimeline from '@/Components/WorkflowTimeline.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 
 defineProps({
     // A Laravel paginator: { data, links, from, to, total }.
@@ -30,7 +29,7 @@ const formatWhen = (value) => (value
 
         <div class="mx-auto max-w-5xl space-y-8 px-4 py-8">
             <section>
-                <h3 class="font-semibold text-gray-900">Waiting on you ({{ pending.total }})</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Waiting on you ({{ pending.total }})</h3>
                 <p class="mt-1 max-w-[70ch] text-sm text-gray-700">
                     Each profile shows the stage it is waiting for. A profile needs three different
                     people across verification, review and approval, so anything you have already
@@ -53,7 +52,12 @@ const formatWhen = (value) => (value
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <h4 class="font-semibold text-gray-900">
-                                {{ applicant.full_name_en }}
+                                <Link
+                                    :href="route('applicants.profile.show', applicant.id)"
+                                    class="text-blue-700 hover:text-blue-900 hover:underline"
+                                >
+                                    {{ applicant.full_name_en }}
+                                </Link>
                                 <span class="font-normal text-gray-700">· {{ applicant.mobile }}</span>
                             </h4>
                             <p class="mt-1 text-sm text-gray-700">
@@ -79,11 +83,12 @@ const formatWhen = (value) => (value
                         </div>
                     </div>
 
-                    <StageActions
-                        class="mt-4"
-                        :action-url="route('applicants.profile.act', applicant.id)"
-                        :can-send-back="applicant.can_send_back"
-                    />
+                    <Link
+                        :href="route('applicants.profile.show', applicant.id)"
+                        class="mt-4 inline-flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:bg-blue-800"
+                    >
+                        Open and review
+                    </Link>
 
                     <details class="mt-4 border-t border-gray-100 pt-3">
                         <summary class="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
@@ -99,7 +104,7 @@ const formatWhen = (value) => (value
             </section>
 
             <section>
-                <h3 class="font-semibold text-gray-900">Recently decided</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Recently decided</h3>
 
                 <p v-if="!recentlyReviewed.data.length" class="mt-2 text-sm text-gray-700">
                     Nothing decided yet.

@@ -440,8 +440,8 @@ const submit = () => {
                     <InputError class="mt-1" :message="form.errors.citizenship_issued_date" />
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-700">National ID No. *</label>
-                    <TextInput v-model="form.national_id_number" type="text" :class="fieldClass('national_id_number')" />
+                    <label class="text-sm font-medium text-gray-700">National ID No. (10 digits) *</label>
+                    <TextInput v-model="form.national_id_number" type="text" placeholder="e.g. 1234567890" :class="fieldClass('national_id_number')" />
                     <InputError class="mt-1" :message="form.errors.national_id_number" />
                 </div>
                 <div>

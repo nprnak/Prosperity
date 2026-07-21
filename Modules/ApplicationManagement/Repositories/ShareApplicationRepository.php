@@ -99,19 +99,39 @@ class ShareApplicationRepository extends Repository
             ->withQueryString();
     }
 
-    public function listByStatus(ApplicationStatus|array $status, array $with = []): Collection
-    {
-        return $this->query()
-            ->whereIn('status', (array) $status)
-            ->with($with)
-            ->latest()
-            ->get();
-    }
+public function listByStatus(ApplicationStatus|string|array $status, array $with = []): Collection
+{
+    $statuses = is_array($status) ? $status : [$status];
 
-    public function countByStatus(string|array $status): int
-    {
-        return $this->query()->whereIn('status', (array) $status)->count();
-    }
+    $statuses = array_map(
+        fn ($status) => $status instanceof ApplicationStatus
+            ? $status->value
+            : $status,
+        $statuses
+    );
+
+    return $this->query()
+        ->whereIn('status', $statuses)
+        ->with($with)
+        ->latest()
+        ->get();
+}
+
+   public function countByStatus(ApplicationStatus|string|array $status): int
+{
+    $statuses = is_array($status) ? $status : [$status];
+
+    $statuses = array_map(
+        fn ($status) => $status instanceof ApplicationStatus
+            ? $status->value
+            : $status,
+        $statuses
+    );
+
+    return $this->query()
+        ->whereIn('status', $statuses)
+        ->count();
+}
 
     /**
      * Non-draft applications for an applicant profile. Returned ones stay

@@ -41,6 +41,7 @@ class VerifyEmailOtpController extends Controller
 
         $user->clearEmailOtp();
 
-        return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+        return redirect()->intended(route('dashboard', absolute: false).'?verified=1')
+            ->with('success', 'Your email address has been verified.');
     }
 }

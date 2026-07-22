@@ -93,7 +93,7 @@ class ProfileController extends Controller
 
         $user->save();
 
-        return Redirect::route('settings.edit');
+        return Redirect::route('settings.edit')->with('success', 'Account details updated.');
     }
 
     public function updateApplicantProfile(ApplicantProfileUpdateRequest $request, ApplicantProfileService $applicantProfiles): RedirectResponse
@@ -104,7 +104,10 @@ class ProfileController extends Controller
 
         $applicantProfiles->update($user, $request);
 
-        return Redirect::route('profile.edit')->with('status', 'applicant-profile-updated');
+        // 'status' drives the inline banner on the form; 'success' drives the toast.
+        return Redirect::route('profile.edit')
+            ->with('status', 'applicant-profile-updated')
+            ->with('success', 'Profile saved.');
     }
 
     /**

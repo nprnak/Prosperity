@@ -41,7 +41,10 @@ class PasswordResetLinkController extends Controller
         );
 
         if ($status == Password::RESET_LINK_SENT) {
-            return back()->with('status', __($status));
+            // 'status' keeps the inline confirmation on the form; 'success' toasts it.
+            return back()
+                ->with('status', __($status))
+                ->with('success', __($status));
         }
 
         throw ValidationException::withMessages([

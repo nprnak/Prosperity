@@ -75,12 +75,10 @@ const statusClass = (status) => {
           <td class="py-2 pr-3">{{ app.shares_applied }}</td>
           <td class="py-2 pr-3">{{ currency }} {{ app.total_amount_declared }}</td>
           <td class="py-2 text-right whitespace-nowrap">
+            <!-- One link: the form is always shown before printing, so a
+                 separate Print link that fired the dialog on load is gone. -->
             <Link :href="route('applications.show', app.id)" class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
-              View
-            </Link>
-            <span class="mx-1 text-gray-300">|</span>
-            <Link :href="route('applications.show', { application: app.id, print: 1 })" class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
-              Print
+              View &amp; Print
             </Link>
           </td>
         </tr>

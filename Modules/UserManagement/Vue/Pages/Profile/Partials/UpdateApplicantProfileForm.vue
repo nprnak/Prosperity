@@ -82,7 +82,6 @@ const form = useForm({
 
     // 7. Source of investment
     sources: savedSources.length ? savedSources : ['salary'],
-    source_other_description: (profile.sources_of_funds || []).find((source) => source.source_type === 'other')?.description || '',
 
     // 8. Nominee
     nominee: {
@@ -482,11 +481,6 @@ const submit = () => {
                     <input v-model="form.sources" type="checkbox" :value="option.value" class="rounded border-gray-300 text-blue-600" />
                     <span>{{ option.label }}</span>
                 </label>
-            </div>
-            <div v-if="form.sources.includes('other')" class="mt-3">
-                <label class="text-sm font-medium text-gray-700">Please specify other source *</label>
-                <TextInput v-model="form.source_other_description" type="text" :class="fieldClass('source_other_description')" />
-                <InputError class="mt-1" :message="form.errors.source_other_description" />
             </div>
             <InputError class="mt-1" :message="form.errors.sources" />
         </section>

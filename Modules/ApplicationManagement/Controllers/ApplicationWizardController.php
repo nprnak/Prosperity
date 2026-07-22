@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Modules\ApplicantManagement\Enums\ProfileStatus;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
+use Modules\ApplicantManagement\Services\ProfileDocumentService;
 use Modules\ApplicationManagement\Models\ShareApplication;
+use Modules\ApplicationManagement\Models\ShareApplicationVoucher;
 use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
 use Modules\ApplicationManagement\Requests\StoreDraftStepRequest;
 use Modules\ApplicationManagement\Requests\SubmitApplicationRequest;
@@ -54,7 +56,9 @@ class ApplicationWizardController extends Controller
             'applicant.nominees',
             'applicant.sourcesOfFunds',
             'applicant.experiences',
+            'applicant.documents',
             'offering.company',
+            'vouchers',
             'paymentTransactions' => fn ($query) => $query->latest(),
             'paymentTransactions.paymentMethod:id,name,account_name,account_number,bank_name',
         ]);
@@ -71,25 +75,54 @@ class ApplicationWizardController extends Controller
             'collectionAccount' => $collectionAccount?->only(['name', 'account_name', 'account_number', 'bank_name']),
             'amountInWords' => $words->toWords((string) $application->total_amount_declared),
             'sharesInWords' => str_replace(' Rupaiya Matra', '', $words->toWords($application->shares_applied)),
-            // The document route serves the logged-in user's own file, so only offer it to the owner.
-            'photoUrl' => $isOwner ? route('profile.documents.show', 'photo') : null,
-            'voucherImageUrl' => $application->bank_voucher_image
-                ? route('applications.voucher-image', $application->id)
-                : null,
+            // The document route serves the logged-in user's own file, so only
+            // offer these to the owner — and only when the file actually exists,
+            // so the form doesn't render broken images where a doc is missing.
+            'photoUrl' => $this->documentUrl($application, $isOwner, 'photo'),
+            'signatureUrl' => $this->documentUrl($application, $isOwner, 'signature'),
+            'voucherImageUrls' => $application->vouchers
+                ->filter->has_image
+                ->map(fn ($voucher) => [
+                    'id' => $voucher->id,
+                    'transaction_code' => $voucher->transaction_code,
+                    'url' => route('applications.voucher-image', [$application->id, $voucher->id]),
+                ])
+                ->values(),
         ]);
     }
 
-    public function voucherImage(ShareApplication $application)
+    /**
+     * A link to one of the applicant's own uploads, or null when they aren't
+     * the owner or never uploaded it.
+     */
+    private function documentUrl(ShareApplication $application, bool $isOwner, string $slug): ?string
+    {
+        if (! $isOwner) {
+            return null;
+        }
+
+        $documentType = ProfileDocumentService::TYPE_BY_SLUG[$slug] ?? null;
+
+        $exists = $application->applicant?->documents
+            ->contains(fn ($document) => $document->document_type === $documentType);
+
+        return $exists ? route('profile.documents.show', $slug) : null;
+    }
+
+    public function voucherImage(ShareApplication $application, ShareApplicationVoucher $voucher)
     {
         Gate::authorize('view', $application);
 
+        // The voucher id comes from the URL, so confirm it belongs to the
+        // application the gate just authorised.
+        abort_unless($voucher->share_application_id === $application->id, 404);
+
         abort_unless(
-            $application->bank_voucher_image
-                && Storage::disk('private')->exists($application->bank_voucher_image),
+            $voucher->image_path && Storage::disk('private')->exists($voucher->image_path),
             404,
         );
 
-        return response()->file(Storage::disk('private')->path($application->bank_voucher_image));
+        return response()->file(Storage::disk('private')->path($voucher->image_path));
     }
 
     public function storeDraft(StoreDraftStepRequest $request)
@@ -105,7 +138,7 @@ class ApplicationWizardController extends Controller
 
         Gate::authorize('submit', $application);
 
-        $this->wizard->submit($request->user(), $application, $request->validated('asba_reference'));
+        $this->wizard->submit($request->user(), $application);
 
         return redirect()->route('applications.wizard')->with('success', 'Application submitted successfully.');
     }

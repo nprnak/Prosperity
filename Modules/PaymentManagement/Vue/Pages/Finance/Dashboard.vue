@@ -13,17 +13,20 @@ const verify = (paymentId, status) => {
 const modeFromPaymentType = { connect_ips: 'ips', mobile_banking: 'mobile_banking', cheque: 'cheque' };
 
 // Prefill from what the applicant declared on the application; staff can adjust.
+// Payment details sit on the voucher rows now, so this seeds from the first
+// declared deposit.
 const initForm = (app) => {
   if (!paymentForms[app.id]) {
-    const isCheque = app.payment_type === 'cheque';
+    const voucher = app.vouchers?.[0] || {};
+    const isCheque = voucher.payment_type === 'cheque';
     paymentForms[app.id] = useForm({
-      amount: app.total_amount_declared || '',
-      payment_mode: modeFromPaymentType[app.payment_type] || 'cash',
+      amount: voucher.amount || app.total_amount_declared || '',
+      payment_mode: modeFromPaymentType[voucher.payment_type] || 'cash',
       payment_method_id: null,
       payment_date: new Date().toISOString().slice(0, 10),
-      bank_name: app.payment_deposited_bank || '',
-      payment_reference_no: isCheque ? '' : (app.payment_deposited_ref_no || ''),
-      cheque_no: isCheque ? (app.payment_deposited_ref_no || '') : '',
+      bank_name: voucher.deposited_bank || '',
+      payment_reference_no: isCheque ? '' : (voucher.transaction_code || ''),
+      cheque_no: isCheque ? (voucher.transaction_code || '') : '',
       holding_id_no: '', id_type: 'citizenship', notes: ''
     });
   }

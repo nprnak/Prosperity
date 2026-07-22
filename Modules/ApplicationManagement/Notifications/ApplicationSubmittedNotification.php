@@ -36,6 +36,6 @@ class ApplicationSubmittedNotification extends Notification implements ShouldQue
             ->subject('Application Submitted')
             ->line('Your share application has been submitted.')
             ->line('Application Number: '.$this->application->application_number)
-            ->line('Status: '.$this->application->status);
+            ->line('Status: '.$this->application->status->labelEn());
     }
 }

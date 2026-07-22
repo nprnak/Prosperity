@@ -16,7 +16,6 @@ class SubmitApplicationRequest extends FormRequest
     {
         return [
             'declaration_accepted' => ['required', 'accepted'],
-            'asba_reference' => ['nullable', 'string', 'max:100'],
         ];
     }
 }

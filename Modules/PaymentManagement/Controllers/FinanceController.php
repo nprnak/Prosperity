@@ -37,7 +37,7 @@ class FinanceController extends Controller
                 ApplicationStatus::PaymentPending,
                 ApplicationStatus::PaymentVerified,
             ],
-            ['applicant', 'paymentTransactions'],
+            ['applicant', 'paymentTransactions', 'vouchers'],
         );
 
         return Inertia::render('Finance/Dashboard', [

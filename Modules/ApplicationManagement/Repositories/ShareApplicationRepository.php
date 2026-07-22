@@ -36,9 +36,10 @@ class ShareApplicationRepository extends Repository
     public function loadDetail(ShareApplication $application): ShareApplication
     {
         return $application->load([
-            'applicant',
+            'applicant.documents',
             'reviewer:id,name,email',
             'allotment',
+            'vouchers',
             'paymentTransactions' => fn ($query) => $query
                 ->with(['voucher', 'checker:id,name', 'verifier:id,name', 'approver:id,name'])
                 ->latest(),
@@ -62,7 +63,7 @@ class ShareApplicationRepository extends Repository
     {
         return $this->forUser($userId)
             ->where('status', ApplicationStatus::Draft)
-            ->with(['applicant.nominees', 'applicant.sourcesOfFunds'])
+            ->with(['applicant.nominees', 'applicant.sourcesOfFunds', 'vouchers'])
             ->latest()
             ->first();
     }

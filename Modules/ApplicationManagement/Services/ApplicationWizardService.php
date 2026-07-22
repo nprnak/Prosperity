@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Services\NumberGeneratorService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
@@ -73,11 +72,16 @@ class ApplicationWizardService
             ]);
         }
 
-        if (! empty($payload['investment_source'])) {
-            $applicant->sourcesOfFunds()->updateOrCreate(
-                ['source_type' => $payload['investment_source']],
-                ['description' => $payload['investment_source_other'] ?? null],
-            );
+        // Sources are a set: whatever the applicant ticked replaces what was
+        // there, so unticking one actually removes it.
+        if (isset($payload['investment_sources'])) {
+            $sources = array_values(array_unique((array) $payload['investment_sources']));
+
+            $applicant->sourcesOfFunds()->whereNotIn('source_type', $sources ?: [''])->delete();
+
+            foreach ($sources as $source) {
+                $applicant->sourcesOfFunds()->updateOrCreate(['source_type' => $source]);
+            }
         }
 
         if (! empty($payload['share_heir_name'])) {
@@ -104,31 +108,61 @@ class ApplicationWizardService
             'shares_applied' => $shares,
             'amount_per_share' => $offering->share_rate,
             'total_amount_declared' => $totalAmount,
-            'asba_reference' => $payload['asba_reference'] ?? $application->asba_reference,
-            'payment_type' => $payload['payment_type'] ?? $application->payment_type,
-            'payment_deposited_bank' => $payload['payment_deposited_bank'] ?? $application->payment_deposited_bank,
-            'payment_deposited_ref_no' => $payload['payment_deposited_ref_no'] ?? $application->payment_deposited_ref_no,
             'declaration_accepted' => (bool) ($payload['declaration_accepted'] ?? false),
         ]);
 
-        if (($payload['bank_voucher_image'] ?? null) instanceof UploadedFile) {
-            if ($application->bank_voucher_image) {
-                Storage::disk('private')->delete($application->bank_voucher_image);
-            }
-
-            $application->bank_voucher_image = $payload['bank_voucher_image']
-                ->store('applications/'.$applicant->id, 'private');
-        }
-
         $application->save();
+
+        if (isset($payload['vouchers'])) {
+            $this->syncVouchers($application, (array) $payload['vouchers'], $applicant->id);
+        }
 
         return $application;
     }
 
     /**
+     * Replaces the application's voucher rows with what the form submitted.
+     * Rows carrying an id keep their existing slip unless a new file is
+     * attached; rows the applicant removed are deleted along with their file.
+     */
+    private function syncVouchers(ShareApplication $application, array $rows, int $applicantId): void
+    {
+        $existing = $application->vouchers()->get()->keyBy('id');
+        $kept = [];
+
+        foreach ($rows as $row) {
+            $voucher = isset($row['id']) ? $existing->get((int) $row['id']) : null;
+            $voucher ??= $application->vouchers()->make();
+
+            $voucher->fill([
+                'payment_type' => $row['payment_type'] ?? null,
+                'deposited_bank' => $row['deposited_bank'] ?? null,
+                'transaction_code' => $row['transaction_code'] ?? null,
+                'asba_reference' => $row['asba_reference'] ?? null,
+                'amount' => ($row['amount'] ?? null) === '' ? null : ($row['amount'] ?? null),
+            ]);
+
+            if (($row['image'] ?? null) instanceof UploadedFile) {
+                $voucher->deleteImage();
+                $voucher->image_path = $row['image']->store('applications/'.$applicantId, 'private');
+            }
+
+            $application->vouchers()->save($voucher);
+            $kept[] = $voucher->id;
+        }
+
+        foreach ($existing as $voucher) {
+            if (! in_array($voucher->id, $kept, true)) {
+                $voucher->deleteImage();
+                $voucher->delete();
+            }
+        }
+    }
+
+    /**
      * @throws ValidationException
      */
-    public function submit(User $user, ShareApplication $application, ?string $asbaReference = null): ShareApplication
+    public function submit(User $user, ShareApplication $application): ShareApplication
     {
         $application->load('applicant');
 
@@ -157,12 +191,21 @@ class ApplicationWizardService
             $this->failSubmission("You have reached the maximum of {$maxApplications} active applications.");
         }
 
-        if (str_starts_with($application->application_number, 'DRAFT-')) {
-            $application->application_number = $this->numbers->generateApplicationNumber();
+        // A code with no slip, or a slip with no code, can't be verified by
+        // finance — so the pairing is enforced at submission rather than while
+        // the applicant is still filling the draft in.
+        $vouchers = $application->vouchers()->get();
+
+        if ($vouchers->isEmpty()) {
+            $this->failSubmission('Add at least one bank voucher with its transaction code before submitting.');
         }
 
-        if (filled($asbaReference)) {
-            $application->asba_reference = $asbaReference;
+        if ($vouchers->contains(fn ($voucher) => blank($voucher->transaction_code) || ! $voucher->has_image)) {
+            $this->failSubmission('Every bank voucher needs both a transaction code and an uploaded slip.');
+        }
+
+        if (str_starts_with($application->application_number, 'DRAFT-')) {
+            $application->application_number = $this->numbers->generateApplicationNumber();
         }
 
         $fromStatus = $application->status;
@@ -174,20 +217,26 @@ class ApplicationWizardService
 
         // The declared payment goes straight into finance's verification queue
         // as a pending transaction — no separate "record payment" step needed.
+        // One pending transaction per declared deposit, so finance verifies each
+        // slip on its own rather than one lump sum.
         if (! $application->paymentTransactions()->exists()) {
-            $isCheque = $application->payment_type === 'cheque';
+            $amounts = $this->allocateAmounts($application, $vouchers);
 
-            $application->paymentTransactions()->create([
-                'receipt_number' => $this->numbers->generateReceiptNumber(),
-                'amount' => $application->total_amount_declared,
-                'payment_mode' => ['connect_ips' => 'ips', 'mobile_banking' => 'mobile_banking', 'cheque' => 'cheque'][$application->payment_type] ?? 'online_transfer',
-                'bank_name' => $application->payment_deposited_bank,
-                'payment_reference_no' => $isCheque ? null : $application->payment_deposited_ref_no,
-                'cheque_no' => $isCheque ? $application->payment_deposited_ref_no : null,
-                'payment_date' => now()->toDateString(),
-                'verification_status' => 'pending',
-                'issued_by' => $user->id,
-            ]);
+            foreach ($vouchers as $index => $voucher) {
+                $isCheque = $voucher->payment_type === 'cheque';
+
+                $application->paymentTransactions()->create([
+                    'receipt_number' => $this->numbers->generateReceiptNumber(),
+                    'amount' => $amounts[$index],
+                    'payment_mode' => ['connect_ips' => 'ips', 'mobile_banking' => 'mobile_banking', 'cheque' => 'cheque'][$voucher->payment_type] ?? 'online_transfer',
+                    'bank_name' => $voucher->deposited_bank,
+                    'payment_reference_no' => $isCheque ? null : $voucher->transaction_code,
+                    'cheque_no' => $isCheque ? $voucher->transaction_code : null,
+                    'payment_date' => now()->toDateString(),
+                    'verification_status' => 'pending',
+                    'issued_by' => $user->id,
+                ]);
+            }
         }
 
         if ($application->applicant?->email) {
@@ -198,6 +247,63 @@ class ApplicationWizardService
         $application->applicant?->user?->notify(new ApplicationSubmittedNotification($application));
 
         return $application;
+    }
+
+    /**
+     * The amount to record against each voucher, indexed like $vouchers.
+     *
+     * Amounts are optional on the form, so anything left blank splits whatever
+     * the declared total still has unaccounted for. Working in paisa keeps the
+     * split exact — the first rows absorb the remainder rather than the total
+     * drifting by a paisa per voucher.
+     *
+     * @return array<int, string>
+     */
+    private function allocateAmounts(ShareApplication $application, $vouchers): array
+    {
+        $declared = $this->toPaisa((string) $application->total_amount_declared);
+        $stated = 0;
+        $blank = [];
+
+        foreach ($vouchers as $index => $voucher) {
+            if ($voucher->amount === null) {
+                $blank[] = $index;
+            } else {
+                $stated += $this->toPaisa((string) $voucher->amount);
+            }
+        }
+
+        $amounts = [];
+
+        foreach ($vouchers as $index => $voucher) {
+            if ($voucher->amount !== null) {
+                $amounts[$index] = number_format((float) $voucher->amount, 2, '.', '');
+            }
+        }
+
+        if ($blank === []) {
+            return $amounts;
+        }
+
+        $remainder = max(0, $declared - $stated);
+        $share = intdiv($remainder, count($blank));
+        $extra = $remainder % count($blank);
+
+        foreach ($blank as $position => $index) {
+            $paisa = $share + ($position < $extra ? 1 : 0);
+            $amounts[$index] = number_format($paisa / 100, 2, '.', '');
+        }
+
+        return $amounts;
+    }
+
+    private function toPaisa(string $amount): int
+    {
+        $normalized = preg_replace('/[^0-9.]/', '', $amount) ?: '0';
+        [$rupees, $paisa] = array_pad(explode('.', $normalized, 2), 2, '0');
+        $paisa = str_pad(substr($paisa, 0, 2), 2, '0');
+
+        return ((int) $rupees * 100) + (int) $paisa;
     }
 
     /**

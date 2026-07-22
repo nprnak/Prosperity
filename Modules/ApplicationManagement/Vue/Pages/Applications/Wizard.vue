@@ -12,33 +12,71 @@ const props = defineProps({
   offerings: { type: Array, default: () => [] },
 });
 
+// `key` is a stable client-side handle for v-for; the server never sees it.
+let nextVoucherKey = 0;
+
+const blankVoucher = () => ({
+  key: nextVoucherKey++,
+  id: null,
+  payment_type: '',
+  deposited_bank: '',
+  transaction_code: '',
+  asba_reference: '',
+  amount: '',
+  image: null,
+  has_image: false,
+  preview: null,
+});
+
+const savedVouchers = (props.draft?.vouchers || []).map((voucher) => ({
+  ...blankVoucher(),
+  id: voucher.id,
+  payment_type: voucher.payment_type || '',
+  deposited_bank: voucher.deposited_bank || '',
+  transaction_code: voucher.transaction_code || '',
+  asba_reference: voucher.asba_reference || '',
+  amount: voucher.amount ?? '',
+  has_image: Boolean(voucher.has_image),
+}));
+
 const form = useForm({
   step: 2,
   payload: {
-    investment_source: props.draft?.applicant?.sources_of_funds?.[0]?.source_type || 'salary',
-    investment_source_other: props.draft?.applicant?.sources_of_funds?.[0]?.description || '',
+    investment_sources: (props.draft?.applicant?.sources_of_funds || []).map((source) => source.source_type),
     share_heir_name: props.draft?.applicant?.nominees?.[0]?.full_name || '',
     share_heir_relation: props.draft?.applicant?.nominees?.[0]?.relationship || '',
     share_heir_mobile: props.draft?.applicant?.nominees?.[0]?.mobile || '',
     share_offering_id: props.draft?.share_offering_id || props.offerings[0]?.id || null,
-    asba_reference: props.draft?.asba_reference || '',
-    payment_type: props.draft?.payment_type || '',
-    payment_deposited_bank: props.draft?.payment_deposited_bank || '',
-    payment_deposited_ref_no: props.draft?.payment_deposited_ref_no || '',
-    bank_voucher_image: null,
+    vouchers: savedVouchers.length ? savedVouchers : [blankVoucher()],
     shares_applied: props.draft?.shares_applied || 1,
     declaration_accepted: Boolean(props.draft?.declaration_accepted),
   },
 });
 
-const voucherPreview = ref(null);
+const investmentSourceOptions = [
+  { value: 'salary', label: 'Salary' },
+  { value: 'dividend', label: 'Dividend' },
+  { value: 'property_sale', label: 'Property Sale' },
+  { value: 'house_rent', label: 'House Rent' },
+  { value: 'share_trading', label: 'Share Trading' },
+];
 
-const onVoucherChange = (event) => {
+const addVoucher = () => form.payload.vouchers.push(blankVoucher());
+
+const removeVoucher = (index) => {
+  const [removed] = form.payload.vouchers.splice(index, 1);
+
+  if (removed?.preview) URL.revokeObjectURL(removed.preview);
+};
+
+const onVoucherChange = (event, index) => {
   const file = event.target.files[0] || null;
-  form.payload.bank_voucher_image = file;
+  const voucher = form.payload.vouchers[index];
 
-  if (voucherPreview.value) URL.revokeObjectURL(voucherPreview.value);
-  voucherPreview.value = file ? URL.createObjectURL(file) : null;
+  voucher.image = file;
+
+  if (voucher.preview) URL.revokeObjectURL(voucher.preview);
+  voucher.preview = file ? URL.createObjectURL(file) : null;
 };
 
 const hasDraft = computed(() => Boolean(props.draft?.id));
@@ -65,20 +103,6 @@ const estimatedTotal = computed(() => {
 });
 
 const sharesRemaining = computed(() => selectedOffering.value?.shares_remaining ?? null);
-
-const percentSubscribed = computed(() => {
-  const offering = selectedOffering.value;
-  if (!offering || !offering.total_shares || sharesRemaining.value === null) return 0;
-
-  return Math.min(100, Math.round(((offering.total_shares - sharesRemaining.value) / offering.total_shares) * 100));
-});
-
-const subscriptionBarClass = computed(() => {
-  if (percentSubscribed.value >= 100) return 'bg-red-500';
-  if (percentSubscribed.value >= 80) return 'bg-amber-500';
-
-  return 'bg-emerald-500';
-});
 
 const maxApplicable = computed(() => {
   if (!selectedOffering.value) return null;
@@ -120,7 +144,6 @@ const submitFinal = () => {
   if (!id || !profileReady.value) return;
   useForm({
     declaration_accepted: form.payload.declaration_accepted,
-    asba_reference: form.payload.asba_reference,
   }).post(route('applications.submit', id));
 };
 </script>
@@ -204,18 +227,9 @@ const submitFinal = () => {
               <p v-if="selectedOffering" class="mt-1 text-xs text-gray-500">
                 {{ selectedOffering.min_shares }}–{{ selectedOffering.max_shares }} shares per applicant<span v-if="selectedOffering.closes_at">, closes {{ selectedOffering.closes_at.slice(0, 10) }}</span>
               </p>
-              <div v-if="selectedOffering && sharesRemaining !== null" class="mt-2">
-                <div class="flex items-center justify-between text-xs">
-                  <span :class="sharesRemaining === 0 ? 'font-semibold text-red-600' : 'text-gray-600'">
-                    <template v-if="sharesRemaining === 0">Fully subscribed — no shares remaining, new applications cannot be submitted</template>
-                    <template v-else><strong class="text-gray-900">{{ sharesRemaining.toLocaleString() }}</strong> of {{ Number(selectedOffering.total_shares).toLocaleString() }} shares remaining</template>
-                  </span>
-                  <span class="text-gray-500">{{ percentSubscribed }}% subscribed</span>
-                </div>
-                <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                  <div class="h-full rounded-full transition-all" :class="subscriptionBarClass" :style="{ width: `${percentSubscribed}%` }" />
-                </div>
-              </div>
+              <p v-if="fullySubscribed" class="mt-2 text-xs font-semibold text-red-600">
+                Fully subscribed — no shares remaining, new applications cannot be submitted
+              </p>
             </div>
             <div>
               <label class="mb-1 block text-sm font-medium text-gray-700">Shares Applied</label>
@@ -235,89 +249,152 @@ const submitFinal = () => {
                 Only {{ maxApplicable.toLocaleString() }} shares can still be applied for.
               </p>
             </div>
-            <div class="md:col-span-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm">
-              <span class="text-gray-600">Rate: <strong>{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ selectedOffering?.share_rate || '—' }}</strong> per share</span>
-              <span class="mx-2 text-gray-300">|</span>
-              <span class="text-gray-600">Total payable: <strong class="text-gray-900">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ estimatedTotal }}</strong></span>
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">ASBA Reference</label>
-              <input v-model="form.payload.asba_reference" type="text" placeholder="Enter bank reference if available" :class="inputClass('asba_reference')" />
-              <InputError :message="payloadError('asba_reference')" class="mt-1" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">Payment Type</label>
-              <select v-model="form.payload.payment_type" :class="inputClass('payment_type')">
-                <option value="">Select payment type</option>
-                <option value="connect_ips">ConnectIPS</option>
-                <option value="mobile_banking">Mobile Banking</option>
-                <option value="cheque">Cheque</option>
-              </select>
-              <InputError :message="payloadError('payment_type')" class="mt-1" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">Paying Bank</label>
-              <input v-model="form.payload.payment_deposited_bank" type="text" placeholder="e.g. Nepal Bank Limited" :class="inputClass('payment_deposited_bank')" />
-              <InputError :message="payloadError('payment_deposited_bank')" class="mt-1" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">Transaction Code / Cheque No</label>
-              <input v-model="form.payload.payment_deposited_ref_no" type="text" placeholder="e.g. 1234567 or cheque number" :class="inputClass('payment_deposited_ref_no')" />
-              <InputError :message="payloadError('payment_deposited_ref_no')" class="mt-1" />
-            </div>
-            <div class="md:col-span-3">
-              <label class="mb-1 block text-sm font-medium text-gray-700">Bank Voucher Image</label>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                @change="onVoucherChange"
-                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"
-              />
-              <InputError :message="payloadError('bank_voucher_image')" class="mt-1" />
-              <p class="mt-1 text-xs text-gray-500">
-                Upload a photo or screenshot of your payment voucher/receipt (JPG, PNG or WebP, max 5&nbsp;MB), then save the draft.
-              </p>
-              <div v-if="voucherPreview" class="mt-2">
-                <img :src="voucherPreview" alt="Bank voucher preview" class="max-h-48 rounded-lg border border-gray-200 object-contain" />
+            <!-- Spans the full row so the summary doesn't leave a dead cell. -->
+            <dl class="md:col-span-3 grid grid-cols-2 divide-gray-200 overflow-hidden rounded-lg border border-gray-200 bg-white sm:grid-cols-3 sm:divide-x">
+              <div class="px-4 py-3">
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Rate per share</dt>
+                <dd class="mt-0.5 text-sm font-semibold text-gray-900">
+                  {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ selectedOffering?.share_rate || '—' }}
+                </dd>
               </div>
-              <p v-else-if="draft?.has_bank_voucher_image" class="mt-2 text-sm text-emerald-700">
-                ✓ Voucher uploaded —
-                <a :href="route('applications.voucher-image', draft.id)" target="_blank" class="font-medium underline hover:text-emerald-800">view current image</a>.
-                Choosing a new file replaces it on save.
+              <div class="px-4 py-3">
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Shares applied</dt>
+                <dd class="mt-0.5 text-sm font-semibold text-gray-900">
+                  {{ Number(form.payload.shares_applied || 0).toLocaleString() }}
+                </dd>
+              </div>
+              <div class="col-span-2 border-t border-gray-200 bg-gray-50 px-4 py-3 sm:col-span-1 sm:border-t-0">
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Total payable</dt>
+                <dd class="mt-0.5 text-base font-bold text-gray-900">
+                  {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ estimatedTotal }}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="mt-5 border-t border-gray-200 pt-4">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <h5 class="text-sm font-semibold text-gray-900">Bank Vouchers</h5>
+              <p class="text-xs text-gray-500">
+                Paid in more than one deposit? Add a voucher for each. Every slip needs its own transaction code.
               </p>
             </div>
+
+            <div
+              v-for="(voucher, index) in form.payload.vouchers"
+              :key="voucher.key"
+              class="mt-3 rounded-lg border border-gray-200 bg-white p-4"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">Voucher {{ index + 1 }}</span>
+                <button
+                  v-if="form.payload.vouchers.length > 1"
+                  type="button"
+                  class="text-xs font-medium text-red-600 hover:text-red-800 hover:underline"
+                  @click="removeVoucher(index)"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <!-- Six tracks so five fields still fill every row: 2+2+2, then 3+3. -->
+              <div class="mt-3 grid gap-4 md:grid-cols-6">
+                <div class="md:col-span-2">
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Payment Type</label>
+                  <select v-model="voucher.payment_type" :class="inputClass(`vouchers.${index}.payment_type`)">
+                    <option value="">Select payment type</option>
+                    <option value="connect_ips">ConnectIPS</option>
+                    <option value="mobile_banking">Mobile Banking</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+                  <InputError :message="payloadError(`vouchers.${index}.payment_type`)" class="mt-1" />
+                </div>
+                <div class="md:col-span-2">
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Paying Bank</label>
+                  <input v-model="voucher.deposited_bank" type="text" placeholder="e.g. Nepal Bank Limited" :class="inputClass(`vouchers.${index}.deposited_bank`)" />
+                  <InputError :message="payloadError(`vouchers.${index}.deposited_bank`)" class="mt-1" />
+                </div>
+                <div class="md:col-span-2">
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Transaction Code / Cheque No</label>
+                  <input v-model="voucher.transaction_code" type="text" placeholder="e.g. 1234567 or cheque number" :class="inputClass(`vouchers.${index}.transaction_code`)" />
+                  <InputError :message="payloadError(`vouchers.${index}.transaction_code`)" class="mt-1" />
+                </div>
+                <div class="md:col-span-3">
+                  <label class="mb-1 block text-sm font-medium text-gray-700">ASBA Reference</label>
+                  <input v-model="voucher.asba_reference" type="text" placeholder="Reference from this bank, if available" :class="inputClass(`vouchers.${index}.asba_reference`)" />
+                  <InputError :message="payloadError(`vouchers.${index}.asba_reference`)" class="mt-1" />
+                </div>
+                <div class="md:col-span-3">
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Amount Deposited</label>
+                  <input v-model="voucher.amount" type="number" step="0.01" min="0" placeholder="Leave blank to split the total" :class="inputClass(`vouchers.${index}.amount`)" />
+                  <InputError :message="payloadError(`vouchers.${index}.amount`)" class="mt-1" />
+                </div>
+                <div class="md:col-span-6">
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Bank Voucher Image</label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    @change="onVoucherChange($event, index)"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <InputError :message="payloadError(`vouchers.${index}.image`)" class="mt-1" />
+                  <p class="mt-1 text-xs text-gray-500">
+                    Photo or screenshot of this deposit's voucher/receipt (JPG, PNG or WebP, max 5&nbsp;MB), then save the draft.
+                  </p>
+                  <div v-if="voucher.preview" class="mt-2">
+                    <img :src="voucher.preview" alt="Bank voucher preview" class="max-h-48 rounded-lg border border-gray-200 object-contain" />
+                  </div>
+                  <p v-else-if="voucher.has_image" class="mt-2 text-sm text-emerald-700">
+                    ✓ Voucher uploaded —
+                    <a :href="route('applications.voucher-image', [draft.id, voucher.id])" target="_blank" class="font-medium underline hover:text-emerald-800">view current image</a>.
+                    Choosing a new file replaces it on save.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="mt-3 rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+              @click="addVoucher"
+            >
+              + Add another voucher
+            </button>
           </div>
         </section>
 
         <section class="rounded-xl border border-rose-100 bg-rose-50/50 p-4 sm:p-5">
           <h4 class="text-lg font-semibold text-gray-900">Investment and Heir Details</h4>
-          <div class="mt-4 grid gap-4 md:grid-cols-2">
+          <div class="mt-4 space-y-5">
             <div>
               <label class="mb-1 block text-sm font-medium text-gray-700">Investment Source</label>
-              <select v-model="form.payload.investment_source" class="w-full rounded-lg border border-gray-300 px-3 py-2">
-                <option value="salary">Salary</option>
-                <option value="dividend">Dividend</option>
-                <option value="property_sale">Property Sale</option>
-                <option value="house_rent">House Rent</option>
-                <option value="share_trading">Share Trading</option>
-                <option value="other">Other</option>
-              </select>
+              <p class="mb-2 text-xs text-gray-500">Tick every source funding this investment.</p>
+              <div class="grid gap-2 sm:grid-cols-3">
+                <label v-for="option in investmentSourceOptions" :key="option.value" class="flex items-center gap-2 text-sm text-gray-700">
+                  <input v-model="form.payload.investment_sources" type="checkbox" :value="option.value" class="rounded border-gray-300 text-blue-600" />
+                  {{ option.label }}
+                </label>
+              </div>
+              <InputError :message="payloadError('investment_sources')" class="mt-1" />
             </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">Other Investment Source</label>
-              <input v-model="form.payload.investment_source_other" placeholder="Only fill if source is Other" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">Share Heir Name</label>
-              <input v-model="form.payload.share_heir_name" placeholder="e.g. Sita Sharma" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">Heir Relation</label>
-              <input v-model="form.payload.share_heir_relation" placeholder="e.g. Daughter" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">Heir Mobile</label>
-              <input v-model="form.payload.share_heir_mobile" placeholder="e.g. 98XXXXXXXX" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
+
+            <!-- Three heir fields fill a three-column row exactly. -->
+            <div class="border-t border-rose-100 pt-4">
+              <h5 class="mb-3 text-sm font-semibold text-gray-900">Share Heir</h5>
+              <div class="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Name</label>
+                  <input v-model="form.payload.share_heir_name" placeholder="e.g. Sita Sharma" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
+                </div>
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Relation</label>
+                  <input v-model="form.payload.share_heir_relation" placeholder="e.g. Daughter" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
+                </div>
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Mobile</label>
+                  <input v-model="form.payload.share_heir_mobile" placeholder="e.g. 98XXXXXXXX" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -330,7 +407,15 @@ const submitFinal = () => {
           <InputError :message="payloadError('declaration_accepted') || form.errors.declaration_accepted" class="mt-2" />
         </section>
 
-        <div class="flex flex-wrap justify-end gap-3">
+        <div class="flex flex-wrap items-center justify-end gap-3">
+          <!-- Preview needs a saved draft, since the form renders from stored data. -->
+          <Link
+            v-if="hasDraft"
+            :href="route('applications.show', draft.id)"
+            class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+          >
+            Preview Printed Form
+          </Link>
           <button
             @click="saveDraft"
             class="rounded-lg bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"

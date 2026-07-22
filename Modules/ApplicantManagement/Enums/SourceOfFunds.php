@@ -14,7 +14,6 @@ enum SourceOfFunds: string implements HasLabels
     case PropertySale = 'property_sale';
     case HouseRent = 'house_rent';
     case ShareTrading = 'share_trading';
-    case Other = 'other';
 
     public function labelEn(): string
     {
@@ -24,7 +23,6 @@ enum SourceOfFunds: string implements HasLabels
             self::PropertySale => 'Sale of Assets',
             self::HouseRent => 'House Rent',
             self::ShareTrading => 'Share Trading',
-            self::Other => 'Other',
         };
     }
 
@@ -36,7 +34,6 @@ enum SourceOfFunds: string implements HasLabels
             self::PropertySale => 'सम्पत्ति बिक्री',
             self::HouseRent => 'घर भाडा',
             self::ShareTrading => 'शेयर कारोबार',
-            self::Other => 'अन्य',
         };
     }
 }

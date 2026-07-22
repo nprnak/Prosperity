@@ -1,16 +1,21 @@
 <script setup>
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
   application: Object,
   amountInWords: String,
   sharesInWords: String,
   photoUrl: String,
-  voucherImageUrl: String,
+  signatureUrl: String,
+  voucherImageUrls: { type: Array, default: () => [] },
   collectionAccount: Object,
 });
+
+// A draft is previewed from the wizard before submitting, so the page has to
+// say so plainly — an unsubmitted form must not read as a filed one.
+const isDraft = computed(() => props.application?.status === 'draft');
 
 const applicant = computed(() => props.application?.applicant || {});
 const company = computed(() => props.application?.offering?.company || {});
@@ -61,19 +66,27 @@ const sourceLabels = {
   property_sale: 'सम्पत्ति विक्री',
   house_rent: 'घर बहाल',
   share_trading: 'शेयर कारोवार',
-  other: 'अन्य',
 };
 
 const selectedSources = computed(
   () => (applicant.value.sources_of_funds || []).map((source) => source.source_type),
 );
 
-const otherSourceText = computed(
-  () => (applicant.value.sources_of_funds || []).find((source) => source.source_type === 'other')?.description || '',
-);
+const vouchers = computed(() => props.application.vouchers || []);
+
+// The printed form has one cell per field, so several deposits are listed
+// inside it rather than given a row each.
+const joinVoucherField = (field) => vouchers.value
+  .map((voucher) => voucher[field])
+  .filter(Boolean)
+  .join(', ');
+
+const voucherBanks = computed(() => joinVoucherField('deposited_bank'));
+const voucherCodes = computed(() => joinVoucherField('transaction_code'));
+const voucherAsbaRefs = computed(() => joinVoucherField('asba_reference'));
 
 const paymentModeLabel = computed(() => {
-  const mode = (props.application.payment_type || payment.value.payment_mode || '').toLowerCase();
+  const mode = (vouchers.value[0]?.payment_type || payment.value.payment_mode || '').toLowerCase();
   const labels = {
     ips: 'IPS',
     connect_ips: 'IPS',
@@ -86,14 +99,11 @@ const paymentModeLabel = computed(() => {
 });
 
 const showPhoto = ref(Boolean(props.photoUrl));
+const showSignature = ref(Boolean(props.signatureUrl));
 
+// Deliberately no auto-print on load: the form is shown first and printing is
+// always an explicit press, so nothing is sent to a printer sight unseen.
 const print = () => window.print();
-
-onMounted(() => {
-  if (new URLSearchParams(window.location.search).has('print')) {
-    setTimeout(() => window.print(), 400);
-  }
-});
 </script>
 
 <template>
@@ -102,7 +112,7 @@ onMounted(() => {
     <div class="space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link :href="route('applications.wizard')" class="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">
-          &larr; Back to Applications
+          &larr; {{ isDraft ? 'Back to Editing' : 'Back to Applications' }}
         </Link>
         <button
           @click="print"
@@ -111,6 +121,12 @@ onMounted(() => {
           🖨️ Print Form
         </button>
       </div>
+
+      <p v-if="isDraft" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 print:hidden">
+        <span class="font-semibold">Preview of an unsubmitted draft.</span>
+        This is how your form will print. Nothing has been submitted yet — go back to editing to make changes, or submit it from the application page.
+      </p>
+
 
       <!-- Printable share application form (replica of the official PHL form) -->
       <div class="print-area mx-auto max-w-4xl bg-white p-6 text-[13px] leading-snug text-black shadow-sm ring-1 ring-gray-200 sm:p-8 print:max-w-none print:p-0 print:shadow-none print:ring-0">
@@ -216,10 +232,10 @@ onMounted(() => {
             </tr>
             <tr>
               <td colspan="2" class="border border-black px-2 py-1">
-                <span class="font-semibold">चेक खिचिएको/भुक्तानी गरिएको बैंक:</span> {{ application.payment_deposited_bank || payment.bank_name }}
+                <span class="font-semibold">चेक खिचिएको/भुक्तानी गरिएको बैंक:</span> {{ voucherBanks || payment.bank_name }}
               </td>
               <td colspan="2" class="border border-black px-2 py-1">
-                <span class="font-semibold">कारोबार कोड / चेक नं:</span> {{ application.payment_deposited_ref_no || payment.payment_reference_no || payment.cheque_no || application.asba_reference }}
+                <span class="font-semibold">कारोबार कोड / चेक नं:</span> {{ voucherCodes || payment.payment_reference_no || payment.cheque_no || voucherAsbaRefs }}
               </td>
             </tr>
             <tr>
@@ -284,7 +300,6 @@ onMounted(() => {
                   <span v-if="index" class="mx-1">/</span>
                   <span :class="selectedSources.includes(key) ? 'font-bold underline' : ''">{{ label }}</span>
                 </template>
-                <template v-if="otherSourceText"> (उल्लेख गर्ने): <span class="font-semibold underline">{{ otherSourceText }}</span></template>
               </td>
             </tr>
             <tr>
@@ -323,15 +338,33 @@ onMounted(() => {
         <div class="mt-8 flex items-end justify-between">
           <div>सम्पर्क सञ्चालक/ कम्पनी प्रतिनिधि : .............................................</div>
           <div class="text-center">
-            ..................................<br />
-            निवेदकको दस्तखत
+            <!-- The uploaded signature stands in for the dotted rule; if it is
+                 missing or fails to load, the rule comes back to be signed by hand. -->
+            <img
+              v-if="showSignature"
+              :src="signatureUrl"
+              alt="Applicant signature"
+              class="mx-auto mb-1 h-12 max-w-[220px] object-contain"
+              @error="showSignature = false"
+            />
+            <template v-else>..................................<br /></template>
+            <span class="border-t border-black px-6 pt-0.5">निवेदकको दस्तखत</span>
           </div>
         </div>
 
-        <!-- Attached bank voucher (screen only, excluded from print) -->
-        <div v-if="voucherImageUrl" class="voucher-attachment mt-8 border-t border-dashed border-gray-400 pt-4">
-          <p class="font-bold">संलग्न: भुक्तानी रसिद / Bank Voucher — {{ application.application_number }}</p>
-          <img :src="voucherImageUrl" alt="Bank voucher" class="mt-2 max-h-[900px] max-w-full border border-gray-300 object-contain" />
+        <!-- Attached bank voucher: on screen for the applicant's own reference,
+             never printed. Printing documents separately is an admin action. -->
+        <div
+          v-for="(voucher, index) in voucherImageUrls"
+          :key="voucher.id"
+          class="voucher-attachment mt-8 border-t border-dashed border-gray-400 pt-4"
+        >
+          <p class="font-bold">
+            संलग्न: भुक्तानी रसिद / Bank Voucher {{ index + 1 }} of {{ voucherImageUrls.length }}
+            <span v-if="voucher.transaction_code">({{ voucher.transaction_code }})</span>
+            · {{ application.application_number }}
+          </p>
+          <img :src="voucher.url" alt="Bank voucher" class="mt-2 max-h-[900px] max-w-full border border-gray-300 object-contain" />
         </div>
       </div>
     </div>
@@ -382,6 +415,8 @@ onMounted(() => {
     zoom: 0.78;
   }
 
+  /* The applicant prints the form alone; documents are printed separately
+     from the admin screen. */
   .voucher-attachment,
   .voucher-attachment * {
     display: none !important;

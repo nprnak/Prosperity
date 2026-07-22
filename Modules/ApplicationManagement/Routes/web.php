@@ -15,11 +15,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Ownership of {application} is enforced by ShareApplicationPolicy::view.
     Route::get('/applications/{application}', [ApplicationWizardController::class, 'show'])
         ->whereNumber('application')->name('applications.show');
-    Route::get('/applications/{application}/voucher-image', [ApplicationWizardController::class, 'voucherImage'])
-        ->whereNumber('application')->name('applications.voucher-image');
+    Route::get('/applications/{application}/vouchers/{voucher}/image', [ApplicationWizardController::class, 'voucherImage'])
+        ->whereNumber('application')->whereNumber('voucher')->name('applications.voucher-image');
 
     Route::middleware('can:application.view-any')->group(function () {
         Route::get('/admin/applications', [AdminApplicationsController::class, 'index'])->name('admin.applications');
         Route::get('/admin/applications/{application}', [AdminApplicationsController::class, 'show'])->name('admin.applications.show');
+        // Citizenship scans for the admin-only "print document" action. Limited
+        // to citizenship: viewing an application is not licence to see every
+        // KYC document, which stays behind the profile-review permissions.
+        Route::get('/admin/applications/{application}/citizenship/{side}', [AdminApplicationsController::class, 'citizenship'])
+            ->whereNumber('application')->whereIn('side', ['front', 'back'])
+            ->name('admin.applications.citizenship');
     });
 });

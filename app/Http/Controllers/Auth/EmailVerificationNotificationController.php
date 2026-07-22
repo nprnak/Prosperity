@@ -19,6 +19,10 @@ class EmailVerificationNotificationController extends Controller
 
         $request->user()->sendEmailVerificationNotification();
 
-        return back()->with('status', 'verification-link-sent');
+        // 'status' is a machine key the page switches on; 'success' is what the
+        // toast shows, so it has to be a sentence.
+        return back()
+            ->with('status', 'verification-link-sent')
+            ->with('success', 'A fresh verification link has been sent to your email address.');
     }
 }

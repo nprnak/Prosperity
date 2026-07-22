@@ -22,14 +22,12 @@ class ShareApplication extends Model
 
     protected $fillable = [
         'applicant_id', 'share_offering_id', 'application_number', 'shares_applied', 'amount_per_share', 'total_amount_declared',
-        'status', 'issue_code', 'asba_reference', 'bank_voucher_image', 'payment_type', 'payment_deposited_bank', 'payment_deposited_ref_no',
+        'status', 'issue_code',
         'declaration_accepted', 'blocked_amount', 'blocked_at', 'refunded_amount', 'refunded_at',
         'submitted_at', 'reviewed_by', 'reviewed_at', 'verified_by', 'verified_at', 'approved_by', 'approved_at', 'rejection_reason',
     ];
 
-    protected $hidden = ['bank_voucher_image'];
-
-    protected $appends = ['has_bank_voucher_image', 'status_label', 'pending_stage_label', 'can_send_back'];
+    protected $appends = ['status_label', 'pending_stage_label', 'can_send_back'];
 
     protected $casts = [
         'status' => ApplicationStatus::class,
@@ -84,6 +82,12 @@ class ShareApplication extends Model
         return $this->hasMany(PaymentTransaction::class);
     }
 
+    /** The applicant's declared deposits — slip plus transaction code, one row each. */
+    public function vouchers()
+    {
+        return $this->hasMany(ShareApplicationVoucher::class);
+    }
+
     public function allotment()
     {
         return $this->hasOne(ShareAllotment::class);
@@ -106,11 +110,6 @@ class ShareApplication extends Model
             ApplicationStatus::Returned,
             ApplicationStatus::NotAllotted,
         ]);
-    }
-
-    public function getHasBankVoucherImageAttribute(): bool
-    {
-        return $this->bank_voucher_image !== null;
     }
 
     /** Human wording for the current status, so views don't re-map it. */

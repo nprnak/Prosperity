@@ -1,12 +1,29 @@
 <script setup>
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import WorkflowTimeline from '@/Components/WorkflowTimeline.vue';
 
 const props = defineProps({
   application: Object,
+  citizenshipUrls: { type: Array, default: () => [] },
 });
+
+// Printing one document at a time: the chosen sheet is the only thing the
+// print stylesheet reveals, so nothing else on the page comes along with it.
+const printDoc = ref(null);
+
+const printDocument = async (key) => {
+  printDoc.value = key;
+  await nextTick();
+  window.print();
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('afterprint', () => {
+    printDoc.value = null;
+  });
+}
 
 const page = usePage();
 const can = (permission) => (page.props.auth?.permissions || []).includes(permission);
@@ -18,17 +35,23 @@ const canRecordPayment = computed(() =>
 );
 
 const modeFromPaymentType = { connect_ips: 'ips', mobile_banking: 'mobile_banking', cheque: 'cheque' };
-const isCheque = props.application.payment_type === 'cheque';
+
+const vouchers = computed(() => props.application.vouchers || []);
+
+// Payment details now live per voucher, so the form seeds from the first
+// declared deposit; finance adjusts from there.
+const firstVoucher = vouchers.value[0] || {};
+const isCheque = firstVoucher.payment_type === 'cheque';
 
 // Prefilled from what the applicant declared; finance can adjust before recording.
 const paymentForm = useForm({
-  amount: props.application.total_amount_declared || '',
-  payment_mode: modeFromPaymentType[props.application.payment_type] || 'cash',
+  amount: firstVoucher.amount || props.application.total_amount_declared || '',
+  payment_mode: modeFromPaymentType[firstVoucher.payment_type] || 'cash',
   payment_method_id: null,
   payment_date: new Date().toISOString().slice(0, 10),
-  bank_name: props.application.payment_deposited_bank || '',
-  payment_reference_no: isCheque ? '' : (props.application.payment_deposited_ref_no || ''),
-  cheque_no: isCheque ? (props.application.payment_deposited_ref_no || '') : '',
+  bank_name: firstVoucher.deposited_bank || '',
+  payment_reference_no: isCheque ? '' : (firstVoucher.transaction_code || ''),
+  cheque_no: isCheque ? (firstVoucher.transaction_code || '') : '',
   holding_id_no: '',
   id_type: 'citizenship',
   notes: '',
@@ -100,10 +123,7 @@ const statusLabel = (status) => {
           <h2 class="text-lg font-semibold text-gray-900">Application Summary</h2>
           <p class="text-sm text-gray-700"><span class="font-medium">Status:</span> {{ statusLabel(application.status) }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Issue Code:</span> {{ application.issue_code || '-' }}</p>
-          <p class="text-sm text-gray-700"><span class="font-medium">ASBA Reference:</span> {{ application.asba_reference || '-' }}</p>
-          <p class="text-sm text-gray-700"><span class="font-medium">Declared Payment Type:</span> <span class="capitalize">{{ (application.payment_type || '-').replace('_', ' ') }}</span></p>
-          <p class="text-sm text-gray-700"><span class="font-medium">Declared Paying Bank:</span> {{ application.payment_deposited_bank || '-' }}</p>
-          <p class="text-sm text-gray-700"><span class="font-medium">Declared Transaction Code / Cheque No:</span> {{ application.payment_deposited_ref_no || '-' }}</p>
+          <p class="text-sm text-gray-700"><span class="font-medium">Declared Deposits:</span> {{ vouchers.length || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Shares Applied:</span> {{ application.shares_applied }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Amount Per Share:</span> {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ application.amount_per_share }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Total Declared:</span> {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ application.total_amount_declared }}</p>
@@ -117,18 +137,57 @@ const statusLabel = (status) => {
       </div>
 
       <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h2 class="text-lg font-semibold text-gray-900 mb-3">Uploaded Bank Voucher</h2>
-        <template v-if="application.has_bank_voucher_image">
-          <a :href="route('applications.voucher-image', application.id)" target="_blank" class="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">
-            Open in new tab
-          </a>
-          <img
-            :src="route('applications.voucher-image', application.id)"
-            alt="Uploaded bank voucher"
-            class="mt-3 max-h-[600px] max-w-full rounded-lg border border-gray-200 object-contain"
-          />
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold text-gray-900">Declared Bank Vouchers</h2>
+          <div v-if="citizenshipUrls.length" class="flex flex-wrap gap-2">
+            <button
+              v-for="doc in citizenshipUrls"
+              :key="`print-${doc.side}`"
+              type="button"
+              class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+              @click="printDocument(`citizenship-${doc.side}`)"
+            >
+              🖨️ Print Citizenship ({{ doc.label }})
+            </button>
+          </div>
+        </div>
+        <template v-if="vouchers.length">
+          <div
+            v-for="(voucher, index) in vouchers"
+            :key="voucher.id"
+            class="border-t border-gray-100 py-4 first:border-t-0 first:pt-0"
+          >
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Voucher {{ index + 1 }}</p>
+            <div class="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+              <p class="text-sm text-gray-700"><span class="font-medium">Payment Type:</span> <span class="capitalize">{{ (voucher.payment_type || '-').replace('_', ' ') }}</span></p>
+              <p class="text-sm text-gray-700"><span class="font-medium">Paying Bank:</span> {{ voucher.deposited_bank || '-' }}</p>
+              <p class="text-sm text-gray-700"><span class="font-medium">Transaction Code / Cheque No:</span> {{ voucher.transaction_code || '-' }}</p>
+              <p class="text-sm text-gray-700"><span class="font-medium">ASBA Reference:</span> {{ voucher.asba_reference || '-' }}</p>
+              <p class="text-sm text-gray-700"><span class="font-medium">Amount:</span> {{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ voucher.amount || '-' }}</p>
+            </div>
+            <template v-if="voucher.has_image">
+              <div class="mt-2 flex flex-wrap items-center gap-3">
+                <a :href="route('applications.voucher-image', [application.id, voucher.id])" target="_blank" class="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                  Open in new tab
+                </a>
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+                  @click="printDocument(`voucher-${voucher.id}`)"
+                >
+                  🖨️ Print This Voucher
+                </button>
+              </div>
+              <img
+                :src="route('applications.voucher-image', [application.id, voucher.id])"
+                alt="Uploaded bank voucher"
+                class="mt-3 max-h-[600px] max-w-full rounded-lg border border-gray-200 object-contain"
+              />
+            </template>
+            <p v-else class="mt-2 text-sm text-gray-500">No slip uploaded for this deposit.</p>
+          </div>
         </template>
-        <p v-else class="text-sm text-gray-500">The applicant has not uploaded a voucher image.</p>
+        <p v-else class="text-sm text-gray-500">The applicant has not declared any bank vouchers.</p>
       </section>
 
       <section v-if="canRecordPayment" class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
@@ -275,6 +334,72 @@ const statusLabel = (status) => {
         <p class="text-sm text-gray-700"><span class="font-medium">Shares Allotted:</span> {{ application.allotment.shares_allotted || '-' }}</p>
         <p class="text-sm text-gray-700"><span class="font-medium">Allotment Date:</span> {{ formatDate(application.allotment.allotment_date) }}</p>
       </section>
+      <!-- One sheet per document, rendered only while that document is being
+           printed. Teleported to <body> so the print rule can hide every other
+           top-level node outright: hiding by visibility alone would leave the
+           admin page's layout behind and pad the output with blank sheets. -->
+      <Teleport to="body">
+      <div v-if="printDoc" class="doc-print-sheet">
+        <template v-for="doc in citizenshipUrls" :key="`sheet-${doc.side}`">
+          <div v-if="printDoc === `citizenship-${doc.side}`">
+            <p class="doc-print-caption">
+              नागरिकता / Citizenship ({{ doc.label }})
+              · {{ application.application_number }}
+              · {{ application.applicant?.full_name_en || '' }}
+            </p>
+            <img :src="doc.url" alt="Citizenship document" />
+          </div>
+        </template>
+
+        <template v-for="voucher in vouchers" :key="`sheet-voucher-${voucher.id}`">
+          <div v-if="printDoc === `voucher-${voucher.id}`">
+            <p class="doc-print-caption">
+              भुक्तानी रसिद / Bank Voucher
+              <span v-if="voucher.transaction_code">({{ voucher.transaction_code }})</span>
+              · {{ application.application_number }}
+              · {{ voucher.deposited_bank || '' }}
+            </p>
+            <img :src="route('applications.voucher-image', [application.id, voucher.id])" alt="Bank voucher" />
+          </div>
+        </template>
+      </div>
+      </Teleport>
     </div>
   </PanelLayout>
 </template>
+
+<style>
+/* Off-screen until a print is actually requested. */
+.doc-print-sheet {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  /* Everything except the teleported sheet is removed from the layout, not
+     merely hidden, so the output is exactly one page. */
+  body > *:not(.doc-print-sheet) {
+    display: none !important;
+  }
+
+  .doc-print-sheet {
+    display: block !important;
+  }
+
+  .doc-print-caption {
+    margin-bottom: 4mm;
+    font-size: 11pt;
+    font-weight: 700;
+  }
+
+  .doc-print-sheet img {
+    max-width: 100%;
+    max-height: 250mm;
+    object-fit: contain;
+  }
+}
+</style>

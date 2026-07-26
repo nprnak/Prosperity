@@ -93,6 +93,16 @@ class Profile extends Model
         return $this->belongsTo(User::class, 'profile_reviewed_by');
     }
 
+    /**
+     * The applicant's default focal person. Deliberately absent from
+     * $fillable: the applicant's own KYC update flows through mass assignment,
+     * and only super_admin may set this — FocalPersonService writes it.
+     */
+    public function focalPerson()
+    {
+        return $this->belongsTo(User::class, 'focal_person_id');
+    }
+
     public function addresses()
     {
         return $this->hasMany(ProfileAddress::class);

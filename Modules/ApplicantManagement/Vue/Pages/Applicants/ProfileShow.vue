@@ -2,7 +2,7 @@
 import StageActions from '@/Components/StageActions.vue';
 import WorkflowTimeline from '@/Components/WorkflowTimeline.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 /**
@@ -18,6 +18,10 @@ const props = defineProps({
     // another stage this cycle. The page stays readable either way.
     canAct: { type: Boolean, default: false },
     documentTypes: { type: Array, default: () => [] },
+    // Only super_admin holds focal-person.manage; everyone else sees the
+    // attribution read-only.
+    canManageFocalPerson: { type: Boolean, default: false },
+    focalPersons: { type: Array, default: () => [] },
 });
 
 const dash = '—';
@@ -130,6 +134,21 @@ const unmet = computed(() => Object.entries(props.completionChecks)
 const sources = computed(() => (a.sources_of_funds || [])
     .map((source) => source.other_text || source.source)
     .filter(Boolean));
+
+// The applicant's default focal person. Applications keep their own copy, so
+// changing this credits future applications only — it never rewrites figures
+// already reported against an offering.
+const focalPersonForm = useForm({ focal_person_id: props.applicant.focal_person_id ?? '' });
+
+const saveFocalPerson = () => {
+    focalPersonForm
+        .transform((data) => ({ focal_person_id: data.focal_person_id === '' ? null : data.focal_person_id }))
+        .patch(route('applicants.focal-person.update', props.applicant.id), { preserveScroll: true });
+};
+
+const focalPersonLabel = computed(() => (props.applicant.focal_person
+    ? `${props.applicant.focal_person.name} (${props.applicant.focal_person.focal_person_code})`
+    : 'Not assigned'));
 </script>
 
 <template>
@@ -179,6 +198,55 @@ const sources = computed(() => (a.sources_of_funds || [])
             >
                 <span class="font-semibold">Incomplete:</span> {{ unmet.join(', ') }}
             </p>
+
+            <!-- Attribution, not part of the KYC decision: saving it leaves the
+                 review status exactly where it was. -->
+            <section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Focal person</h3>
+
+                <template v-if="canManageFocalPerson">
+                    <p class="mt-1 max-w-[70ch] text-sm text-gray-700">
+                        The default this applicant's future applications are credited to. They can quote a
+                        different code on an individual application, and applications already submitted keep
+                        whoever they were credited to.
+                    </p>
+
+                    <div class="mt-3 flex flex-wrap items-start gap-3">
+                        <div class="min-w-[18rem] flex-1">
+                            <select
+                                v-model="focalPersonForm.focal_person_id"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            >
+                                <option value="">— None —</option>
+                                <option
+                                    v-for="person in focalPersons"
+                                    :key="person.id"
+                                    :value="person.id"
+                                >
+                                    {{ person.name }} · {{ person.focal_person_code }}
+                                </option>
+                            </select>
+                            <p v-if="focalPersonForm.errors.focal_person_id" class="mt-1 text-sm text-red-600">
+                                {{ focalPersonForm.errors.focal_person_id }}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300"
+                            :disabled="focalPersonForm.processing"
+                            @click="saveFocalPerson"
+                        >
+                            Save
+                        </button>
+                    </div>
+
+                    <p v-if="!focalPersons.length" class="mt-2 text-sm text-amber-700">
+                        No focal persons have been designated yet — do that from the Focal Persons screen first.
+                    </p>
+                </template>
+
+                <p v-else class="mt-2 text-sm text-gray-900">{{ focalPersonLabel }}</p>
+            </section>
 
             <!-- Documents first: they are what the review is actually checking. -->
             <section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">

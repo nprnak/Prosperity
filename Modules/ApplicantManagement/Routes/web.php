@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\ApplicantManagement\Controllers\ApplicantFocalPersonController;
 use Modules\ApplicantManagement\Controllers\ApplicantProfileReviewController;
 use Modules\ApplicantManagement\Controllers\ApplicantProfileSubmissionController;
 
@@ -8,6 +9,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Applicant submits their own profile for KYC review.
     Route::post('/profile/submit', [ApplicantProfileSubmissionController::class, 'store'])
         ->name('profile.submit');
+
+    // Attribution, not review — kept outside the KYC-stage group below so the
+    // gating reads honestly: only focal-person.manage opens this, not the
+    // reviewer permissions that open the detail page it is rendered on.
+    Route::patch('/applicants/{applicant}/focal-person', [ApplicantFocalPersonController::class, 'update'])
+        ->middleware('can:focal-person.manage')->name('applicants.focal-person.update');
 
     // Any KYC stage role reaches the queue; WorkflowService decides which
     // records that person may actually act on.

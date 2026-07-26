@@ -50,6 +50,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'email_otp_expires_at' => 'datetime',
             'password' => 'hashed',
+            'is_focal_person' => 'boolean',
         ];
     }
 

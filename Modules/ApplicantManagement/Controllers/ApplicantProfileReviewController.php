@@ -14,6 +14,7 @@ use Modules\ApplicantManagement\Notifications\ProfileReturnedNotification;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicantManagement\Requests\ProfileWorkflowActionRequest;
 use Modules\ApplicantManagement\Services\ProfileDocumentService;
+use Modules\UserManagement\Repositories\FocalPersonRepository;
 
 /**
  * KYC review: verifier → reviewer → approver.
@@ -41,9 +42,11 @@ class ApplicantProfileReviewController extends Controller
      * The record a stage decides on. Actions live here rather than on the
      * queue, so a sign-off is only ever given beside the evidence for it.
      */
-    public function show(Request $request, Profile $applicant)
+    public function show(Request $request, Profile $applicant, FocalPersonRepository $focalPersons)
     {
         Gate::authorize('view', $applicant);
+
+        $canManageFocalPerson = $request->user()->can('focal-person.manage');
 
         return Inertia::render('Applicants/ProfileShow', [
             'applicant' => $this->profiles->loadForReview($applicant),
@@ -53,6 +56,11 @@ class ApplicantProfileReviewController extends Controller
             // route gate — a queue holder can open a record they cannot act on.
             'canAct' => $this->workflow->mayAct($applicant, $request->user()),
             'documentTypes' => Profile::REQUIRED_DOCUMENT_TYPES,
+            // Reviewers see who the applicant is credited to; only
+            // focal-person.manage holders get the picker, and only they are
+            // sent the candidate list.
+            'canManageFocalPerson' => $canManageFocalPerson,
+            'focalPersons' => $canManageFocalPerson ? $focalPersons->eligible() : [],
         ]);
     }
 

@@ -15,6 +15,7 @@ use Modules\ApplicationManagement\Repositories\ApplicationEventRepository;
 use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
 use Modules\CompanyManagement\Models\ShareOffering;
 use Modules\SettingsManagement\Models\Setting;
+use Modules\UserManagement\Services\FocalPersonService;
 
 /**
  * The share-application wizard: draft saving (with offering/profile business
@@ -27,6 +28,7 @@ class ApplicationWizardService
         private ApplicationEventRepository $events,
         private ProfileRepository $profiles,
         private NumberGeneratorService $numbers,
+        private FocalPersonService $focalPersons,
     ) {}
 
     /**
@@ -72,6 +74,16 @@ class ApplicationWizardService
             ]);
         }
 
+        // Resolved before anything is written, so a mistyped code rejects the
+        // whole save instead of half-applying it. `false` means the field was
+        // not submitted at all, which is different from submitting it empty to
+        // clear the credit.
+        $focalPerson = array_key_exists('focal_person_code', $payload)
+            ? $this->focalPersons->resolveCodeForApplicant(
+                $payload['focal_person_code'], $applicant, 'payload.focal_person_code'
+            )
+            : false;
+
         // Sources are a set: whatever the applicant ticked replaces what was
         // there, so unticking one actually removes it.
         if (isset($payload['investment_sources'])) {
@@ -100,16 +112,27 @@ class ApplicationWizardService
 
         if (! $application->exists) {
             $application->application_number = 'DRAFT-'.str_pad((string) $applicant->id, 6, '0', STR_PAD_LEFT);
+            // A new draft starts credited to the applicant's default focal
+            // person; the code they type below overrides it. From here on the
+            // application owns its own value, so re-assigning the default later
+            // leaves this offering's attribution alone.
+            $application->focal_person_id = $applicant->focal_person_id;
         }
 
-        $application->fill([
+        $attributes = [
             'share_offering_id' => $offering->id,
             'issue_code' => $offering->company->code.'-'.$offering->fiscal_year,
             'shares_applied' => $shares,
             'amount_per_share' => $offering->share_rate,
             'total_amount_declared' => $totalAmount,
             'declaration_accepted' => (bool) ($payload['declaration_accepted'] ?? false),
-        ]);
+        ];
+
+        if ($focalPerson !== false) {
+            $attributes['focal_person_id'] = $focalPerson?->id;
+        }
+
+        $application->fill($attributes);
 
         $application->save();
 

@@ -21,7 +21,7 @@ class ShareApplication extends Model
     use HasWorkflow;
 
     protected $fillable = [
-        'applicant_id', 'share_offering_id', 'application_number', 'shares_applied', 'amount_per_share', 'total_amount_declared',
+        'applicant_id', 'focal_person_id', 'share_offering_id', 'application_number', 'shares_applied', 'amount_per_share', 'total_amount_declared',
         'status', 'issue_code',
         'declaration_accepted', 'blocked_amount', 'blocked_at', 'refunded_amount', 'refunded_at',
         'submitted_at', 'reviewed_by', 'reviewed_at', 'verified_by', 'verified_at', 'approved_by', 'approved_at', 'rejection_reason',
@@ -60,6 +60,16 @@ class ShareApplication extends Model
     public function offering()
     {
         return $this->belongsTo(ShareOffering::class, 'share_offering_id');
+    }
+
+    /**
+     * Who this application is credited to in the focal-person report. Copied
+     * from the applicant's default when the draft is created; it is in
+     * $fillable so LogsActivity records any later correction.
+     */
+    public function focalPerson()
+    {
+        return $this->belongsTo(User::class, 'focal_person_id');
     }
 
     public function reviewer()

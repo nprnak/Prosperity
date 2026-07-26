@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Modules\ApplicantManagement\Enums\ProfileStatus;
+use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicantManagement\Services\ProfileDocumentService;
 use Modules\ApplicationManagement\Models\ShareApplication;
@@ -31,15 +32,36 @@ class ApplicationWizardController extends Controller
     public function index(Request $request, ShareOfferingRepository $offerings)
     {
         $applicantProfile = $this->profiles->findByUserId($request->user()->id);
+        $draft = $this->applications->latestDraftForUser($request->user()->id);
 
         return Inertia::render('Applications/Wizard', [
-            'draft' => $this->applications->latestDraftForUser($request->user()->id),
+            'draft' => $draft,
             'activeApplication' => $this->applications->activeForUser($request->user()->id),
             'profile' => $applicantProfile,
             'profileCompleted' => $applicantProfile?->isProfileComplete() ?? false,
             'profileStatus' => $applicantProfile->profile_status ?? ProfileStatus::Incomplete,
             'offerings' => $offerings->openNow(),
+            'focalPerson' => $this->focalPersonSummary($draft, $applicantProfile),
         ]);
+    }
+
+    /**
+     * Who the wizard's focal person field starts out showing.
+     *
+     * An existing draft is authoritative even when it holds no focal person —
+     * that means the applicant cleared the field, and re-seeding the profile
+     * default over the top would undo them. Only a first draft inherits it.
+     *
+     * @return array{code: string, name: string}|null
+     */
+    private function focalPersonSummary(?ShareApplication $draft, ?Profile $profile): ?array
+    {
+        $focalPerson = $draft ? $draft->focalPerson : $profile?->focalPerson;
+
+        return $focalPerson ? [
+            'code' => $focalPerson->focal_person_code,
+            'name' => $focalPerson->name,
+        ] : null;
     }
 
     public function show(

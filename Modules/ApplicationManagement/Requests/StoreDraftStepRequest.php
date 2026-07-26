@@ -22,6 +22,9 @@ class StoreDraftStepRequest extends FormRequest
             'payload.share_heir_relation' => ['nullable', 'string', 'max:255'],
             'payload.share_heir_mobile' => ['nullable', 'string', 'max:50'],
             'payload.share_offering_id' => ['required', 'integer', 'exists:share_offerings,id'],
+            // A code, not an id — eligibility and self-referral are settled by
+            // FocalPersonService when the draft is saved.
+            'payload.focal_person_code' => ['nullable', 'string', 'max:20'],
             // Kept lenient so a half-filled draft still saves; the code/slip
             // pairing is enforced at submission instead.
             'payload.vouchers' => ['nullable', 'array', 'max:20'],

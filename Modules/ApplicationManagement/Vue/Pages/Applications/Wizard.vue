@@ -10,6 +10,9 @@ const props = defineProps({
   profileStatus: { type: String, default: 'incomplete' },
   activeApplication: { type: Object, default: null },
   offerings: { type: Array, default: () => [] },
+  // {code, name} of whoever this application is currently credited to, seeded
+  // from the applicant's default on a first draft.
+  focalPerson: { type: Object, default: null },
 });
 
 // `key` is a stable client-side handle for v-for; the server never sees it.
@@ -47,6 +50,7 @@ const form = useForm({
     share_heir_relation: props.draft?.applicant?.nominees?.[0]?.relationship || '',
     share_heir_mobile: props.draft?.applicant?.nominees?.[0]?.mobile || '',
     share_offering_id: props.draft?.share_offering_id || props.offerings[0]?.id || null,
+    focal_person_code: props.focalPerson?.code || '',
     vouchers: savedVouchers.length ? savedVouchers : [blankVoucher()],
     shares_applied: props.draft?.shares_applied || 1,
     declaration_accepted: Boolean(props.draft?.declaration_accepted),
@@ -123,6 +127,45 @@ watch([maxApplicable, () => form.payload.shares_applied], ([max, shares]) => {
   if (max !== null && max > 0 && Number(shares) > max) {
     form.payload.shares_applied = max;
   }
+});
+
+// Focal person is confirmed by code, never picked from a list: eligibility is
+// "any KYC-approved user", so a dropdown here would publish their names to
+// every applicant. This lookup is a courtesy check — the save is what actually
+// validates the code.
+const focalLookup = ref(props.focalPerson
+  ? { state: 'found', name: props.focalPerson.name, message: '' }
+  : { state: 'idle', name: '', message: '' });
+
+let focalTimer = null;
+
+const lookupFocalPerson = async (code) => {
+  const trimmed = (code || '').trim();
+
+  if (!trimmed) {
+    focalLookup.value = { state: 'idle', name: '', message: '' };
+    return;
+  }
+
+  focalLookup.value = { state: 'checking', name: '', message: '' };
+
+  try {
+    const { data } = await window.axios.get(route('focal-persons.lookup'), { params: { code: trimmed } });
+    focalLookup.value = { state: 'found', name: data.name, message: '' };
+  } catch (error) {
+    focalLookup.value = {
+      state: 'missing',
+      name: '',
+      message: error.response?.status === 429
+        ? 'Too many attempts — wait a minute, then try again.'
+        : 'No focal person found with that code.',
+    };
+  }
+};
+
+watch(() => form.payload.focal_person_code, (code) => {
+  clearTimeout(focalTimer);
+  focalTimer = setTimeout(() => lookupFocalPerson(code), 400);
 });
 
 const payloadError = (field) => form.errors[`payload.${field}`];
@@ -396,6 +439,34 @@ const submitFinal = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-sky-100 bg-sky-50/50 p-4 sm:p-5">
+          <h4 class="text-lg font-semibold text-gray-900">Focal Person</h4>
+          <p class="mt-1 max-w-[75ch] text-sm text-gray-700">
+            If someone referred you, enter the focal person code they gave you and check that the
+            name shown is theirs. Leave it blank if nobody referred you.
+          </p>
+
+          <div class="mt-4 max-w-sm">
+            <label class="mb-1 block text-sm font-medium text-gray-700">Focal Person Code</label>
+            <input
+              v-model="form.payload.focal_person_code"
+              type="text"
+              placeholder="e.g. FP-0007"
+              autocomplete="off"
+              :class="inputClass('focal_person_code')"
+            />
+            <InputError :message="payloadError('focal_person_code')" class="mt-1" />
+
+            <p v-if="focalLookup.state === 'checking'" class="mt-1 text-xs text-gray-500">Checking code…</p>
+            <p v-else-if="focalLookup.state === 'found'" class="mt-1 text-sm font-medium text-emerald-700">
+              ✓ {{ focalLookup.name }}
+            </p>
+            <p v-else-if="focalLookup.state === 'missing'" class="mt-1 text-sm text-red-600">
+              {{ focalLookup.message }}
+            </p>
           </div>
         </section>
 

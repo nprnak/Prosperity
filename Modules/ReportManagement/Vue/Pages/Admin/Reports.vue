@@ -1,5 +1,6 @@
 <script setup>
 import PanelLayout from '@/Layouts/PanelLayout.vue';
+import ReportTabs from '@/Components/ReportTabs.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, reactive } from 'vue';
 
@@ -8,6 +9,8 @@ const props = defineProps({
   summary: Object,
   filters: Object,
   options: Object,
+  // The prescribed report formats, for the tab strip.
+  reports: { type: Array, default: () => [] },
 });
 
 const form = reactive({ ...props.filters });
@@ -41,8 +44,10 @@ const money = (value) => Number(value || 0).toLocaleString('en-IN', { minimumFra
   <Head title="Admin - Reports" />
   <PanelLayout>
     <div class="space-y-6">
+      <ReportTabs :reports="reports" current="applications" />
+
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-xl font-semibold text-gray-900">Reports</h2>
+        <h2 class="text-xl font-semibold text-gray-900">Applications (detailed)</h2>
         <div class="flex gap-2">
           <a :href="exportUrl('xlsx')" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Excel</a>
           <a :href="exportUrl('csv')" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">CSV</a>

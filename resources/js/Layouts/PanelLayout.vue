@@ -18,6 +18,7 @@ const staffMenuItems = [
   { label: 'Dashboard', icon: '📊', route: 'admin.dashboard', startsWith: '/admin/dashboard', permission: 'dashboard.view-admin' },
   { label: 'Role Hub', icon: '🧩', route: 'admin.roles.hub', startsWith: '/admin/roles/hub', permission: 'user.manage' },
   { label: 'Users', icon: '👥', route: 'admin.users', startsWith: '/admin/users', permission: 'user.manage' },
+  { label: 'Focal Persons', icon: '🤝', route: 'admin.focal-persons', startsWith: '/admin/focal-persons', permission: 'focal-person.manage' },
   { label: 'Companies', icon: '🏢', route: 'admin.companies', startsWith: '/admin/companies', permission: 'company.manage' },
   { label: 'Applications', icon: '📝', route: 'admin.applications', startsWith: '/admin/applications', permission: 'application.view-any' },
   { label: 'Payments', icon: '💳', route: 'admin.payments', startsWith: '/admin/payments', permission: 'payment.view-any' },

@@ -51,7 +51,7 @@ const showingNavigationDropdown = ref(false);
                                         Profile Reviews
                                     </NavLink>
                                 </template>
-                                <template v-if="$page.props.auth.user.roles?.some(r => r.name === 'admin')">
+                                <template v-if="$page.props.auth.user.roles?.some(r => r.name === 'super_admin')">
                                     <NavLink
                                         :href="route('admin.panel')"
                                         :active="route().current('admin.panel')"
@@ -170,7 +170,7 @@ const showingNavigationDropdown = ref(false);
                         >
                             Dashboard
                         </ResponsiveNavLink>
-                        <template v-if="$page.props.auth.user.roles?.some(r => r.name === 'admin')">
+                        <template v-if="$page.props.auth.user.roles?.some(r => r.name === 'super_admin')">
                             <ResponsiveNavLink
                                 :href="route('admin.panel')"
                                 :active="route().current('admin.panel')"

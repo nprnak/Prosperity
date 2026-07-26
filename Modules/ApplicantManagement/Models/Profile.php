@@ -2,6 +2,7 @@
 
 namespace Modules\ApplicantManagement\Models;
 
+use App\Enums\WorkflowStage;
 use App\Models\User;
 use App\Workflow\Concerns\HasWorkflow;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,11 +13,14 @@ use Modules\ApplicantManagement\Enums\MaritalStatus;
 use Modules\ApplicantManagement\Enums\ProfileStatus;
 use Modules\ApplicantManagement\Enums\Title;
 use Modules\ApplicationManagement\Models\ShareApplication;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Profile extends Model
 {
     use HasFactory;
     use HasWorkflow;
+    use LogsActivity;
 
     /**
      * Document types the KYC review requires before a profile can be submitted.
@@ -88,9 +92,39 @@ class Profile extends Model
         return $this->hasMany(ShareApplication::class, 'applicant_id');
     }
 
+    /**
+     * KYC is the record the whole chain signs off on, and its bank account and
+     * BOID drive ASBA blocking and refunds — so a change to any of it has to
+     * leave a trail. Only the changed attributes are stored.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('profile')
+            ->logFillable()
+            ->logOnlyDirty();
+    }
+
     public function profileReviewer()
     {
         return $this->belongsTo(User::class, 'profile_reviewed_by');
+    }
+
+    /**
+     * The KYC chain has three stages but the profile carries one pair of
+     * sign-off columns, so they record the review — the middle stage the
+     * profileReviewer relation is named for.
+     *
+     * @return array<string, array{by: string, at: string}>
+     */
+    public function stageSignOffColumns(): array
+    {
+        return [
+            WorkflowStage::Reviewer->value => [
+                'by' => 'profile_reviewed_by',
+                'at' => 'profile_reviewed_at',
+            ],
+        ];
     }
 
     /**

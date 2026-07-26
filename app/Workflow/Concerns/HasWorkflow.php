@@ -3,6 +3,7 @@
 namespace App\Workflow\Concerns;
 
 use App\Enums\WorkflowStage;
+use App\Models\User;
 use App\Models\WorkflowEvent;
 use App\Workflow\Contracts\WorkflowStatus;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -20,6 +21,38 @@ trait HasWorkflow
     public function workflowEvents(): MorphMany
     {
         return $this->morphMany(WorkflowEvent::class, 'subject')->latest('id');
+    }
+
+    /**
+     * Columns stamped with who signed a stage off and when, keyed by stage.
+     * A model that keeps no such columns returns nothing and is left alone.
+     *
+     * @return array<string, array{by: string, at: string}>
+     */
+    public function stageSignOffColumns(): array
+    {
+        return [];
+    }
+
+    /**
+     * Stamp the acting user against the stage they have just approved.
+     *
+     * The workflow events are the authoritative trail, but they are a separate
+     * table nobody joins on a list screen — so the record carries its own
+     * "verified by / reviewed by" for the pages that show it.
+     */
+    public function recordStageSignOff(WorkflowStage $stage, User $actor): void
+    {
+        $columns = $this->stageSignOffColumns()[$stage->value] ?? null;
+
+        if ($columns === null) {
+            return;
+        }
+
+        $this->forceFill([
+            $columns['by'] => $actor->id,
+            $columns['at'] => now(),
+        ])->save();
     }
 
     /** Actions recorded in the current cycle only; earlier passes are retired. */

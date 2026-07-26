@@ -128,4 +128,23 @@ class ProfileReviewDetailTest extends TestCase
             ->get("/applicants/{$profile->id}/profile/documents/passport")
             ->assertNotFound();
     }
+
+    /**
+     * A row pointing at a file that has gone from disk is a lost document, not
+     * a server fault — every other miss on this route answers 404 and so must
+     * this one.
+     */
+    public function test_a_document_row_whose_file_is_missing_is_not_found(): void
+    {
+        Storage::fake('private');
+
+        $profile = $this->submittedProfile();
+        $profile->documents()
+            ->where('document_type', 'citizenship_front')
+            ->update(['file_path' => 'docs/gone-from-disk.jpg']);
+
+        $this->actingAs(User::factory()->create()->assignRole('profile_reviewer'))
+            ->get("/applicants/{$profile->id}/profile/documents/citizenship-front")
+            ->assertNotFound();
+    }
 }

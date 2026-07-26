@@ -2,6 +2,7 @@
 
 namespace Modules\ApplicationManagement\Models;
 
+use App\Enums\WorkflowStage;
 use App\Models\User;
 use App\Workflow\Concerns\HasWorkflow;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -133,27 +134,65 @@ class ShareApplication extends Model
         return $this->status->canTransitionTo($target);
     }
 
+    /** @return array<string, array{by: string, at: string}> */
+    public function stageSignOffColumns(): array
+    {
+        return [
+            WorkflowStage::Verifier->value => ['by' => 'verified_by', 'at' => 'verified_at'],
+            WorkflowStage::Reviewer->value => ['by' => 'reviewed_by', 'at' => 'reviewed_at'],
+            WorkflowStage::Approver->value => ['by' => 'approved_by', 'at' => 'approved_at'],
+        ];
+    }
+
+    /**
+     * Statuses in which the application is still finance's to move.
+     *
+     * Deliberately an allow-list. Listing the statuses to leave alone instead
+     * is how Verified and Reviewed came to be rewound: a deny-list has to be
+     * remembered every time a status is added, and forgetting silently undoes
+     * somebody's sign-off.
+     */
+    private const FINANCE_OWNED_STATUSES = [
+        ApplicationStatus::Submitted,
+        ApplicationStatus::SentToBank,
+        ApplicationStatus::BankAccepted,
+        ApplicationStatus::Blocked,
+        ApplicationStatus::PaymentPending,
+        ApplicationStatus::PaymentVerified,
+    ];
+
+    /**
+     * Recompute the payment status from the verified transactions.
+     *
+     * Once the review chain has taken the application on — Verified, Reviewed,
+     * Approved and everything past them — the chain owns its status, so
+     * re-totalling the payments must not move it. A payment rejected that late
+     * needs a human decision, not a silent rewind into an earlier queue.
+     */
     public function syncPaymentVerificationStatus(): void
     {
-        $verifiedTotal = (string) $this->paymentTransactions()
-            ->where('verification_status', 'verified')
-            ->select(DB::raw('COALESCE(SUM(amount), 0) as total'))
-            ->value('total');
+        if (! in_array($this->status, self::FINANCE_OWNED_STATUSES, true)) {
+            return;
+        }
+
+        // Totalled from the deposits, since that is where a slip is actually
+        // checked off — but only those under a transaction the two-officer
+        // sign-off has cleared. Counting deposits alone would let an
+        // application reach PaymentVerified on one officer's say-so, which is
+        // exactly what the second signature exists to prevent.
+        $verifiedTotal = (string) DB::table('payment_deposits')
+            ->join('payment_transactions', 'payment_transactions.id', '=', 'payment_deposits.payment_transaction_id')
+            ->where('payment_transactions.share_application_id', $this->id)
+            ->whereNull('payment_transactions.deleted_at')
+            ->where('payment_transactions.verification_status', 'verified')
+            ->where('payment_deposits.verification_status', 'verified')
+            ->sum('payment_deposits.amount');
 
         $targetStatus = $this->toPaisa($verifiedTotal) >= $this->toPaisa((string) $this->total_amount_declared)
             ? ApplicationStatus::PaymentVerified
             : ApplicationStatus::PaymentPending;
 
-        if (! in_array($this->status, [
-            ApplicationStatus::Approved,
-            ApplicationStatus::Returned,
-            ApplicationStatus::Allotted,
-            ApplicationStatus::PartiallyAllotted,
-            ApplicationStatus::NotAllotted,
-            ApplicationStatus::DematCredited,
-        ], true)) {
-            $this->update(['status' => $targetStatus]);
-        }
+        $this->update(['status' => $targetStatus]);
     }
 
     private function toPaisa(string $amount): int

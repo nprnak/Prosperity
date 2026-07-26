@@ -69,10 +69,15 @@ class RolesAndPermissionsSeeder extends Seeder
             'voucher.download',
         ],
         'finance_staff' => [
+            'report.view',
             'application.view-any',
             'payment.record',
             'payment.verify',
             'payment.view-any',
+            // Finance sees the applications list, so it needs to be able to
+            // open the receipts listed on it. The review stages deliberately
+            // do not: they see the number without the document.
+            'voucher.download-any',
         ],
         'profile_verifier' => [
             'profile.verify',
@@ -84,14 +89,17 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.approve',
         ],
         'application_verifier' => [
+            'report.view',
             'application.view-any',
             'application.verify',
         ],
         'application_reviewer' => [
+            'report.view',
             'application.view-any',
             'application.review',
         ],
         'application_approver' => [
+            'report.view',
             'application.view-any',
             'application.approve',
             'application.reject',

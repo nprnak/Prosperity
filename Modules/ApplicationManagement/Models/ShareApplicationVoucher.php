@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 class ShareApplicationVoucher extends Model
 {
     protected $fillable = [
-        'share_application_id', 'payment_type', 'deposited_bank', 'transaction_code', 'asba_reference', 'image_path', 'amount',
+        'share_application_id', 'payment_type', 'deposited_bank', 'transaction_code', 'asba_reference', 'image_path', 'amount', 'payment_date',
     ];
 
     // The path is a private-disk location; the page links to a gated route instead.
@@ -22,6 +22,7 @@ class ShareApplicationVoucher extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'payment_date' => 'date:Y-m-d',
     ];
 
     public function application()

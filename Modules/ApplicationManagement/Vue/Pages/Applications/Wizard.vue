@@ -8,12 +8,19 @@ const props = defineProps({
   draft: Object,
   profileCompleted: Boolean,
   profileStatus: { type: String, default: 'incomplete' },
-  activeApplication: { type: Object, default: null },
+  // Applications still with staff. Each locks only its own offering; a
+  // settled one is finished business and locks nothing.
+  activeApplications: { type: Array, default: () => [] },
+  // Why the application came back, when it did.
+  returnedReason: { type: String, default: null },
   offerings: { type: Array, default: () => [] },
   // {code, name} of whoever this application is currently credited to, seeded
   // from the applicant's default on a first draft.
   focalPerson: { type: Object, default: null },
 });
+
+// A deposit cannot have been made tomorrow.
+const today = new Date().toISOString().slice(0, 10);
 
 // `key` is a stable client-side handle for v-for; the server never sees it.
 let nextVoucherKey = 0;
@@ -26,12 +33,15 @@ const blankVoucher = () => ({
   transaction_code: '',
   asba_reference: '',
   amount: '',
+  payment_date: '',
   image: null,
   has_image: false,
   preview: null,
 });
 
-const savedVouchers = (props.draft?.vouchers || []).map((voucher) => ({
+// Rebuilt from the server's rows rather than read once, so a save can refresh
+// the form with the ids and slips the draft now actually holds.
+const mapSavedVouchers = () => (props.draft?.vouchers || []).map((voucher) => ({
   ...blankVoucher(),
   id: voucher.id,
   payment_type: voucher.payment_type || '',
@@ -39,8 +49,11 @@ const savedVouchers = (props.draft?.vouchers || []).map((voucher) => ({
   transaction_code: voucher.transaction_code || '',
   asba_reference: voucher.asba_reference || '',
   amount: voucher.amount ?? '',
+  payment_date: voucher.payment_date ?? '',
   has_image: Boolean(voucher.has_image),
 }));
+
+const savedVouchers = mapSavedVouchers();
 
 const form = useForm({
   step: 2,
@@ -90,10 +103,19 @@ const profileInReview = computed(() => ['submitted', 'verified', 'reviewed'].inc
 const profileReturned = computed(() => props.profileStatus === 'returned');
 
 // An application already in the chain is not editable; show its progress
-// instead of a fresh wizard.
-const applicationInReview = computed(() => Boolean(props.activeApplication)
-    && !['returned', 'draft'].includes(props.activeApplication.status));
-const applicationReturned = computed(() => props.activeApplication?.status === 'returned');
+// instead of a fresh wizard. Scoped to the offering being applied for — a
+// settled application used to lock the form for every future offering too,
+// which made the real cap one application per applicant however high
+// max_applications_per_user was set.
+const activeApplication = computed(() => props.activeApplications.find(
+  (application) => application.share_offering_id === form.payload.share_offering_id,
+) || null);
+
+const applicationInReview = computed(() => Boolean(activeApplication.value));
+
+// A returned application is handed back to be corrected, so it comes with the
+// form rather than instead of it.
+const applicationReturned = computed(() => props.draft?.status === 'returned');
 
 const selectedOffering = computed(
   () => props.offerings.find((offering) => offering.id === form.payload.share_offering_id) || null,
@@ -179,6 +201,19 @@ const saveDraft = () => {
   form.post(route('applications.draft'), {
     forceFormData: true,
     preserveScroll: true,
+    // Inertia keeps component state across a POST, so without this the rows
+    // would still be carrying id: null after the server assigned them — and
+    // the next save would read as a fresh set, taking the uploaded slips with
+    // it. Re-seeding from the saved draft also clears the File objects that
+    // have now been stored and revokes their previews.
+    onSuccess: () => {
+      form.payload.vouchers.forEach((voucher) => {
+        if (voucher.preview) URL.revokeObjectURL(voucher.preview);
+      });
+
+      const saved = mapSavedVouchers();
+      form.payload.vouchers = saved.length ? saved : [blankVoucher()];
+    },
   });
 };
 
@@ -212,15 +247,21 @@ const submitFinal = () => {
         </p>
       </div>
 
-      <div v-else-if="applicationReturned" class="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 shadow-sm">
+      <!-- Sits above the form, not instead of it: the applicant has been asked
+           to correct this application, so they need something to correct it
+           in. The form below is pre-filled with what they submitted. -->
+      <div v-else-if="applicationReturned && profileReady" class="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 shadow-sm">
         <h4 class="text-lg font-semibold">Application Returned for Correction</h4>
         <p class="mt-2 text-sm">
-          Application {{ activeApplication.application_number }} was returned so you can correct it.
-          Once resubmitted it goes back through all three review stages.
+          Application {{ draft.application_number }} was returned so you can correct it.
+          <span v-if="returnedReason" class="font-semibold">
+            Reason: {{ returnedReason }}
+          </span>
+          Make your changes below and submit again. It then goes back through all three review stages.
         </p>
       </div>
 
-      <div v-else-if="!profileReady" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
+      <div v-if="!applicationInReview && !profileReady" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
         <h4 class="text-lg font-semibold">
           {{ profileInReview ? 'Profile Under Review' : profileReturned ? 'Profile Returned for Correction' : 'Profile Approval Required' }}
         </h4>
@@ -246,7 +287,10 @@ const submitFinal = () => {
         </div>
       </div>
 
-      <div v-else class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100 space-y-6">
+      <!-- Stated explicitly rather than as a v-else: the returned banner now
+           sits above this block instead of replacing it, so a dangling v-else
+           would attach to the wrong branch. -->
+      <div v-if="!applicationInReview && profileReady" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100 space-y-6">
         <p v-if="$page.props.errors.profile" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {{ $page.props.errors.profile }}
         </p>
@@ -346,9 +390,12 @@ const submitFinal = () => {
                   <label class="mb-1 block text-sm font-medium text-gray-700">Payment Type</label>
                   <select v-model="voucher.payment_type" :class="inputClass(`vouchers.${index}.payment_type`)">
                     <option value="">Select payment type</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="self_cheque_deposit">Self Cheque Deposit</option>
+                    <option value="online_transfer">Online Transfer</option>
+                    <option value="cash">Cash</option>
                     <option value="connect_ips">ConnectIPS</option>
                     <option value="mobile_banking">Mobile Banking</option>
-                    <option value="cheque">Cheque</option>
                   </select>
                   <InputError :message="payloadError(`vouchers.${index}.payment_type`)" class="mt-1" />
                 </div>
@@ -371,6 +418,12 @@ const submitFinal = () => {
                   <label class="mb-1 block text-sm font-medium text-gray-700">Amount Deposited</label>
                   <input v-model="voucher.amount" type="number" step="0.01" min="0" placeholder="Leave blank to split the total" :class="inputClass(`vouchers.${index}.amount`)" />
                   <InputError :message="payloadError(`vouchers.${index}.amount`)" class="mt-1" />
+                </div>
+                <div class="md:col-span-3">
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Date of Deposit</label>
+                  <input v-model="voucher.payment_date" type="date" :max="today" :class="inputClass(`vouchers.${index}.payment_date`)" />
+                  <InputError :message="payloadError(`vouchers.${index}.payment_date`)" class="mt-1" />
+                  <p class="mt-1 text-xs text-gray-500">The day the money left your account, as shown on the slip.</p>
                 </div>
                 <div class="md:col-span-6">
                   <label class="mb-1 block text-sm font-medium text-gray-700">Bank Voucher Image</label>

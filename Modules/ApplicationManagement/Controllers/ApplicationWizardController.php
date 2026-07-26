@@ -12,6 +12,7 @@ use Modules\ApplicantManagement\Enums\ProfileStatus;
 use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Repositories\ProfileRepository;
 use Modules\ApplicantManagement\Services\ProfileDocumentService;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApplicationManagement\Models\ShareApplicationVoucher;
 use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
@@ -32,11 +33,20 @@ class ApplicationWizardController extends Controller
     public function index(Request $request, ShareOfferingRepository $offerings)
     {
         $applicantProfile = $this->profiles->findByUserId($request->user()->id);
-        $draft = $this->applications->latestDraftForUser($request->user()->id);
+        // A returned application is editable too, so the wizard opens on it
+        // rather than on an empty form the applicant cannot correct anything with.
+        $draft = $this->applications->latestEditableForUser($request->user()->id);
 
         return Inertia::render('Applications/Wizard', [
             'draft' => $draft,
-            'activeApplication' => $this->applications->activeForUser($request->user()->id),
+            // Only applications still with staff lock the form, and only for
+            // their own offering.
+            'activeApplications' => $this->applications->inFlightForUser($request->user()->id),
+            // Passed explicitly: latest_workflow_remarks is an accessor, not an
+            // appended attribute, so it never reaches the page on its own.
+            'returnedReason' => $draft?->status === ApplicationStatus::Returned
+                ? $draft->latest_workflow_remarks
+                : null,
             'profile' => $applicantProfile,
             'profileCompleted' => $applicantProfile?->isProfileComplete() ?? false,
             'profileStatus' => $applicantProfile->profile_status ?? ProfileStatus::Incomplete,

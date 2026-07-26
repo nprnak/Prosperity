@@ -88,7 +88,7 @@ defineProps({
       <div class="p-6 bg-white rounded-lg shadow">
         <h3 class="mb-4 text-xl font-bold text-gray-900">👤 Role Distribution</h3>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <Link :href="route('admin.users', { role: 'admin' })" class="p-4 border border-gray-200 rounded-lg hover:bg-slate-50">
+          <Link :href="route('admin.users', { role: 'super_admin' })" class="p-4 border border-gray-200 rounded-lg hover:bg-slate-50">
             <div class="text-xs text-gray-500 uppercase">Admin</div>
             <div class="mt-2 text-2xl font-bold text-slate-800">{{ stats?.adminUsers || 0 }}</div>
           </Link>
@@ -96,11 +96,11 @@ defineProps({
             <div class="text-xs text-gray-500 uppercase">Finance Staff</div>
             <div class="mt-2 text-2xl font-bold text-blue-700">{{ stats?.financeUsers || 0 }}</div>
           </Link>
-          <Link :href="route('admin.users', { role: 'approver' })" class="p-4 border border-gray-200 rounded-lg hover:bg-amber-50">
+          <Link :href="route('admin.users', { role: 'application_approver' })" class="p-4 border border-gray-200 rounded-lg hover:bg-amber-50">
             <div class="text-xs text-gray-500 uppercase">Approver</div>
             <div class="mt-2 text-2xl font-bold text-amber-700">{{ stats?.approverUsers || 0 }}</div>
           </Link>
-          <Link :href="route('admin.users', { role: 'user' })" class="p-4 border border-gray-200 rounded-lg hover:bg-emerald-50">
+          <Link :href="route('admin.users', { role: 'applicant' })" class="p-4 border border-gray-200 rounded-lg hover:bg-emerald-50">
             <div class="text-xs text-gray-500 uppercase">Applicant User</div>
             <div class="mt-2 text-2xl font-bold text-emerald-700">{{ stats?.applicantUsers || 0 }}</div>
           </Link>
@@ -158,11 +158,11 @@ defineProps({
             <div class="font-semibold text-gray-900">Finance Staff Users</div>
             <div class="mt-1 text-xs text-gray-500">Create and update payment-verification accounts</div>
           </Link>
-          <Link :href="route('admin.users', { role: 'approver' })" class="p-4 transition border border-gray-300 rounded-lg hover:bg-amber-50 hover:border-amber-300">
+          <Link :href="route('admin.users', { role: 'application_approver' })" class="p-4 transition border border-gray-300 rounded-lg hover:bg-amber-50 hover:border-amber-300">
             <div class="font-semibold text-gray-900">Approver Users</div>
             <div class="mt-1 text-xs text-gray-500">Manage approval users and reviewer accounts</div>
           </Link>
-          <Link :href="route('admin.users', { role: 'user' })" class="p-4 transition border border-gray-300 rounded-lg hover:bg-emerald-50 hover:border-emerald-300">
+          <Link :href="route('admin.users', { role: 'applicant' })" class="p-4 transition border border-gray-300 rounded-lg hover:bg-emerald-50 hover:border-emerald-300">
             <div class="font-semibold text-gray-900">Applicant Users</div>
             <div class="mt-1 text-xs text-gray-500">Manage public applicant accounts</div>
           </Link>

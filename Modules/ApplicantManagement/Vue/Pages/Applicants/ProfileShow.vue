@@ -3,7 +3,7 @@ import StageActions from '@/Components/StageActions.vue';
 import WorkflowTimeline from '@/Components/WorkflowTimeline.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 /**
  * The record a KYC stage signs off on. Everything the applicant submitted is
@@ -149,6 +149,28 @@ const saveFocalPerson = () => {
 const focalPersonLabel = computed(() => (props.applicant.focal_person
     ? `${props.applicant.focal_person.name} (${props.applicant.focal_person.focal_person_code})`
     : 'Not assigned'));
+
+// Correcting contact and banking details on a profile the chain has already
+// approved. Identity is not here on purpose: those fields are what the three
+// stages signed off on, so changing them means going round again.
+const amendable = ['mobile', 'email', 'bank_name', 'bank_branch', 'bank_account_number', 'account_holder_name', 'boid'];
+
+const amendForm = useForm({
+    ...Object.fromEntries(amendable.map((field) => [field, props.applicant[field] ?? ''])),
+    remarks: '',
+});
+
+const amending = ref(false);
+
+const saveAmendment = () => {
+    amendForm.patch(route('applicants.profile.amend', props.applicant.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            amending.value = false;
+            amendForm.remarks = '';
+        },
+    });
+};
 </script>
 
 <template>
@@ -367,6 +389,66 @@ const focalPersonLabel = computed(() => (props.applicant.focal_person
                     you already acted at another stage of this submission. A separate person must take
                     the remaining stages.
                 </p>
+            </section>
+
+            <!-- Contact and banking details go stale after approval, and an
+                 approved profile is otherwise frozen against every one of
+                 them. Identity is deliberately absent: that is what the three
+                 stages signed off on. -->
+            <section
+                v-if="applicant.profile_status === 'approved' && $page.props.auth?.permissions?.includes('profile.approve')"
+                class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200"
+            >
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Amend approved details</h3>
+                        <p class="mt-1 max-w-[70ch] text-sm text-gray-700">
+                            Correct contact or banking details without sending this profile back through
+                            the chain. Every change is recorded against you in the activity log.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        @click="amending = !amending"
+                    >
+                        {{ amending ? 'Cancel' : 'Amend' }}
+                    </button>
+                </div>
+
+                <form v-if="amending" class="mt-4 space-y-4" @submit.prevent="saveAmendment">
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label v-for="field in amendable" :key="field" class="block">
+                            <span class="text-sm font-medium text-gray-700 capitalize">{{ field.replace(/_/g, ' ') }}</span>
+                            <input
+                                v-model="amendForm[field]"
+                                type="text"
+                                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            />
+                            <span v-if="amendForm.errors[field]" class="mt-1 block text-sm text-red-600">
+                                {{ amendForm.errors[field] }}
+                            </span>
+                        </label>
+                    </div>
+
+                    <label class="block">
+                        <span class="text-sm font-medium text-gray-700">Reason for the amendment</span>
+                        <textarea
+                            v-model="amendForm.remarks"
+                            rows="2"
+                            placeholder="e.g. Bank account corrected from the updated cheque copy."
+                            class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        ></textarea>
+                    </label>
+
+                    <button
+                        type="submit"
+                        :disabled="amendForm.processing"
+                        class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                        Save amendment
+                    </button>
+                </form>
             </section>
 
             <section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">

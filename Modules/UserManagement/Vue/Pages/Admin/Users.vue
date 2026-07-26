@@ -20,14 +20,14 @@ const createForm = useForm({
   name: '',
   email: '',
   password: '',
-  role: '',
+  roles: [],
 });
 
 const editForm = useForm({
   name: '',
   email: '',
   password: '',
-  role: '',
+  roles: [],
 });
 
 const openCreateModal = () => {
@@ -54,7 +54,7 @@ const openEditModal = (user) => {
   editForm.name = user.name;
   editForm.email = user.email;
   editForm.password = '';
-  editForm.role = user.roles?.[0]?.name || '';
+  editForm.roles = (user.roles || []).map((role) => role.name);
   editForm.clearErrors();
   showEditModal.value = true;
 };
@@ -89,12 +89,19 @@ const inputClass = 'w-full rounded-lg border border-gray-300 px-3 py-2 focus:bor
 const primaryButtonClass = 'rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60';
 const secondaryButtonClass = 'rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50';
 
+// The nine roles the seeder actually creates. The previous list filtered on
+// admin/approver/user, none of which exist, so every one returned nothing.
 const roleFilters = [
   { label: 'All Roles', value: '' },
-  { label: 'Admin', value: 'admin' },
+  { label: 'Super Admin', value: 'super_admin' },
   { label: 'Finance Staff', value: 'finance_staff' },
-  { label: 'Approver', value: 'approver' },
-  { label: 'User', value: 'user' },
+  { label: 'Profile Verifier', value: 'profile_verifier' },
+  { label: 'Profile Reviewer', value: 'profile_reviewer' },
+  { label: 'Profile Approver', value: 'profile_approver' },
+  { label: 'Application Verifier', value: 'application_verifier' },
+  { label: 'Application Reviewer', value: 'application_reviewer' },
+  { label: 'Application Approver', value: 'application_approver' },
+  { label: 'Applicant', value: 'applicant' },
 ];
 
 const applyRoleFilter = (role) => {
@@ -152,7 +159,7 @@ const applyRoleFilter = (role) => {
               <td class="px-6 py-4 text-sm text-gray-600">{{ user.email }}</td>
               <td class="px-6 py-4 text-sm">
                 <span class="px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded">
-                  {{ user.roles?.[0]?.name || 'N/A' }}
+                  {{ (user.roles || []).map((role) => role.name).join(', ') || 'N/A' }}
                 </span>
               </td>
               <td class="px-6 py-4 text-sm">
@@ -196,11 +203,14 @@ const applyRoleFilter = (role) => {
 
           <div>
             <label class="block mb-1 text-sm font-medium text-gray-700">Role</label>
-            <select v-model="createForm.role" :class="inputClass">
-              <option value="">Select role</option>
+            <!-- Several roles per user: the two review chains are staffed by
+                 the same small team, and the act-once rule still keeps one
+                 person from taking two stages of the same record. -->
+            <select v-model="createForm.roles" multiple size="6" :class="inputClass">
               <option v-for="role in props.roles" :key="role.id" :value="role.name">{{ role.name }}</option>
             </select>
-            <p v-if="createForm.errors.role" class="mt-1 text-sm text-red-600">{{ createForm.errors.role }}</p>
+            <p class="mt-1 text-xs text-gray-500">Hold Cmd or Ctrl to select more than one.</p>
+            <p v-if="createForm.errors.roles" class="mt-1 text-sm text-red-600">{{ createForm.errors.roles }}</p>
           </div>
 
           <div class="flex justify-end gap-2 pt-2">
@@ -237,11 +247,11 @@ const applyRoleFilter = (role) => {
 
           <div>
             <label class="block mb-1 text-sm font-medium text-gray-700">Role</label>
-            <select v-model="editForm.role" :class="inputClass">
-              <option value="">Select role</option>
+            <select v-model="editForm.roles" multiple size="6" :class="inputClass">
               <option v-for="role in props.roles" :key="role.id" :value="role.name">{{ role.name }}</option>
             </select>
-            <p v-if="editForm.errors.role" class="mt-1 text-sm text-red-600">{{ editForm.errors.role }}</p>
+            <p class="mt-1 text-xs text-gray-500">Hold Cmd or Ctrl to select more than one.</p>
+            <p v-if="editForm.errors.roles" class="mt-1 text-sm text-red-600">{{ editForm.errors.roles }}</p>
           </div>
 
           <div class="flex justify-end gap-2 pt-2">

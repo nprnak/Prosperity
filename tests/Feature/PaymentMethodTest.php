@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\PaymentManagement\Models\PaymentMethod;
+use Modules\PaymentManagement\Repositories\PaymentMethodRepository;
 use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
@@ -56,26 +57,22 @@ class PaymentMethodTest extends TestCase
         $this->actingAs($applicant)->get("/payment-methods/{$method->id}/qr")->assertOk();
     }
 
-    public function test_finance_can_record_payment_against_active_method_only(): void
+    /**
+     * Only an active method is offered to an applicant deciding where to pay.
+     *
+     * This used to be enforced when finance recorded a payment against a
+     * method, but submission now creates the transaction itself and there is
+     * no record-payment step to validate — so the guard that matters is the
+     * one on what the applicant is shown.
+     */
+    public function test_only_active_methods_are_offered_to_applicants(): void
     {
         $active = PaymentMethod::create(['name' => 'Bank Deposit', 'status' => 'active']);
-        $inactive = PaymentMethod::create(['name' => 'Old Wallet', 'status' => 'inactive']);
-        $application = $this->submittedApplication();
-        $finance = User::factory()->create()->assignRole('finance_staff');
+        PaymentMethod::create(['name' => 'Old Wallet', 'status' => 'inactive']);
 
-        $base = [
-            'amount' => '1000.00', 'payment_mode' => 'online_transfer', 'payment_date' => now()->toDateString(),
-        ];
+        $offered = app(PaymentMethodRepository::class)->active(['id', 'name']);
 
-        $this->actingAs($finance)
-            ->post("/finance/applications/{$application->id}/payments", [...$base, 'payment_method_id' => $inactive->id])
-            ->assertSessionHasErrors('payment_method_id');
-
-        $this->actingAs($finance)
-            ->post("/finance/applications/{$application->id}/payments", [...$base, 'payment_method_id' => $active->id])
-            ->assertSessionHasNoErrors();
-
-        $this->assertSame($active->id, $application->paymentTransactions()->first()->payment_method_id);
+        $this->assertSame([$active->id], $offered->pluck('id')->all());
     }
 
     public function test_method_with_payments_cannot_be_deleted(): void
@@ -84,7 +81,7 @@ class PaymentMethodTest extends TestCase
         $application = $this->submittedApplication();
         $application->paymentTransactions()->create([
             'receipt_number' => 'R-1', 'amount' => '100.00', 'payment_mode' => 'cash',
-            'payment_date' => now(), 'payment_method_id' => $method->id,
+            'payment_method_id' => $method->id,
         ]);
 
         $admin = User::factory()->create()->assignRole('super_admin');

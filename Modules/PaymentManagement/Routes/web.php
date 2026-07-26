@@ -8,8 +8,12 @@ use Modules\PaymentManagement\Controllers\FinanceController;
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/finance/dashboard', [FinanceController::class, 'dashboard'])
         ->middleware('can:payment.record')->name('finance.dashboard');
-    Route::post('/finance/applications/{application}/payments', [FinanceController::class, 'storePayment'])
-        ->middleware('can:payment.record')->name('finance.payments.store');
+    // Each slip is checked on its own; the receipt is signed off once they all
+    // are. There is no "record payment" route any more — submission already
+    // creates the transaction and its deposits, so that one only ever produced
+    // a duplicate.
+    Route::post('/finance/deposits/{deposit}/verify', [FinanceController::class, 'verifyDeposit'])
+        ->middleware('can:payment.verify')->name('finance.deposits.verify');
     Route::post('/finance/payments/{payment}/verify', [FinanceController::class, 'verifyPayment'])
         ->middleware('can:payment.verify')->name('finance.payments.verify');
 

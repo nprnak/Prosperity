@@ -16,7 +16,7 @@ class VoucherRepository extends Repository
     {
         return $this->query()
             ->where('verification_code', $code)
-            ->with('paymentTransaction.shareApplication')
+            ->with(['paymentTransaction.shareApplication', 'paymentTransaction.deposits'])
             ->first();
     }
 }

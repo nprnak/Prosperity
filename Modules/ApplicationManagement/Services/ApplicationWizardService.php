@@ -23,6 +23,15 @@ use Modules\UserManagement\Services\FocalPersonService;
  */
 class ApplicationWizardService
 {
+    /**
+     * Statuses an applicant may submit from: a draft they are still filling
+     * in, and one handed back to them for correction.
+     */
+    private const SUBMITTABLE_STATUSES = [
+        ApplicationStatus::Draft,
+        ApplicationStatus::Returned,
+    ];
+
     public function __construct(
         private ShareApplicationRepository $applications,
         private ApplicationEventRepository $events,
@@ -108,7 +117,7 @@ class ApplicationWizardService
         // Rate and total are always taken from the offering, never from the client.
         $totalAmount = number_format($shares * (float) $offering->share_rate, 2, '.', '');
 
-        $application = $this->applications->firstOrNewDraft($applicant->id);
+        $application = $this->applications->firstOrNewEditable($applicant->id);
 
         if (! $application->exists) {
             $application->application_number = 'DRAFT-'.str_pad((string) $applicant->id, 6, '0', STR_PAD_LEFT);
@@ -155,6 +164,16 @@ class ApplicationWizardService
 
         foreach ($rows as $row) {
             $voucher = isset($row['id']) ? $existing->get((int) $row['id']) : null;
+
+            // Falling back to the transaction code keeps a client that has
+            // lost track of its row ids from destroying the slips: deleting an
+            // uploaded file is irreversible, and the form already requires a
+            // distinct code per deposit, so it identifies the row just as well.
+            if (! $voucher && filled($row['transaction_code'] ?? null)) {
+                $voucher = $existing->first(fn ($candidate) => $candidate->transaction_code === $row['transaction_code']
+                    && ! in_array($candidate->id, $kept, true));
+            }
+
             $voucher ??= $application->vouchers()->make();
 
             $voucher->fill([
@@ -163,6 +182,8 @@ class ApplicationWizardService
                 'transaction_code' => $row['transaction_code'] ?? null,
                 'asba_reference' => $row['asba_reference'] ?? null,
                 'amount' => ($row['amount'] ?? null) === '' ? null : ($row['amount'] ?? null),
+                // The day the money actually moved, which the receipt prints.
+                'payment_date' => ($row['payment_date'] ?? null) === '' ? null : ($row['payment_date'] ?? null),
             ]);
 
             if (($row['image'] ?? null) instanceof UploadedFile) {
@@ -188,6 +209,16 @@ class ApplicationWizardService
     public function submit(User $user, ShareApplication $application): ShareApplication
     {
         $application->load('applicant');
+
+        // Only an application still in the applicant's hands may be submitted.
+        // Without this, re-posting the route on an application that has already
+        // been through the chain resets it to Submitted while its receipt and
+        // its sign-offs stay in place.
+        if (! in_array($application->status, self::SUBMITTABLE_STATUSES, true)) {
+            $this->failSubmission(
+                'This application has already been submitted and is with the review team.'
+            );
+        }
 
         if (! $application->applicant?->isProfileApproved()) {
             $this->failSubmission('Your profile must be approved before submitting an application. Submit it for review from the Profile page.');
@@ -232,6 +263,15 @@ class ApplicationWizardService
         }
 
         $fromStatus = $application->status;
+
+        // An application coming back after a return starts a fresh cycle, so
+        // the sign-offs given to the version that was sent back no longer
+        // count toward the act-once rule and three people must sign the
+        // corrected one. Mirrors what the KYC profile already does.
+        if ($fromStatus === ApplicationStatus::Returned) {
+            $application->restartWorkflowCycle();
+        }
+
         $application->status = ApplicationStatus::Submitted;
         $application->submitted_at = now();
         $application->save();
@@ -239,25 +279,36 @@ class ApplicationWizardService
         $this->events->record($application, $user->id, $fromStatus, ApplicationStatus::Submitted, 'Application submitted by applicant.');
 
         // The declared payment goes straight into finance's verification queue
-        // as a pending transaction — no separate "record payment" step needed.
-        // One pending transaction per declared deposit, so finance verifies each
-        // slip on its own rather than one lump sum.
+        // — no separate "record payment" step needed. One pending transaction,
+        // because one application earns one receipt, with a deposit row per
+        // declared slip so finance still verifies each on its own.
+        //
+        // No receipt number is claimed here: it is issued with the receipt
+        // itself. Taking one per deposit at submission burned numbers on
+        // applications that were never approved.
         if (! $application->paymentTransactions()->exists()) {
             $amounts = $this->allocateAmounts($application, $vouchers);
+
+            $transaction = $application->paymentTransactions()->create([
+                'amount' => $this->sumAmounts($amounts),
+                'payment_mode' => $this->receiptPaymentMode($vouchers->first()?->payment_type),
+                'verification_status' => 'pending',
+                'holding_id_no' => $application->applicant?->boid,
+                'id_type' => $application->applicant?->boid ? 'boid' : null,
+                'issued_by' => $user->id,
+            ]);
 
             foreach ($vouchers as $index => $voucher) {
                 $isCheque = $voucher->payment_type === 'cheque';
 
-                $application->paymentTransactions()->create([
-                    'receipt_number' => $this->numbers->generateReceiptNumber(),
-                    'amount' => $amounts[$index],
-                    'payment_mode' => ['connect_ips' => 'ips', 'mobile_banking' => 'mobile_banking', 'cheque' => 'cheque'][$voucher->payment_type] ?? 'online_transfer',
+                $transaction->deposits()->create([
+                    'share_application_voucher_id' => $voucher->id,
                     'bank_name' => $voucher->deposited_bank,
-                    'payment_reference_no' => $isCheque ? null : $voucher->transaction_code,
+                    'reference_no' => $isCheque ? null : $voucher->transaction_code,
                     'cheque_no' => $isCheque ? $voucher->transaction_code : null,
-                    'payment_date' => now()->toDateString(),
+                    'amount' => $amounts[$index],
+                    'payment_date' => $voucher->payment_date,
                     'verification_status' => 'pending',
-                    'issued_by' => $user->id,
                 ]);
             }
         }
@@ -332,6 +383,32 @@ class ApplicationWizardService
     /**
      * @throws ValidationException
      */
+    /**
+     * The mode the receipt ticks a box for.
+     *
+     * The paper receipt has one checkbox row, so a receipt carries one mode
+     * even when its deposits arrived by different routes — finance overrides
+     * it in that case. IPS and mobile banking are not boxes on the form; both
+     * are an online transfer as far as the receipt is concerned.
+     */
+    private function receiptPaymentMode(?string $declaredType): string
+    {
+        return match ($declaredType) {
+            'cheque' => 'cheque',
+            'self_cheque_deposit' => 'self_cheque_deposit',
+            'cash' => 'cash',
+            default => 'online_transfer',
+        };
+    }
+
+    /** @param  array<int, string>  $amounts */
+    private function sumAmounts(array $amounts): string
+    {
+        $paisa = array_sum(array_map(fn (string $amount) => $this->toPaisa($amount), $amounts));
+
+        return number_format($paisa / 100, 2, '.', '');
+    }
+
     private function failSubmission(string $message): never
     {
         throw ValidationException::withMessages(['profile' => $message])

@@ -6,10 +6,12 @@ use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Activitylog\Models\Activity;
+use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
 class AuditLogTest extends TestCase
 {
+    use CreatesProfiles;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -53,6 +55,42 @@ class AuditLogTest extends TestCase
         $this->assertNotNull($log);
         $this->assertSame($user->email, $log->properties['email']);
         $this->assertStringNotContainsString('wrong-password', json_encode($log->properties));
+    }
+
+    /**
+     * Bank account and BOID drive ASBA blocking and refunds, so a change to
+     * them has to leave a trail — an applicant editing those before submitting
+     * was previously invisible on the log page.
+     */
+    public function test_kyc_profile_changes_are_logged(): void
+    {
+        $user = User::factory()->create()->assignRole('applicant');
+
+        $profile = $this->minimalProfile($user);
+        $profile->update(['bank_account_number' => '9999999999']);
+
+        $log = Activity::where('log_name', 'profile')->latest('id')->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame('9999999999', $log->properties['attributes']['bank_account_number']);
+    }
+
+    /**
+     * The user record is audited too, but never its password — a hash in the
+     * activity log is a credential sitting in a table built for reading.
+     */
+    public function test_user_changes_are_logged_without_the_password(): void
+    {
+        $user = User::factory()->create();
+
+        $user->update(['name' => 'Renamed Person', 'password' => 'a-brand-new-secret']);
+
+        $log = Activity::where('log_name', 'user')->latest('id')->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame('Renamed Person', $log->properties['attributes']['name']);
+        $this->assertArrayNotHasKey('password', (array) $log->properties['attributes']);
+        $this->assertStringNotContainsString('a-brand-new-secret', json_encode($log->properties));
     }
 
     public function test_admin_logs_page_shows_activity_and_filters_by_log_name(): void

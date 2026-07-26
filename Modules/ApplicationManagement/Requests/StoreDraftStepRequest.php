@@ -29,7 +29,13 @@ class StoreDraftStepRequest extends FormRequest
             // pairing is enforced at submission instead.
             'payload.vouchers' => ['nullable', 'array', 'max:20'],
             'payload.vouchers.*.id' => ['nullable', 'integer'],
-            'payload.vouchers.*.payment_type' => ['nullable', 'in:connect_ips,mobile_banking,cheque'],
+            // The four the receipt actually prints, plus the two channels the
+            // applicant most often pays through. Previously an applicant could
+            // only declare connect_ips, mobile_banking or cheque, none of
+            // which is a box on the receipt except the last, so most receipts
+            // printed with nothing ticked.
+            'payload.vouchers.*.payment_type' => ['nullable', 'in:cheque,self_cheque_deposit,online_transfer,cash,connect_ips,mobile_banking'],
+            'payload.vouchers.*.payment_date' => ['nullable', 'date', 'before_or_equal:today'],
             'payload.vouchers.*.deposited_bank' => ['nullable', 'string', 'max:255'],
             'payload.vouchers.*.transaction_code' => ['nullable', 'string', 'max:100'],
             'payload.vouchers.*.asba_reference' => ['nullable', 'string', 'max:100'],

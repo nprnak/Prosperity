@@ -7,6 +7,19 @@ defineProps({
   applications: Array,
 });
 
+// One application earns one receipt, so its number and its voucher come off
+// the single payment transaction. Absent until the approver signs off, which
+// is what makes the column readable as "review finished".
+const receiptOf = (app) => {
+  const payment = (app.payment_transactions || [])[0];
+
+  return payment?.receipt_number
+    ? { number: payment.receipt_number, voucherId: payment.voucher?.id }
+    : null;
+};
+
+const canOpenReceipts = (page) => (page.props.auth?.permissions || []).includes('voucher.download-any');
+
 const statusClass = (status) => {
   if (['submitted', 'sent_to_bank', 'bank_accepted', 'blocked', 'payment_pending'].includes(status)) {
     return 'bg-yellow-100 text-yellow-700';
@@ -74,6 +87,7 @@ const statusLabel = (status) => {
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shares</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted Date</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -90,10 +104,20 @@ const statusLabel = (status) => {
                   {{ statusLabel(app.status) }}
                 </span>
               </td>
+              <td class="px-6 py-4 text-sm">
+                <span v-if="receiptOf(app)" class="font-semibold text-gray-900">{{ receiptOf(app).number }}</span>
+                <span v-else class="text-gray-400">—</span>
+              </td>
               <td class="px-6 py-4 text-sm text-gray-600">{{ app.submitted_at }}</td>
-              <td class="px-6 py-4 text-sm space-x-2">
+              <td class="px-6 py-4 text-sm space-x-3">
                 <Link :href="route('admin.applications.show', app.id)" class="text-indigo-600 hover:text-indigo-900 font-semibold">View</Link>
-                <Link :href="route('admin.applications.show', app.id)" class="text-blue-600 hover:text-blue-900 font-semibold">Details</Link>
+                <Link
+                  v-if="receiptOf(app)?.voucherId && canOpenReceipts($page)"
+                  :href="route('vouchers.show', receiptOf(app).voucherId)"
+                  class="font-semibold text-blue-600 hover:text-blue-900"
+                >
+                  Receipt
+                </Link>
               </td>
             </tr>
           </tbody>

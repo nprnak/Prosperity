@@ -26,7 +26,7 @@ class ApplicationReturnedNotification extends Notification implements ShouldQueu
     {
         return [
             'title' => 'Application Returned',
-            'message' => 'Application '.$this->application->application_number.' was rejected: '
+            'message' => 'Application '.$this->application->application_number.' was returned for correction: '
                 .($this->application->latest_workflow_remarks ?: $this->application->rejection_reason ?: 'Not provided'),
         ];
     }
@@ -35,7 +35,7 @@ class ApplicationReturnedNotification extends Notification implements ShouldQueu
     {
         return (new MailMessage)
             ->subject('Application Returned')
-            ->line('Your share application has been rejected.')
+            ->line('Your share application has been returned to you for correction.')
             ->line('Reason: '.($this->application->latest_workflow_remarks ?: $this->application->rejection_reason ?: 'Not provided'));
     }
 }

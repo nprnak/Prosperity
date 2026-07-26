@@ -58,6 +58,12 @@ class WorkflowService
                 $subject->workflowStatusColumn() => $target->value,
             ])->save();
 
+            // Only an approval is a sign-off; sending back or returning is the
+            // opposite of one, and must not stamp the actor as having signed.
+            if ($action === WorkflowAction::Approve) {
+                $subject->recordStageSignOff($stage, $actor);
+            }
+
             $subject->workflowEvents()->create([
                 'actor_id' => $actor->id,
                 'stage' => $stage,

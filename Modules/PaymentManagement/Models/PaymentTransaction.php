@@ -15,14 +15,18 @@ class PaymentTransaction extends Model
 {
     use HasFactory, LogsActivity, SoftDeletes;
 
+    /**
+     * A transaction is one receipt. The bank, reference, cheque number and
+     * date are facts about an individual deposit, so they live on
+     * payment_deposits — a receipt may acknowledge several.
+     */
     protected $fillable = [
-        'share_application_id', 'receipt_number', 'amount', 'payment_mode', 'payment_method_id', 'bank_name', 'payment_reference_no', 'cheque_no',
-        'payment_date', 'holding_id_no', 'id_type', 'verification_status', 'checked_by', 'checked_at', 'verified_by', 'verified_at', 'issued_by', 'approved_by', 'notes',
+        'share_application_id', 'receipt_number', 'amount', 'payment_mode', 'payment_method_id',
+        'holding_id_no', 'id_type', 'verification_status', 'checked_by', 'checked_at', 'verified_by', 'verified_at', 'issued_by', 'approved_by', 'notes',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'payment_date' => 'date',
         'checked_at' => 'datetime',
         'verified_at' => 'datetime',
     ];
@@ -66,5 +70,34 @@ class PaymentTransaction extends Model
     public function voucher()
     {
         return $this->hasOne(Voucher::class);
+    }
+
+    /** The bank transfers this receipt acknowledges. */
+    public function deposits()
+    {
+        return $this->hasMany(PaymentDeposit::class);
+    }
+
+    /**
+     * Whether every deposit has been verified.
+     *
+     * The two-officer sign-off on the transaction is the last step, so it
+     * cannot run while a slip on the same receipt is still unchecked or has
+     * been rejected — the receipt would acknowledge money nobody confirmed.
+     */
+    public function allDepositsVerified(): bool
+    {
+        $deposits = $this->relationLoaded('deposits') ? $this->deposits : $this->deposits()->get();
+
+        return $deposits->isNotEmpty()
+            && $deposits->every(fn (PaymentDeposit $deposit) => $deposit->verification_status === 'verified');
+    }
+
+    /** The total actually verified, in rupees. */
+    public function verifiedDepositTotal(): string
+    {
+        return (string) $this->deposits()
+            ->where('verification_status', 'verified')
+            ->sum('amount');
     }
 }

@@ -28,37 +28,14 @@ if (typeof window !== 'undefined') {
 const page = usePage();
 const can = (permission) => (page.props.auth?.permissions || []).includes(permission);
 
-// Payment can be recorded while the application sits in a pre-verification state.
-const canRecordPayment = computed(() =>
-  can('payment.record')
-  && ['submitted', 'sent_to_bank', 'bank_accepted', 'blocked', 'payment_pending'].includes(props.application.status),
-);
-
-const modeFromPaymentType = { connect_ips: 'ips', mobile_banking: 'mobile_banking', cheque: 'cheque' };
-
 const vouchers = computed(() => props.application.vouchers || []);
 
-// Payment details now live per voucher, so the form seeds from the first
-// declared deposit; finance adjusts from there.
-const firstVoucher = vouchers.value[0] || {};
-const isCheque = firstVoucher.payment_type === 'cheque';
-
-// Prefilled from what the applicant declared; finance can adjust before recording.
-const paymentForm = useForm({
-  amount: firstVoucher.amount || props.application.total_amount_declared || '',
-  payment_mode: modeFromPaymentType[firstVoucher.payment_type] || 'cash',
-  payment_method_id: null,
-  payment_date: new Date().toISOString().slice(0, 10),
-  bank_name: firstVoucher.deposited_bank || '',
-  payment_reference_no: isCheque ? '' : (firstVoucher.transaction_code || ''),
-  cheque_no: isCheque ? (firstVoucher.transaction_code || '') : '',
-  holding_id_no: '',
-  id_type: 'citizenship',
-  notes: '',
-});
-
-const recordPayment = () =>
-  paymentForm.post(route('finance.payments.store', props.application.id), { preserveScroll: true });
+// Submission now creates the receipt and its deposits, so there is nothing to
+// "record" here any more — finance verifies each deposit on the finance
+// dashboard, and this page reports where that has got to.
+const deposits = computed(() =>
+  (props.application.payment_transactions || []).flatMap((payment) => payment.deposits || []),
+);
 
 const verifyPayment = (paymentId, status) =>
   useForm({ status, notes: '' }).post(route('finance.payments.verify', paymentId), { preserveScroll: true });
@@ -190,58 +167,32 @@ const statusLabel = (status) => {
         <p v-else class="text-sm text-gray-500">The applicant has not declared any bank vouchers.</p>
       </section>
 
-      <section v-if="canRecordPayment" class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Record Payment</h2>
-        <p class="text-sm text-gray-500 mb-4">Prefilled from the applicant's declaration — adjust anything that differs from the actual payment, then record it.</p>
-        <div class="grid gap-3 md:grid-cols-3">
-          <div>
-            <label class="mb-1 block text-xs font-medium text-gray-700">Amount</label>
-            <input v-model="paymentForm.amount" type="number" step="0.01" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label class="mb-1 block text-xs font-medium text-gray-700">Mode</label>
-            <select v-model="paymentForm.payment_mode" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-              <option>cash</option><option>cheque</option><option>online_transfer</option><option>self_cheque_deposit</option><option>ips</option><option>mobile_banking</option>
-            </select>
-          </div>
-          <div>
-            <label class="mb-1 block text-xs font-medium text-gray-700">Payment Date</label>
-            <input v-model="paymentForm.payment_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label class="mb-1 block text-xs font-medium text-gray-700">Paying Bank</label>
-            <input v-model="paymentForm.bank_name" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div v-if="paymentForm.payment_mode === 'cheque'">
-            <label class="mb-1 block text-xs font-medium text-gray-700">Cheque No</label>
-            <input v-model="paymentForm.cheque_no" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div v-else>
-            <label class="mb-1 block text-xs font-medium text-gray-700">Transaction Code / Reference</label>
-            <input v-model="paymentForm.payment_reference_no" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label class="mb-1 block text-xs font-medium text-gray-700">Holding ID No</label>
-            <input v-model="paymentForm.holding_id_no" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label class="mb-1 block text-xs font-medium text-gray-700">ID Type</label>
-            <select v-model="paymentForm.id_type" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-              <option value="citizenship">Citizenship</option>
-              <option value="national_id">National ID</option>
-              <option value="pan">PAN</option>
-            </select>
-          </div>
-          <div class="flex items-end">
-            <button
-              class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:bg-indigo-300"
-              :disabled="paymentForm.processing"
-              @click="recordPayment"
-            >
-              Record Payment
-            </button>
-          </div>
-        </div>
+      <section v-if="deposits.length" class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Deposits</h2>
+        <p class="text-sm text-gray-500 mb-4">
+          The bank transfers behind this application's receipt. Each is verified against its own
+          slip on the finance dashboard; the receipt is signed off once they all are.
+        </p>
+        <table class="w-full text-sm">
+          <thead class="border-b text-left text-xs uppercase text-gray-500">
+            <tr>
+              <th class="py-2">Reference</th>
+              <th class="py-2">Bank</th>
+              <th class="py-2">Amount</th>
+              <th class="py-2">Deposited</th>
+              <th class="py-2">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            <tr v-for="deposit in deposits" :key="deposit.id">
+              <td class="py-2 font-medium text-gray-900">{{ deposit.cheque_no || deposit.reference_no || '-' }}</td>
+              <td class="py-2 text-gray-600">{{ deposit.bank_name || '-' }}</td>
+              <td class="py-2 text-gray-900">{{ deposit.amount }}</td>
+              <td class="py-2 text-gray-600">{{ deposit.payment_date || '-' }}</td>
+              <td class="py-2 capitalize text-gray-700">{{ deposit.verification_status }}</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
       <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">

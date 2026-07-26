@@ -41,7 +41,10 @@ class AdminReportsController extends Controller
             'options' => [
                 'companies' => $companies->query()->orderBy('name')->get(['id', 'name']),
                 'offerings' => $offerings->listForFilters(),
-                'statuses' => array_column(ApplicationStatus::flow(), 'value'),
+                // Every case, not flow(): that lists the lifecycle ordering and
+                // deliberately leaves Returned out of it, which meant returned
+                // applications could not be filtered for at all.
+                'statuses' => array_column(ApplicationStatus::cases(), 'value'),
                 'paymentMethods' => $paymentMethods->query()->orderBy('name')->get(['id', 'name']),
             ],
         ]);

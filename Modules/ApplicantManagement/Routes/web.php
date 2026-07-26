@@ -27,4 +27,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::post('/applicants/{applicant}/profile/act', [ApplicantProfileReviewController::class, 'act'])->name('applicants.profile.act');
     });
+
+    // Correcting an already-approved profile is the approver's to do, not any
+    // stage's: it edits a record the chain has finished with, so it sits
+    // outside the group above and is gated on profile.approve alone.
+    Route::patch('/applicants/{applicant}/profile', [ApplicantProfileReviewController::class, 'amend'])
+        ->middleware('can:profile.approve')->name('applicants.profile.amend');
 });

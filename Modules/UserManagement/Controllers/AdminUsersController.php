@@ -36,7 +36,11 @@ class AdminUsersController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', 'string', Rule::exists('roles', 'name')],
+            // Several roles per user is the point: the two review chains are
+            // staffed by the same small team, and WorkflowService still bars
+            // one person from taking two stages of the same record.
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['string', Rule::exists('roles', 'name')],
         ]);
 
         $user = $this->users->create([
@@ -45,7 +49,7 @@ class AdminUsersController extends Controller
             'password' => $validated['password'],
         ]);
 
-        $user->syncRoles([$validated['role']]);
+        $user->syncRoles($validated['roles']);
 
         return redirect()->route('admin.users')
             ->with('success', "User {$user->name} created.");
@@ -59,7 +63,11 @@ class AdminUsersController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8'],
-            'role' => ['required', 'string', Rule::exists('roles', 'name')],
+            // Several roles per user is the point: the two review chains are
+            // staffed by the same small team, and WorkflowService still bars
+            // one person from taking two stages of the same record.
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['string', Rule::exists('roles', 'name')],
         ]);
 
         $attributes = ['name' => $validated['name'], 'email' => $validated['email']];
@@ -69,7 +77,7 @@ class AdminUsersController extends Controller
         }
 
         $this->users->update($user, $attributes);
-        $user->syncRoles([$validated['role']]);
+        $user->syncRoles($validated['roles']);
 
         return redirect()->route('admin.users')
             ->with('success', "User {$user->name} updated.");

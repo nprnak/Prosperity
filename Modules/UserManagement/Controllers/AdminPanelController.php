@@ -65,7 +65,12 @@ class AdminPanelController extends Controller
 
         $workflowCounts = [
             'pendingFinance' => $this->payments->pendingCount(),
-            'pendingApprovals' => $this->applications->countByStatus(ApplicationStatus::PaymentVerified),
+            // Reviewed is the approver's queue. PaymentVerified is the
+            // verifier's — counting it here put the first stage's backlog
+            // under a card labelled "ready for approval".
+            'pendingVerifications' => $this->applications->countByStatus(ApplicationStatus::PaymentVerified),
+            'pendingReviews' => $this->applications->countByStatus(ApplicationStatus::Verified),
+            'pendingApprovals' => $this->applications->countByStatus(ApplicationStatus::Reviewed),
             'pendingAllotments' => $this->applications->countByStatus(ApplicationStatus::Approved),
         ];
 

@@ -8,15 +8,15 @@ use Inertia\Inertia;
 // App\Providers\ModuleServiceProvider via the module.php manifests.
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    // Redirect root to the login page to make login the main entry point
+    return redirect()->route('login');
 });
 
 Route::post('/notifications/mark-read', [\App\Http\Controllers\NotificationController::class, 'markAllRead'])
     ->middleware(['auth', 'verified'])->name('notifications.mark-read');
+
+use App\Http\Controllers\Auth\TwoFactorResendController;
+
+Route::post('/verification/otp', [TwoFactorResendController::class, 'resend'])->name('verification.otp');
 
 require __DIR__.'/auth.php';

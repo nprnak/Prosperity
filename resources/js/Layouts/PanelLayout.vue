@@ -58,7 +58,7 @@ const panelSubheading = computed(() =>
       ? 'Modules available to your role'
       : 'Manage settings and share application',
 );
-const panelHeaderClass = 'bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500';
+const panelHeaderClass = 'bg-white';
 const activeClass = computed(() =>
   isAdmin.value
     ? 'bg-blue-50 border-l-4 border-blue-700 font-semibold text-blue-800'
@@ -72,18 +72,18 @@ const isActive = (item) => page.url.startsWith(item.startsWith);
   <AuthenticatedLayout>
     <div class="min-h-screen bg-slate-100/70">
       <div :class="['border-b shadow-sm', panelHeaderClass]">
-        <div class="flex items-center justify-between px-4 py-3 mx-auto max-w-7xl sm:px-6">
+        <div class="flex items-center justify-between px-4 py-3 mx-auto max-w-screen-xl sm:px-6">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">Prosperity CMS</p>
-            <h1 class="text-base font-bold text-white sm:text-lg">{{ panelHeading }}</h1>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Prosperity CMS</p>
+            <h1 class="text-base font-bold text-slate-900 sm:text-lg">{{ panelHeading }}</h1>
           </div>
-          <div class="px-3 py-1 text-xs text-white border rounded border-white/30 bg-white/10">
+          <div class="px-3 py-1 text-xs text-slate-700 border rounded border-gray-200 bg-gray-50">
             {{ panelSubheading }}
           </div>
         </div>
       </div>
 
-      <div class="px-4 py-6 mx-auto max-w-7xl sm:px-6">
+      <div class="px-4 py-6 mx-auto max-w-screen-xl sm:px-6">
       <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
         <div class="md:col-span-1">
           <div class="overflow-hidden bg-white border rounded-md shadow-sm border-slate-200">

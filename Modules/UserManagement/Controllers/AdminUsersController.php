@@ -36,7 +36,8 @@ class AdminUsersController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', 'string', Rule::exists('roles', 'name')],
+            'roles' => ['required', 'array'],
+            'roles.*' => ['string', Rule::exists('roles', 'name')],
         ]);
 
         $user = $this->users->create([
@@ -45,7 +46,8 @@ class AdminUsersController extends Controller
             'password' => $validated['password'],
         ]);
 
-        $user->syncRoles([$validated['role']]);
+        // Accept multiple roles
+        $user->syncRoles($validated['roles']);
 
         return redirect()->route('admin.users');
     }
@@ -58,7 +60,8 @@ class AdminUsersController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8'],
-            'role' => ['required', 'string', Rule::exists('roles', 'name')],
+            'roles' => ['required', 'array'],
+            'roles.*' => ['string', Rule::exists('roles', 'name')],
         ]);
 
         $attributes = ['name' => $validated['name'], 'email' => $validated['email']];
@@ -68,7 +71,8 @@ class AdminUsersController extends Controller
         }
 
         $this->users->update($user, $attributes);
-        $user->syncRoles([$validated['role']]);
+        // Accept multiple roles
+        $user->syncRoles($validated['roles']);
 
         return redirect()->route('admin.users');
     }

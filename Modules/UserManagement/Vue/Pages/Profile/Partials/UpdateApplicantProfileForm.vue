@@ -3,7 +3,7 @@ import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { computed, watch, ref, reactive } from 'vue';
 
 const page = usePage();
 const profile = page.props.profile || {};
@@ -158,6 +158,75 @@ const documentSlots = [
     { input: 'photo', label: 'Recent Photograph', routeType: 'photo' },
     { input: 'signature', label: 'Signature Image', routeType: 'signature' },
 ];
+
+// Client-side previews for selected files
+const previews = reactive({});
+const serverPreviews = reactive({});
+const serverPreviewFailed = reactive({});
+const modalVisible = ref(false);
+const modalSrc = ref('');
+const modalTitle = ref('');
+
+const isImageFile = (file) => file && file.type && file.type.startsWith('image/');
+
+const handleFileChange = (inputName, ev) => {
+    const file = ev.target.files && ev.target.files[0] ? ev.target.files[0] : null;
+    form[inputName] = file;
+    // generate preview for images
+    if (file && isImageFile(file)) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previews[inputName] = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    } else if (file) {
+        // non-image: show filename as preview text
+        previews[inputName] = null;
+    } else {
+        previews[inputName] = null;
+    }
+};
+
+const toKebab = (s) => String(s).replace(/_/g, '-');
+const toUnderscore = (s) => String(s).replace(/-/g, '_');
+const tryServerPreviewUrls = (routeType) => [previewLink(toKebab(routeType)), previewLink(toUnderscore(routeType))];
+
+const serverPreviewFor = (routeType) => {
+    if (serverPreviews[routeType] === undefined) {
+        const [first] = tryServerPreviewUrls(routeType);
+        serverPreviews[routeType] = first;
+        serverPreviewFailed[routeType] = false;
+    }
+    return serverPreviews[routeType];
+};
+
+const onServerImageError = (routeType) => {
+    const [first, second] = tryServerPreviewUrls(routeType);
+    const current = serverPreviews[routeType];
+    if (current === first && second && second !== first) {
+        serverPreviews[routeType] = second;
+    } else {
+        serverPreviews[routeType] = null;
+        serverPreviewFailed[routeType] = true;
+    }
+};
+
+const modalIsPdf = ref(false);
+const isPdfUrl = (u) => typeof u === 'string' && /\.pdf(\?|$)/i.test(u);
+
+const openModal = (src, title) => {
+    modalSrc.value = src;
+    modalTitle.value = title || '';
+    modalIsPdf.value = isPdfUrl(src);
+    modalVisible.value = true;
+};
+const closeModal = () => {
+    modalVisible.value = false;
+    modalSrc.value = '';
+    modalTitle.value = '';
+    modalIsPdf.value = false;
+};
+
 const documentTypeByInput = {
     citizenship_front: 'citizenship_front',
     citizenship_back: 'citizenship_back',
@@ -195,9 +264,18 @@ const statusLabel = computed(() => ({
     approved: 'approved',
 }[profile.profile_status] ?? 'under review'));
 
+const emit = defineEmits(['saved']);
+
 const submit = () => {
     if (locked.value) return;
-    form.patch(route('profile.applicant.update'), { forceFormData: true, preserveScroll: true });
+    form.patch(route('profile.applicant.update'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            // Notify parent that the profile was saved so it can exit edit mode.
+            emit('saved');
+        },
+    });
 };
 </script>
 
@@ -462,12 +540,29 @@ const submit = () => {
                     <input
                         type="file"
                         class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
-                        @change="form[slot.input] = $event.target.files[0]"
+                        @change="(e) => handleFileChange(slot.input, e)"
                     />
-                    <div v-if="hasDocument(slot.input)" class="mt-2 flex gap-3 text-xs">
-                        <span class="font-semibold text-emerald-700">Uploaded</span>
-                        <a :href="previewLink(slot.routeType)" target="_blank" class="font-semibold text-blue-700 hover:text-blue-900">Preview</a>
-                        <a :href="downloadLink(slot.routeType)" target="_blank" class="font-semibold text-emerald-700 hover:text-emerald-900">Download</a>
+
+                    <!-- Client-side preview for newly selected file -->
+                    <div v-if="previews[slot.input]" class="mt-2">
+                        <img :src="previews[slot.input]" alt="preview" class="h-24 w-24 object-cover rounded border cursor-pointer" @click="openModal(previews[slot.input], slot.label)" />
+                    </div>
+                    <div v-else-if="form[slot.input]" class="mt-2 text-sm text-gray-600"> 
+                        Selected: {{ form[slot.input].name }}
+                    </div>
+
+                    <!-- Server-side existing upload preview (attempt image, fallback to placeholder) -->
+                    <div v-if="hasDocument(slot.input)" class="mt-2">
+                        <div v-if="serverPreviewFor(slot.routeType) && !serverPreviewFailed[slot.routeType]" class="inline-block">
+                            <img :src="serverPreviewFor(slot.routeType)" alt="server-preview" class="h-24 w-24 object-cover rounded border cursor-pointer" @error="onServerImageError(slot.routeType)" @click.prevent="openModal(serverPreviewFor(slot.routeType), slot.label)" />
+                        </div>
+                        <div v-else class="h-24 w-24 flex items-center justify-center bg-gray-100 rounded border text-sm text-gray-600">No preview</div>
+
+                        <div class="mt-2 flex gap-3 text-xs">
+                            <span class="font-semibold text-emerald-700">Uploaded</span>
+                            <a :href="previewLink(slot.routeType)" target="_blank" class="font-semibold text-blue-700 hover:text-blue-900">Preview</a>
+                            <a :href="downloadLink(slot.routeType)" target="_blank" class="font-semibold text-emerald-700 hover:text-emerald-900">Download</a>
+                        </div>
                     </div>
                     <InputError class="mt-1" :message="form.errors[slot.input]" />
                 </div>
@@ -620,6 +715,22 @@ const submit = () => {
         <div v-if="!locked" class="flex items-center gap-4">
             <PrimaryButton :disabled="form.processing">Save Profile</PrimaryButton>
             <p v-if="form.recentlySuccessful" class="text-sm text-gray-600">Profile saved.</p>
+        </div>
+
+        <!-- Image modal / lightbox -->
+        <div v-if="modalVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+            <div class="relative max-w-3xl w-full mx-4">
+                <button class="absolute top-2 end-2 text-white bg-black bg-opacity-30 rounded-full p-2" @click="closeModal">✕</button>
+                <div class="bg-white rounded shadow p-4">
+                    <h4 class="text-sm font-semibold mb-2">{{ modalTitle }}</h4>
+                    <template v-if="modalIsPdf">
+                        <iframe :src="modalSrc" class="w-full h-[70vh]" frameborder="0"></iframe>
+                    </template>
+                    <template v-else>
+                        <img v-if="modalSrc" :src="modalSrc" alt="preview" class="max-h-[70vh] w-full object-contain" />
+                    </template>
+                </div>
+            </div>
         </div>
     </form>
 </template>

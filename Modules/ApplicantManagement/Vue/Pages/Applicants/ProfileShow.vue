@@ -137,16 +137,18 @@ const sources = computed(() => (a.sources_of_funds || [])
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-xl font-semibold text-gray-900">
-                    {{ applicant.full_name_en || 'Applicant' }}
-                </h2>
-                <Link
-                    :href="route('applicants.review')"
-                    class="text-sm font-semibold text-blue-700 hover:text-blue-900"
-                >
-                    ← Back to queue
-                </Link>
+            <div class="mx-auto max-w-5xl px-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <h2 class="text-xl font-semibold text-gray-900">
+                        {{ applicant.full_name_en || 'Applicant' }}
+                    </h2>
+                    <Link
+                        :href="route('applicants.review')"
+                        class="text-sm font-semibold text-blue-700 hover:text-blue-900"
+                    >
+                        ← Back to queue
+                    </Link>
+                </div>
             </div>
         </template>
 
@@ -206,7 +208,7 @@ const sources = computed(() => (a.sources_of_funds || [])
                                 :href="doc.previewUrl"
                                 target="_blank"
                                 rel="noopener"
-                                class="text-sm font-semibold text-blue-700 hover:text-blue-900"
+                                class="text-sm font-semibold text-[#031226] hover:text-[#063045]"
                             >
                                 Open PDF
                             </a>
@@ -214,7 +216,7 @@ const sources = computed(() => (a.sources_of_funds || [])
                         </div>
 
                         <figcaption class="flex items-center justify-between gap-2 border-t border-gray-100 px-3 py-2">
-                            <span class="text-sm font-medium text-gray-800">{{ doc.label }}</span>
+                            <span class="text-sm font-medium text-slate-800">{{ doc.label }}</span>
                             <a
                                 v-if="doc.present"
                                 :href="doc.downloadUrl"
@@ -243,8 +245,8 @@ const sources = computed(() => (a.sources_of_funds || [])
                 <h3 class="text-lg font-semibold text-gray-900">{{ group.title }}</h3>
                 <dl class="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
                     <div v-for="[label, value] in group.rows" :key="label">
-                        <dt class="text-xs font-medium uppercase tracking-wide text-gray-600">{{ label }}</dt>
-                        <dd class="mt-0.5 text-sm text-gray-900">{{ value }}</dd>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ label }}</dt>
+                        <dd class="mt-0.5 text-sm text-slate-800">{{ value }}</dd>
                     </div>
                 </dl>
             </section>

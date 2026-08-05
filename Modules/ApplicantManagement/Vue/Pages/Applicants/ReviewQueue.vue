@@ -24,13 +24,15 @@ const formatWhen = (value) => (value
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold text-gray-900">KYC Review</h2>
+            <div class="mx-auto max-w-5xl px-4">
+                <h2 class="text-xl font-semibold text-gray-900">KYC Review</h2>
+            </div>
         </template>
 
         <div class="mx-auto max-w-5xl space-y-8 px-4 py-8">
             <section>
-                <h3 class="text-lg font-semibold text-gray-900">Waiting on you ({{ pending.total }})</h3>
-                <p class="mt-1 max-w-[70ch] text-sm text-gray-700">
+                <h3 class="text-lg font-semibold text-slate-900">Waiting on you ({{ pending.total }})</h3>
+                <p class="mt-1 max-w-[70ch] text-sm text-slate-600">
                     Each profile shows the stage it is waiting for. A profile needs three different
                     people across verification, review and approval, so anything you have already
                     acted on at another stage is hidden.
@@ -38,7 +40,7 @@ const formatWhen = (value) => (value
 
                 <p
                     v-if="!pending.data.length"
-                    class="mt-4 max-w-[70ch] rounded-xl bg-white p-8 text-sm text-gray-700 shadow-sm ring-1 ring-gray-200"
+                    class="mt-4 max-w-[70ch] rounded-xl bg-white p-8 text-sm text-slate-600 shadow-sm ring-1 ring-gray-200"
                 >
                     Nothing waiting on you. Profiles appear here once an applicant submits their KYC
                     for review, or when a later stage sends one back.
@@ -51,21 +53,21 @@ const formatWhen = (value) => (value
                 >
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                            <h4 class="font-semibold text-gray-900">
+                            <h4 class="font-semibold text-slate-900">
                                 <Link
                                     :href="route('applicants.profile.show', applicant.id)"
-                                    class="text-blue-700 hover:text-blue-900 hover:underline"
+                                    class="text-[#031226] hover:underline"
                                 >
                                     {{ applicant.full_name_en }}
                                 </Link>
-                                <span class="font-normal text-gray-700">· {{ applicant.mobile }}</span>
+                                <span class="font-normal text-slate-600">· {{ applicant.mobile }}</span>
                             </h4>
-                            <p class="mt-1 text-sm text-gray-700">
+                            <p class="mt-1 text-sm text-slate-600">
                                 Citizenship {{ applicant.citizenship_number || '—' }} ·
                                 BOID {{ applicant.boid || '—' }} ·
                                 {{ applicant.bank_name || '—' }} ({{ applicant.bank_account_number || '—' }})
                             </p>
-                            <p class="mt-1 text-xs text-gray-600">
+                            <p class="mt-1 text-xs text-slate-500">
                                 Submitted {{ formatWhen(applicant.profile_submitted_at) }}
                             </p>
                         </div>
@@ -85,13 +87,13 @@ const formatWhen = (value) => (value
 
                     <Link
                         :href="route('applicants.profile.show', applicant.id)"
-                        class="mt-4 inline-flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:bg-blue-800"
+                        class="mt-4 inline-flex items-center rounded-lg bg-[#031226] px-3 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-[#0b2b3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#031226] active:bg-[#021018]"
                     >
                         Open and review
                     </Link>
 
                     <details class="mt-4 border-t border-gray-100 pt-3">
-                        <summary class="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                        <summary class="cursor-pointer text-sm font-medium text-slate-600 hover:text-slate-900">
                             Review trail
                         </summary>
                         <div class="mt-3">

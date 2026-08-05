@@ -17,7 +17,7 @@ const markAllRead = () => {
         <template #trigger>
             <button
                 type="button"
-                class="relative rounded-full p-2 text-gray-500 transition hover:text-gray-700 focus:outline-none dark:text-gray-400 dark:hover:text-gray-300"
+                class="relative rounded-full p-2 text-white transition hover:text-gray-200 focus:outline-none dark:text-white dark:hover:text-gray-200"
                 aria-label="Notifications"
             >
                 <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -39,7 +39,7 @@ const markAllRead = () => {
                     <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Notifications</span>
                     <button
                         v-if="notifications.unread_count"
-                        class="text-xs text-indigo-600 hover:underline dark:text-indigo-400"
+                        class="text-xs text-[#031226] hover:underline dark:text-[#031226]"
                         @click="markAllRead"
                     >
                         Mark all as read

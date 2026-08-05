@@ -36,6 +36,6 @@ class PaymentVerifiedNotification extends Notification implements ShouldQueue
             ->subject('Payment Verified')
             ->line('Payment has been verified for your share application.')
             ->line('Application Number: '.$this->application->application_number)
-            ->line('Status: '.$this->application->status);
+            ->line('Status: '.$this->application->status->labelEn());
     }
 }

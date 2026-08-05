@@ -31,6 +31,10 @@ class RolesAndPermissionsSeeder extends Seeder
      *
      * `voucher.download` allows downloading vouchers the user owns (enforced by
      * VoucherPolicy); `voucher.download-any` bypasses the ownership check.
+     *
+     * `focal-person.manage` is deliberately granted to super_admin alone: it
+     * both designates who may act as a focal person and re-attributes an
+     * applicant's default, which moves numbers in the focal-person report.
      */
     public const PERMISSIONS = [
         'company.manage',
@@ -52,6 +56,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'voucher.download',
         'voucher.download-any',
         'user.manage',
+        'focal-person.manage',
         'settings.manage',
         'report.view',
         'audit.view',
@@ -64,10 +69,15 @@ class RolesAndPermissionsSeeder extends Seeder
             'voucher.download',
         ],
         'finance_staff' => [
+            'report.view',
             'application.view-any',
             'payment.record',
             'payment.verify',
             'payment.view-any',
+            // Finance sees the applications list, so it needs to be able to
+            // open the receipts listed on it. The review stages deliberately
+            // do not: they see the number without the document.
+            'voucher.download-any',
         ],
         'profile_verifier' => [
             'profile.verify',
@@ -79,14 +89,17 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.approve',
         ],
         'application_verifier' => [
+            'report.view',
             'application.view-any',
             'application.verify',
         ],
         'application_reviewer' => [
+            'report.view',
             'application.view-any',
             'application.review',
         ],
         'application_approver' => [
+            'report.view',
             'application.view-any',
             'application.approve',
             'application.reject',

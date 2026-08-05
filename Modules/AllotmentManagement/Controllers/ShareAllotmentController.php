@@ -40,9 +40,15 @@ class ShareAllotmentController extends Controller
 
         $this->allotments->upsertForApplication($application, $request->validated());
 
-        $targetStatus = (int) $request->validated('shares_allotted') < (int) $application->shares_applied
-            ? ApplicationStatus::PartiallyAllotted
-            : ApplicationStatus::Allotted;
+        $sharesAllotted = (int) $request->validated('shares_allotted');
+
+        // Zero is an unsuccessful applicant, not a partial allotment — and it
+        // is the only route to NotAllotted, which the refund path hangs off.
+        $targetStatus = match (true) {
+            $sharesAllotted === 0 => ApplicationStatus::NotAllotted,
+            $sharesAllotted < (int) $application->shares_applied => ApplicationStatus::PartiallyAllotted,
+            default => ApplicationStatus::Allotted,
+        };
 
         $fromStatus = $application->status;
         $application->update(['status' => $targetStatus]);

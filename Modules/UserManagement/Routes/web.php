@@ -2,8 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\UserManagement\Controllers\AdminCredentialsController;
+use Modules\UserManagement\Controllers\AdminFocalPersonsController;
 use Modules\UserManagement\Controllers\AdminPanelController;
 use Modules\UserManagement\Controllers\AdminUsersController;
+use Modules\UserManagement\Controllers\FocalPersonLookupController;
 use Modules\UserManagement\Controllers\ProfileController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -22,6 +24,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/admin/users/{user}', [AdminUsersController::class, 'update'])->name('admin.users.update');
         Route::delete('/admin/users/{user}', [AdminUsersController::class, 'destroy'])->name('admin.users.destroy');
     });
+
+    // Designating focal persons re-attributes report figures, so it sits behind
+    // its own permission rather than user.manage.
+    Route::middleware('can:focal-person.manage')->group(function () {
+        Route::get('/admin/focal-persons', [AdminFocalPersonsController::class, 'index'])->name('admin.focal-persons');
+        Route::patch('/admin/focal-persons/{user}', [AdminFocalPersonsController::class, 'update'])->name('admin.focal-persons.update');
+    });
+
+    // Applicants resolve a code to a name while filling their application.
+    // Throttled: one code in, one name out, so the code space stays unwalkable.
+    Route::get('/focal-persons/lookup', FocalPersonLookupController::class)
+        ->middleware('throttle:20,1')->name('focal-persons.lookup');
 
     Route::middleware('can:settings.manage')->group(function () {
         Route::get('/admin/credentials', [AdminCredentialsController::class, 'index'])->name('admin.credentials');

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Inertia\Middleware;
 use Modules\SettingsManagement\Models\Setting;
 use Throwable;
@@ -47,10 +48,7 @@ class HandleInertiaRequests extends Middleware
                 // page.props.auth.permissions.includes('...').
                 'permissions' => $user?->getAllPermissions()->pluck('name') ?? [],
             ],
-            'flash' => [
-                'success' => $request->session()->get('success'),
-                'error' => $request->session()->get('error'),
-            ],
+            'flash' => $this->flash($request),
             'settings' => $this->publicSettings(),
             'notifications' => $user ? [
                 'unread_count' => $user->unreadNotifications()->count(),
@@ -62,6 +60,28 @@ class HandleInertiaRequests extends Middleware
                     'created_at' => $n->created_at->diffForHumans(),
                 ]),
             ] : null,
+        ];
+    }
+
+    /**
+     * The flash messages ToastHub renders.
+     *
+     * The token is what makes repeated actions work: Vue watches a value, so
+     * saving the same form twice would flash the identical string and the
+     * watcher would never fire for the second save. A fresh token on every
+     * request that carries a message keeps those two saves distinguishable.
+     *
+     * @return array<string, string|null>
+     */
+    protected function flash(Request $request): array
+    {
+        $success = $request->session()->get('success');
+        $error = $request->session()->get('error');
+
+        return [
+            'success' => $success,
+            'error' => $error,
+            'token' => ($success || $error) ? (string) Str::uuid() : null,
         ];
     }
 

@@ -58,24 +58,21 @@
     for the purpose of <span class="fill">Share Capital of our Company</span>
     from Mr./Mrs./Ms. <span class="fill">{{ $application->applicant->full_name_en ?? '-' }}</span>,
     holding ID No. <span class="fill">{{ $payment->holding_id_no ?: '................' }}</span>
-    ID Type <span class="fill">{{ $payment->id_type ? ucwords(str_replace('_', ' ', $payment->id_type)) : '................' }}</span>.
+    ID Type <span class="fill">{{ $holdingIdLabel ?: '................' }}</span>.
 </div>
 
 <div class="modes">
     <strong>Mode of Payment:</strong>
-    @foreach ([
-        'cheque' => 'Cheque',
-        'self_cheque_deposit' => 'Self Cheque Deposit',
-        'online_transfer' => 'Online Transfer',
-        'cash' => 'Cash',
-        'ips' => 'IPS',
-        'mobile_banking' => 'Mobile Banking',
-    ] as $mode => $label)
-        <span class="mode-item"><span class="cb">{{ $payment->payment_mode === $mode ? 'X' : '' }}</span>{{ $label }}</span>
+    {{-- Only the four boxes the printed book has. IPS and mobile banking are
+         mapped onto Online Transfer by the presenter. --}}
+    @foreach ($printedModes as $mode => $label)
+        <span class="mode-item"><span class="cb">{{ $tickedMode === $mode ? 'X' : '' }}</span>{{ $label }}</span>
     @endforeach
     <br>
-    Payment Reference No: <span class="fill">{{ $payment->payment_reference_no ?: ($payment->cheque_no ?: '................') }}</span><br>
-    Date of Payment: <span class="fill">{{ optional($payment->payment_date)->format('j F, Y') ?: '................' }}</span>
+    {{-- Every deposit's reference and date, since one receipt may acknowledge
+         several: "91723543 & 91723546 (10L & 5L each)". --}}
+    Payment Reference No: <span class="fill">{{ $referenceLine ?: '................' }}</span><br>
+    Date of Payment: <span class="fill">{{ $paymentDateLine ?: '................' }}</span>
 </div>
 
 <table class="signatures">

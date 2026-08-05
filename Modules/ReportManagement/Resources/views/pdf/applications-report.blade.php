@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Applications Report</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #1f2937; }
+        body { font-family: freeserif; font-size: 10px; color: #1f2937; }
         h1 { font-size: 16px; margin-bottom: 2px; }
         .meta { color: #6b7280; margin-bottom: 12px; }
         .summary { width: 100%; margin-bottom: 14px; border-collapse: collapse; }

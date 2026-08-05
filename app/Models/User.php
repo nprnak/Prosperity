@@ -9,12 +9,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable;
+    use HasFactory, HasRoles, LogsActivity, Notifiable;
+
+    /**
+     * Named explicitly rather than taken from $fillable, which carries the
+     * password: a hash written into the activity log is a credential sitting
+     * in a table built for people to read.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('user')
+            ->logOnly(['name', 'email', 'is_focal_person'])
+            ->logOnlyDirty();
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -50,6 +65,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'email_otp_expires_at' => 'datetime',
             'password' => 'hashed',
+            'is_focal_person' => 'boolean',
         ];
     }
 

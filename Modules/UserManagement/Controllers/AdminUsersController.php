@@ -49,7 +49,8 @@ class AdminUsersController extends Controller
         // Accept multiple roles
         $user->syncRoles($validated['roles']);
 
-        return redirect()->route('admin.users');
+        return redirect()->route('admin.users')
+            ->with('success', "User {$user->name} created.");
     }
 
     public function update(Request $request, User $user): RedirectResponse
@@ -74,7 +75,8 @@ class AdminUsersController extends Controller
         // Accept multiple roles
         $user->syncRoles($validated['roles']);
 
-        return redirect()->route('admin.users');
+        return redirect()->route('admin.users')
+            ->with('success', "User {$user->name} updated.");
     }
 
     public function destroy(Request $request, User $user): RedirectResponse
@@ -85,8 +87,11 @@ class AdminUsersController extends Controller
             ]);
         }
 
+        $name = $user->name;
+
         $this->users->destroy($user);
 
-        return redirect()->route('admin.users');
+        return redirect()->route('admin.users')
+            ->with('success', "User {$name} deleted.");
     }
 }

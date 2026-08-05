@@ -2,8 +2,8 @@
 import StageActions from '@/Components/StageActions.vue';
 import WorkflowTimeline from '@/Components/WorkflowTimeline.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 /**
  * The record a KYC stage signs off on. Everything the applicant submitted is
@@ -18,6 +18,10 @@ const props = defineProps({
     // another stage this cycle. The page stays readable either way.
     canAct: { type: Boolean, default: false },
     documentTypes: { type: Array, default: () => [] },
+    // Only super_admin holds focal-person.manage; everyone else sees the
+    // attribution read-only.
+    canManageFocalPerson: { type: Boolean, default: false },
+    focalPersons: { type: Array, default: () => [] },
 });
 
 const dash = '—';
@@ -130,6 +134,43 @@ const unmet = computed(() => Object.entries(props.completionChecks)
 const sources = computed(() => (a.sources_of_funds || [])
     .map((source) => source.other_text || source.source)
     .filter(Boolean));
+
+// The applicant's default focal person. Applications keep their own copy, so
+// changing this credits future applications only — it never rewrites figures
+// already reported against an offering.
+const focalPersonForm = useForm({ focal_person_id: props.applicant.focal_person_id ?? '' });
+
+const saveFocalPerson = () => {
+    focalPersonForm
+        .transform((data) => ({ focal_person_id: data.focal_person_id === '' ? null : data.focal_person_id }))
+        .patch(route('applicants.focal-person.update', props.applicant.id), { preserveScroll: true });
+};
+
+const focalPersonLabel = computed(() => (props.applicant.focal_person
+    ? `${props.applicant.focal_person.name} (${props.applicant.focal_person.focal_person_code})`
+    : 'Not assigned'));
+
+// Correcting contact and banking details on a profile the chain has already
+// approved. Identity is not here on purpose: those fields are what the three
+// stages signed off on, so changing them means going round again.
+const amendable = ['mobile', 'email', 'bank_name', 'bank_branch', 'bank_account_number', 'account_holder_name', 'boid'];
+
+const amendForm = useForm({
+    ...Object.fromEntries(amendable.map((field) => [field, props.applicant[field] ?? ''])),
+    remarks: '',
+});
+
+const amending = ref(false);
+
+const saveAmendment = () => {
+    amendForm.patch(route('applicants.profile.amend', props.applicant.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            amending.value = false;
+            amendForm.remarks = '';
+        },
+    });
+};
 </script>
 
 <template>
@@ -181,6 +222,55 @@ const sources = computed(() => (a.sources_of_funds || [])
             >
                 <span class="font-semibold">Incomplete:</span> {{ unmet.join(', ') }}
             </p>
+
+            <!-- Attribution, not part of the KYC decision: saving it leaves the
+                 review status exactly where it was. -->
+            <section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Focal person</h3>
+
+                <template v-if="canManageFocalPerson">
+                    <p class="mt-1 max-w-[70ch] text-sm text-gray-700">
+                        The default this applicant's future applications are credited to. They can quote a
+                        different code on an individual application, and applications already submitted keep
+                        whoever they were credited to.
+                    </p>
+
+                    <div class="mt-3 flex flex-wrap items-start gap-3">
+                        <div class="min-w-[18rem] flex-1">
+                            <select
+                                v-model="focalPersonForm.focal_person_id"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            >
+                                <option value="">— None —</option>
+                                <option
+                                    v-for="person in focalPersons"
+                                    :key="person.id"
+                                    :value="person.id"
+                                >
+                                    {{ person.name }} · {{ person.focal_person_code }}
+                                </option>
+                            </select>
+                            <p v-if="focalPersonForm.errors.focal_person_id" class="mt-1 text-sm text-red-600">
+                                {{ focalPersonForm.errors.focal_person_id }}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300"
+                            :disabled="focalPersonForm.processing"
+                            @click="saveFocalPerson"
+                        >
+                            Save
+                        </button>
+                    </div>
+
+                    <p v-if="!focalPersons.length" class="mt-2 text-sm text-amber-700">
+                        No focal persons have been designated yet — do that from the Focal Persons screen first.
+                    </p>
+                </template>
+
+                <p v-else class="mt-2 text-sm text-gray-900">{{ focalPersonLabel }}</p>
+            </section>
 
             <!-- Documents first: they are what the review is actually checking. -->
             <section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
@@ -301,6 +391,66 @@ const sources = computed(() => (a.sources_of_funds || [])
                     you already acted at another stage of this submission. A separate person must take
                     the remaining stages.
                 </p>
+            </section>
+
+            <!-- Contact and banking details go stale after approval, and an
+                 approved profile is otherwise frozen against every one of
+                 them. Identity is deliberately absent: that is what the three
+                 stages signed off on. -->
+            <section
+                v-if="applicant.profile_status === 'approved' && $page.props.auth?.permissions?.includes('profile.approve')"
+                class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200"
+            >
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Amend approved details</h3>
+                        <p class="mt-1 max-w-[70ch] text-sm text-gray-700">
+                            Correct contact or banking details without sending this profile back through
+                            the chain. Every change is recorded against you in the activity log.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        @click="amending = !amending"
+                    >
+                        {{ amending ? 'Cancel' : 'Amend' }}
+                    </button>
+                </div>
+
+                <form v-if="amending" class="mt-4 space-y-4" @submit.prevent="saveAmendment">
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label v-for="field in amendable" :key="field" class="block">
+                            <span class="text-sm font-medium text-gray-700 capitalize">{{ field.replace(/_/g, ' ') }}</span>
+                            <input
+                                v-model="amendForm[field]"
+                                type="text"
+                                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            />
+                            <span v-if="amendForm.errors[field]" class="mt-1 block text-sm text-red-600">
+                                {{ amendForm.errors[field] }}
+                            </span>
+                        </label>
+                    </div>
+
+                    <label class="block">
+                        <span class="text-sm font-medium text-gray-700">Reason for the amendment</span>
+                        <textarea
+                            v-model="amendForm.remarks"
+                            rows="2"
+                            placeholder="e.g. Bank account corrected from the updated cheque copy."
+                            class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        ></textarea>
+                    </label>
+
+                    <button
+                        type="submit"
+                        :disabled="amendForm.processing"
+                        class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                        Save amendment
+                    </button>
+                </form>
             </section>
 
             <section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">

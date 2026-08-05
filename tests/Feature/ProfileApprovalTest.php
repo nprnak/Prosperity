@@ -177,8 +177,8 @@ class ProfileApprovalTest extends TestCase
         $this->actingAs($user)->get('/applications/wizard')
             ->assertInertia(fn ($page) => $page
                 ->component('Applications/Wizard', false)
-                ->where('activeApplication.id', $application->id)
-                ->where('activeApplication.status_label', 'Awaiting Verification')
+                ->where('activeApplications.0.id', $application->id)
+                ->where('activeApplications.0.status_label', 'Awaiting Verification')
             );
     }
 

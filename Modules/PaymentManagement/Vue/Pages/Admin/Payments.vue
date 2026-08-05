@@ -1,11 +1,30 @@
 <script setup>
 import PanelLayout from '@/Layouts/PanelLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
-defineProps({
+const props = defineProps({
   payments: Array,
   stats: Object,
+  filters: { type: Object, default: () => ({}) },
 });
+
+const status = ref(props.filters.status || '');
+
+const applyFilter = () => {
+  router.get(route('admin.payments'), status.value ? { status: status.value } : {}, {
+    preserveState: true,
+    preserveScroll: true,
+  });
+};
+
+// The named method when finance recorded one, otherwise the mode the money
+// arrived by. The template previously read payment_method, which is neither —
+// the column is payment_mode and the relation is paymentMethod.
+const paymentMethodLabel = (payment) =>
+  payment.payment_method?.name
+  || (payment.payment_mode || '').replace(/_/g, ' ')
+  || '—';
 </script>
 
 <template>
@@ -33,13 +52,13 @@ defineProps({
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-900">Payments Management</h2>
           <div class="space-x-2">
-            <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600">
-              <option>All Statuses</option>
-              <option>Pending</option>
-              <option>Verified</option>
-              <option>Rejected</option>
+            <select v-model="status" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600">
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="verified">Verified</option>
+              <option value="rejected">Rejected</option>
             </select>
-            <button class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Filter</button>
+            <button type="button" @click="applyFilter" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Filter</button>
           </div>
         </div>
 
@@ -63,7 +82,7 @@ defineProps({
                 <td class="px-6 py-4 text-sm text-gray-600">{{ payment.share_application?.applicant?.full_name_en }}</td>
                 <td class="px-6 py-4 text-sm text-gray-600">{{ payment.share_application?.application_number }}</td>
                 <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ payment.amount }}</td>
-                <td class="px-6 py-4 text-sm text-gray-600 capitalize">{{ payment.payment_method }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600 capitalize">{{ paymentMethodLabel(payment) }}</td>
                 <td class="px-6 py-4 text-sm">
                   <span :class="{
                     'bg-yellow-100 text-yellow-700': payment.verification_status === 'pending',
@@ -74,10 +93,19 @@ defineProps({
                   </span>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-600">{{ payment.payment_date }}</td>
-                <td class="px-6 py-4 text-sm space-x-2">
-                  <button v-if="payment.verification_status === 'pending'" class="text-green-600 hover:text-green-900 font-semibold">Verify</button>
-                  <button v-if="payment.verification_status === 'pending'" class="text-red-600 hover:text-red-900 font-semibold">Reject</button>
-                  <button class="text-indigo-600 hover:text-indigo-900 font-semibold">View</button>
+                <!-- This page is payment.view-any: a read-only overview. The
+                     Verify and Reject buttons that used to sit here had no
+                     handlers and no permission behind them; verification is
+                     the finance dashboard's job, under payment.verify. -->
+                <td class="px-6 py-4 text-sm">
+                  <Link
+                    v-if="payment.share_application?.id"
+                    :href="route('admin.applications.show', payment.share_application.id)"
+                    class="font-semibold text-indigo-600 hover:text-indigo-900"
+                  >
+                    View application
+                  </Link>
+                  <span v-else class="text-gray-400">—</span>
                 </td>
               </tr>
             </tbody>

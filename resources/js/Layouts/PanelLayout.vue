@@ -5,8 +5,9 @@ import { Link, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
 
+// The seeded role is super_admin; there has never been one called 'admin'.
 const isAdmin = computed(() =>
-  page.props.auth?.user?.roles?.some((role) => role.name === 'admin') ?? false,
+  page.props.auth?.user?.roles?.some((role) => role.name === 'super_admin') ?? false,
 );
 
 const permissions = computed(() => page.props.auth?.permissions || []);
@@ -18,12 +19,20 @@ const staffMenuItems = [
   { label: 'Dashboard', icon: '📊', route: 'admin.dashboard', startsWith: '/admin/dashboard', permission: 'dashboard.view-admin' },
   { label: 'Role Hub', icon: '🧩', route: 'admin.roles.hub', startsWith: '/admin/roles/hub', permission: 'user.manage' },
   { label: 'Users', icon: '👥', route: 'admin.users', startsWith: '/admin/users', permission: 'user.manage' },
+  { label: 'Focal Persons', icon: '🤝', route: 'admin.focal-persons', startsWith: '/admin/focal-persons', permission: 'focal-person.manage' },
   { label: 'Companies', icon: '🏢', route: 'admin.companies', startsWith: '/admin/companies', permission: 'company.manage' },
   { label: 'Applications', icon: '📝', route: 'admin.applications', startsWith: '/admin/applications', permission: 'application.view-any' },
   { label: 'Payments', icon: '💳', route: 'admin.payments', startsWith: '/admin/payments', permission: 'payment.view-any' },
   { label: 'Payment Methods', icon: '🏦', route: 'admin.payment-methods', startsWith: '/admin/payment-methods', permission: 'payment-method.manage' },
+  // Each review stage reaches its own queue: a verifier who lands on the
+  // applications list otherwise has no way back to the work waiting for them.
+  { label: 'Verifications', icon: '🔎', route: 'verifier.dashboard', startsWith: '/verifier', permission: 'application.verify' },
+  { label: 'Reviews', icon: '📑', route: 'reviewer.dashboard', startsWith: '/reviewer', permission: 'application.review' },
   { label: 'Approvals', icon: '✅', route: 'approver.dashboard', startsWith: '/approver', permission: 'application.approve' },
-  { label: 'Allotments', icon: '📋', route: 'admin.allotments', startsWith: '/admin/allotments', permission: 'allotment.manage' },
+  // Points at the register, which is where allotments are actually recorded,
+  // and gated on the permission that page requires — admin.allotments needs
+  // allotment.view-any, so gating on manage sent approvers to a 403.
+  { label: 'Allotments', icon: '📋', route: 'allotments.register', startsWith: '/allotments', permission: 'allotment.manage' },
   { label: 'Reports', icon: '📈', route: 'admin.reports', startsWith: '/admin/reports', permission: 'report.view' },
   { label: 'Admin Settings', icon: '⚙️', route: 'admin.credentials', startsWith: '/admin/credentials', permission: 'settings.manage' },
   { label: 'Site Settings', icon: '🏛️', route: 'admin.settings', startsWith: '/admin/settings', permission: 'settings.manage' },

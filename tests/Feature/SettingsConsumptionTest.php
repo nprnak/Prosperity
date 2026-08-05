@@ -86,7 +86,7 @@ class SettingsConsumptionTest extends TestCase
 
     protected function application(Profile $applicant, ApplicationStatus $status, string $number): ShareApplication
     {
-        return ShareApplication::create([
+        $application = ShareApplication::create([
             'applicant_id' => $applicant->id,
             'application_number' => $number,
             'status' => $status,
@@ -94,5 +94,16 @@ class SettingsConsumptionTest extends TestCase
             'amount_per_share' => '100.00',
             'total_amount_declared' => '1000.00',
         ]);
+
+        // Submission requires a voucher carrying both a code and a slip, so the
+        // cap is what these tests actually exercise.
+        $application->vouchers()->create([
+            'payment_type' => 'connect_ips',
+            'deposited_bank' => 'Nepal Bank Limited',
+            'transaction_code' => 'TXN-'.$number,
+            'image_path' => "applications/{$applicant->id}/voucher.png",
+        ]);
+
+        return $application;
     }
 }

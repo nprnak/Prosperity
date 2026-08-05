@@ -16,6 +16,7 @@ class AdminUserSeeder extends Seeder
         $admins = [
             ['email' => 'admin1@prosperity.com', 'name' => 'Admin One'],
             ['email' => 'admin2@prosperity.com', 'name' => 'Admin Two'],
+            ['email' => 'admin3@prosperity.com', 'name' => 'Admin Three'],
         ];
 
         foreach ($admins as $admin) {

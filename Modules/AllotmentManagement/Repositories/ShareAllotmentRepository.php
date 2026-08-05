@@ -45,6 +45,22 @@ class ShareAllotmentRepository extends Repository
         return (int) $this->query()->sum('shares_allotted');
     }
 
+    /**
+     * Shares already allotted out of one offering.
+     *
+     * $excludingApplicationId leaves an application's own allotment out of the
+     * total, so revising it is measured against what everyone else holds
+     * rather than against itself — otherwise a correction upwards is
+     * impossible once the offering is fully allotted.
+     */
+    public function allottedSharesForOffering(int $offeringId, ?int $excludingApplicationId = null): int
+    {
+        return (int) $this->query()
+            ->whereHas('shareApplication', fn ($query) => $query->where('share_offering_id', $offeringId))
+            ->when($excludingApplicationId, fn ($query) => $query->where('share_application_id', '!=', $excludingApplicationId))
+            ->sum('shares_allotted');
+    }
+
     public function distinctApplicationCount(): int
     {
         return $this->query()->distinct('share_application_id')->count();

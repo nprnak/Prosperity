@@ -47,6 +47,7 @@ class ProfileRepository extends Repository
         return $profile->load([
             'permanentAddress', 'temporaryAddress', 'documents', 'sourcesOfFunds',
             'nominees', 'experiences', 'user:id,name,email', 'workflowEvents.actor:id,name',
+            'focalPerson:id,name,focal_person_code',
         ]);
     }
 

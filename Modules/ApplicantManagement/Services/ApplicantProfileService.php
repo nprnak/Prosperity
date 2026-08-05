@@ -135,10 +135,7 @@ class ApplicantProfileService
         $profile->sourcesOfFunds()->whereNotIn('source_type', $sources)->delete();
 
         foreach ($sources as $source) {
-            $profile->sourcesOfFunds()->updateOrCreate(
-                ['source_type' => $source],
-                ['description' => $source === 'other' ? ($validated['source_other_description'] ?? null) : null],
-            );
+            $profile->sourcesOfFunds()->updateOrCreate(['source_type' => $source]);
         }
     }
 

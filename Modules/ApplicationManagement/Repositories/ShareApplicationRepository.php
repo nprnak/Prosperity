@@ -28,19 +28,28 @@ class ShareApplicationRepository extends Repository
         parent::__construct($model);
     }
 
+    /**
+     * The voucher rides along so the list can show the receipt number and link
+     * to it — an application with a receipt is one whose review is finished,
+     * so the column doubles as a progress signal.
+     */
     public function listForAdmin(): Collection
     {
-        return $this->query()->with('applicant')->latest()->get();
+        return $this->query()
+            ->with(['applicant', 'paymentTransactions:id,share_application_id,receipt_number', 'paymentTransactions.voucher:id,payment_transaction_id'])
+            ->latest()
+            ->get();
     }
 
     public function loadDetail(ShareApplication $application): ShareApplication
     {
         return $application->load([
-            'applicant',
+            'applicant.documents',
             'reviewer:id,name,email',
             'allotment',
+            'vouchers',
             'paymentTransactions' => fn ($query) => $query
-                ->with(['voucher', 'checker:id,name', 'verifier:id,name', 'approver:id,name'])
+                ->with(['deposits', 'voucher', 'checker:id,name', 'verifier:id,name', 'approver:id,name'])
                 ->latest(),
             // Two distinct trails: workflow_events is the review chain's
             // sign-offs, application_events the payment/lifecycle transitions
@@ -56,15 +65,6 @@ class ShareApplicationRepository extends Repository
     public function listForUser(int $userId): Collection
     {
         return $this->forUser($userId)->latest()->get();
-    }
-
-    public function latestDraftForUser(int $userId): ?ShareApplication
-    {
-        return $this->forUser($userId)
-            ->where('status', ApplicationStatus::Draft)
-            ->with(['applicant.nominees', 'applicant.sourcesOfFunds'])
-            ->latest()
-            ->first();
     }
 
     /**
@@ -99,39 +99,39 @@ class ShareApplicationRepository extends Repository
             ->withQueryString();
     }
 
-public function listByStatus(ApplicationStatus|string|array $status, array $with = []): Collection
-{
-    $statuses = is_array($status) ? $status : [$status];
+    public function listByStatus(ApplicationStatus|string|array $status, array $with = []): Collection
+    {
+        $statuses = is_array($status) ? $status : [$status];
 
-    $statuses = array_map(
-        fn ($status) => $status instanceof ApplicationStatus
-            ? $status->value
-            : $status,
-        $statuses
-    );
+        $statuses = array_map(
+            fn ($status) => $status instanceof ApplicationStatus
+                ? $status->value
+                : $status,
+            $statuses
+        );
 
-    return $this->query()
-        ->whereIn('status', $statuses)
-        ->with($with)
-        ->latest()
-        ->get();
-}
+        return $this->query()
+            ->whereIn('status', $statuses)
+            ->with($with)
+            ->latest()
+            ->get();
+    }
 
-   public function countByStatus(ApplicationStatus|string|array $status): int
-{
-    $statuses = is_array($status) ? $status : [$status];
+    public function countByStatus(ApplicationStatus|string|array $status): int
+    {
+        $statuses = is_array($status) ? $status : [$status];
 
-    $statuses = array_map(
-        fn ($status) => $status instanceof ApplicationStatus
-            ? $status->value
-            : $status,
-        $statuses
-    );
+        $statuses = array_map(
+            fn ($status) => $status instanceof ApplicationStatus
+                ? $status->value
+                : $status,
+            $statuses
+        );
 
-    return $this->query()
-        ->whereIn('status', $statuses)
-        ->count();
-}
+        return $this->query()
+            ->whereIn('status', $statuses)
+            ->count();
+    }
 
     /**
      * Non-draft applications for an applicant profile. Returned ones stay
@@ -146,23 +146,66 @@ public function listByStatus(ApplicationStatus|string|array $status, array $with
     }
 
     /**
-     * The applicant's most recent non-draft application — what the wizard shows
-     * as "under review" instead of offering a fresh form.
+     * Statuses in which an application is still the applicant's to edit.
+     *
+     * @var array<int, ApplicationStatus>
      */
-    public function activeForUser(int $userId): ?ShareApplication
+    private const EDITABLE_STATUSES = [
+        ApplicationStatus::Draft,
+        ApplicationStatus::Returned,
+    ];
+
+    /**
+     * The application the applicant is currently working on.
+     *
+     * A returned application is edited in place rather than replaced by a new
+     * draft, so it keeps its number, its vouchers and its history — the
+     * applicant was asked to correct that application, not to file another.
+     */
+    public function firstOrNewEditable(int $applicantId): ShareApplication
+    {
+        return ShareApplication::query()
+            ->where('applicant_id', $applicantId)
+            ->whereIn('status', self::EDITABLE_STATUSES)
+            ->latest()
+            ->first()
+            ?? ShareApplication::make([
+                'applicant_id' => $applicantId,
+                'status' => ApplicationStatus::Draft,
+            ]);
+    }
+
+    /** The draft or returned application the wizard should open on. */
+    public function latestEditableForUser(int $userId): ?ShareApplication
     {
         return $this->forUser($userId)
-            ->where('status', '!=', ApplicationStatus::Draft)
+            ->whereIn('status', self::EDITABLE_STATUSES)
+            ->with(['applicant.nominees', 'applicant.sourcesOfFunds', 'vouchers'])
             ->latest()
             ->first();
     }
 
-    public function firstOrNewDraft(int $applicantId): ShareApplication
+    /**
+     * Applications sitting with staff. Only these block the applicant from
+     * starting another for the same offering — a settled one (approved,
+     * allotted, refunded) is finished business and must not lock the wizard
+     * for every future offering as well.
+     */
+    public function inFlightForUser(int $userId): Collection
     {
-        return ShareApplication::firstOrNew([
-            'applicant_id' => $applicantId,
-            'status' => ApplicationStatus::Draft,
-        ]);
+        return $this->forUser($userId)
+            ->whereIn('status', [
+                ApplicationStatus::Submitted,
+                ApplicationStatus::SentToBank,
+                ApplicationStatus::BankAccepted,
+                ApplicationStatus::Blocked,
+                ApplicationStatus::PaymentPending,
+                ApplicationStatus::PaymentVerified,
+                ApplicationStatus::Verified,
+                ApplicationStatus::Reviewed,
+            ])
+            ->latest()
+            ->get();
     }
 
     private function forUser(int $userId)

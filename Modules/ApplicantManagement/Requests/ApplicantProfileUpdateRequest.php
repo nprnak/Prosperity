@@ -72,10 +72,6 @@ class ApplicantProfileUpdateRequest extends FormRequest
             // 7. Source of investment
             'sources' => ['required', 'array', 'min:1'],
             'sources.*' => ['string', Rule::enum(SourceOfFunds::class)],
-            'source_other_description' => [
-                'nullable', 'string', 'max:255',
-                Rule::requiredIf(fn () => in_array('other', (array) $this->input('sources', []), true)),
-            ],
 
             // 8. Nominee
             'nominee.full_name' => ['nullable', 'string', 'max:255'],

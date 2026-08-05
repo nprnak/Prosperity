@@ -2,7 +2,7 @@
 
 namespace Modules\ApplicantManagement\Services;
 
-use Illuminate\Contracts\Filesystem\FileNotFoundException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Modules\ApplicantManagement\Models\Profile;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -43,8 +43,18 @@ class ProfileDocumentService
 
         abort_unless(is_string($path) && $path !== '', 404);
 
+        // A row whose file has gone from disk is a lost document, not a server
+        // fault, so it answers 404 like every other miss on this route. It is
+        // logged all the same: a KYC file disappearing from under its record is
+        // worth someone noticing.
         if (! Storage::disk('private')->exists($path)) {
-            throw new FileNotFoundException($path);
+            Log::warning('KYC document missing from the private disk', [
+                'profile_id' => $profile->id,
+                'document_type' => $documentType,
+                'path' => $path,
+            ]);
+
+            abort(404);
         }
 
         $filename = basename($path);

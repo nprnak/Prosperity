@@ -10,6 +10,8 @@ use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Notifications\ProfileApprovedNotification;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
+use Modules\ApprovalManagement\Notifications\ApplicationReturnedNotification;
+use Modules\PaymentManagement\Notifications\PaymentVerifiedNotification;
 use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
@@ -75,6 +77,39 @@ class InAppNotificationTest extends TestCase
     /**
      * @return array{0: User, 1: ShareApplication}
      */
+    /**
+     * The status is an enum, so interpolating it straight into a mail line
+     * throws and the queued job dies in failed_jobs — the applicant simply
+     * never hears that their payment cleared.
+     */
+    public function test_payment_verified_mail_renders_the_status_label(): void
+    {
+        [$user, $application] = $this->applicationAt(ApplicationStatus::PaymentVerified);
+
+        $mail = (new PaymentVerifiedNotification($application))->toMail($user);
+
+        $this->assertContains('Status: Awaiting Verification', $mail->introLines);
+    }
+
+    /**
+     * Returning an application is a request for correction, not a refusal —
+     * there is no terminal rejection in the workflow at all.
+     */
+    public function test_returned_notification_does_not_call_the_application_rejected(): void
+    {
+        [$user, $application] = $this->applicationAt(ApplicationStatus::Returned);
+        $application->forceFill(['rejection_reason' => 'Blurry documents.'])->save();
+
+        $notification = new ApplicationReturnedNotification($application);
+
+        $this->assertStringNotContainsStringIgnoringCase(
+            'reject', $notification->toArray($user)['message']
+        );
+        $this->assertStringNotContainsStringIgnoringCase(
+            'reject', implode(' ', $notification->toMail($user)->introLines)
+        );
+    }
+
     protected function applicationAt(ApplicationStatus $status, ProfileStatus $profileStatus = ProfileStatus::Approved): array
     {
         $user = User::factory()->create()->assignRole('applicant');

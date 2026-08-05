@@ -2,6 +2,7 @@
 
 namespace Modules\ApplicationManagement\Models;
 
+use App\Enums\WorkflowStage;
 use App\Models\User;
 use App\Workflow\Concerns\HasWorkflow;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,15 +22,13 @@ class ShareApplication extends Model
     use HasWorkflow;
 
     protected $fillable = [
-        'applicant_id', 'share_offering_id', 'application_number', 'shares_applied', 'amount_per_share', 'total_amount_declared',
-        'status', 'issue_code', 'asba_reference', 'bank_voucher_image', 'payment_type', 'payment_deposited_bank', 'payment_deposited_ref_no',
+        'applicant_id', 'focal_person_id', 'share_offering_id', 'application_number', 'shares_applied', 'amount_per_share', 'total_amount_declared',
+        'status', 'issue_code',
         'declaration_accepted', 'blocked_amount', 'blocked_at', 'refunded_amount', 'refunded_at',
         'submitted_at', 'reviewed_by', 'reviewed_at', 'verified_by', 'verified_at', 'approved_by', 'approved_at', 'rejection_reason',
     ];
 
-    protected $hidden = ['bank_voucher_image'];
-
-    protected $appends = ['has_bank_voucher_image', 'status_label', 'pending_stage_label', 'can_send_back'];
+    protected $appends = ['status_label', 'pending_stage_label', 'can_send_back'];
 
     protected $casts = [
         'status' => ApplicationStatus::class,
@@ -64,6 +63,16 @@ class ShareApplication extends Model
         return $this->belongsTo(ShareOffering::class, 'share_offering_id');
     }
 
+    /**
+     * Who this application is credited to in the focal-person report. Copied
+     * from the applicant's default when the draft is created; it is in
+     * $fillable so LogsActivity records any later correction.
+     */
+    public function focalPerson()
+    {
+        return $this->belongsTo(User::class, 'focal_person_id');
+    }
+
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
@@ -82,6 +91,12 @@ class ShareApplication extends Model
     public function paymentTransactions()
     {
         return $this->hasMany(PaymentTransaction::class);
+    }
+
+    /** The applicant's declared deposits — slip plus transaction code, one row each. */
+    public function vouchers()
+    {
+        return $this->hasMany(ShareApplicationVoucher::class);
     }
 
     public function allotment()
@@ -108,11 +123,6 @@ class ShareApplication extends Model
         ]);
     }
 
-    public function getHasBankVoucherImageAttribute(): bool
-    {
-        return $this->bank_voucher_image !== null;
-    }
-
     /** Human wording for the current status, so views don't re-map it. */
     public function getStatusLabelAttribute(): string
     {
@@ -124,27 +134,65 @@ class ShareApplication extends Model
         return $this->status->canTransitionTo($target);
     }
 
+    /** @return array<string, array{by: string, at: string}> */
+    public function stageSignOffColumns(): array
+    {
+        return [
+            WorkflowStage::Verifier->value => ['by' => 'verified_by', 'at' => 'verified_at'],
+            WorkflowStage::Reviewer->value => ['by' => 'reviewed_by', 'at' => 'reviewed_at'],
+            WorkflowStage::Approver->value => ['by' => 'approved_by', 'at' => 'approved_at'],
+        ];
+    }
+
+    /**
+     * Statuses in which the application is still finance's to move.
+     *
+     * Deliberately an allow-list. Listing the statuses to leave alone instead
+     * is how Verified and Reviewed came to be rewound: a deny-list has to be
+     * remembered every time a status is added, and forgetting silently undoes
+     * somebody's sign-off.
+     */
+    private const FINANCE_OWNED_STATUSES = [
+        ApplicationStatus::Submitted,
+        ApplicationStatus::SentToBank,
+        ApplicationStatus::BankAccepted,
+        ApplicationStatus::Blocked,
+        ApplicationStatus::PaymentPending,
+        ApplicationStatus::PaymentVerified,
+    ];
+
+    /**
+     * Recompute the payment status from the verified transactions.
+     *
+     * Once the review chain has taken the application on — Verified, Reviewed,
+     * Approved and everything past them — the chain owns its status, so
+     * re-totalling the payments must not move it. A payment rejected that late
+     * needs a human decision, not a silent rewind into an earlier queue.
+     */
     public function syncPaymentVerificationStatus(): void
     {
-        $verifiedTotal = (string) $this->paymentTransactions()
-            ->where('verification_status', 'verified')
-            ->select(DB::raw('COALESCE(SUM(amount), 0) as total'))
-            ->value('total');
+        if (! in_array($this->status, self::FINANCE_OWNED_STATUSES, true)) {
+            return;
+        }
+
+        // Totalled from the deposits, since that is where a slip is actually
+        // checked off — but only those under a transaction the two-officer
+        // sign-off has cleared. Counting deposits alone would let an
+        // application reach PaymentVerified on one officer's say-so, which is
+        // exactly what the second signature exists to prevent.
+        $verifiedTotal = (string) DB::table('payment_deposits')
+            ->join('payment_transactions', 'payment_transactions.id', '=', 'payment_deposits.payment_transaction_id')
+            ->where('payment_transactions.share_application_id', $this->id)
+            ->whereNull('payment_transactions.deleted_at')
+            ->where('payment_transactions.verification_status', 'verified')
+            ->where('payment_deposits.verification_status', 'verified')
+            ->sum('payment_deposits.amount');
 
         $targetStatus = $this->toPaisa($verifiedTotal) >= $this->toPaisa((string) $this->total_amount_declared)
             ? ApplicationStatus::PaymentVerified
             : ApplicationStatus::PaymentPending;
 
-        if (! in_array($this->status, [
-            ApplicationStatus::Approved,
-            ApplicationStatus::Returned,
-            ApplicationStatus::Allotted,
-            ApplicationStatus::PartiallyAllotted,
-            ApplicationStatus::NotAllotted,
-            ApplicationStatus::DematCredited,
-        ], true)) {
-            $this->update(['status' => $targetStatus]);
-        }
+        $this->update(['status' => $targetStatus]);
     }
 
     private function toPaisa(string $amount): int

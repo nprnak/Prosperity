@@ -7,37 +7,34 @@ defineProps({
   workflowCounts: Object,
 });
 
-const roleMeta = {
-  admin: {
-    title: 'Admin Team',
-    color: 'slate',
-    usersRoute: () => route('admin.users', { role: 'admin' }),
-    actionLabel: 'Manage Admin Users',
-  },
-  finance_staff: {
-    title: 'Finance Staff Team',
-    color: 'blue',
-    usersRoute: () => route('admin.users', { role: 'finance_staff' }),
-    actionLabel: 'Manage Finance Users',
-  },
-  approver: {
-    title: 'Approver Team',
-    color: 'amber',
-    usersRoute: () => route('admin.users', { role: 'approver' }),
-    actionLabel: 'Manage Approver Users',
-  },
-  applicant: {
-    title: 'Applicant Users',
-    color: 'emerald',
-    usersRoute: () => route('admin.users', { role: 'applicant' }),
-    actionLabel: 'Manage Applicant Users',
-  },
+// Keyed on the nine roles the seeder creates. Keys that match no real role
+// left seven of the nine cards showing a raw slug as their heading.
+const roleTitles = {
+  super_admin: ['Super Admins', 'slate'],
+  finance_staff: ['Finance Staff', 'blue'],
+  profile_verifier: ['KYC Verifiers', 'sky'],
+  profile_reviewer: ['KYC Reviewers', 'sky'],
+  profile_approver: ['KYC Approvers', 'sky'],
+  application_verifier: ['Application Verifiers', 'amber'],
+  application_reviewer: ['Application Reviewers', 'amber'],
+  application_approver: ['Application Approvers', 'amber'],
+  applicant: ['Applicants', 'emerald'],
 };
+
+const roleMeta = Object.fromEntries(
+  Object.entries(roleTitles).map(([role, [title, color]]) => [role, {
+    title,
+    color,
+    usersRoute: () => route('admin.users', { role }),
+    actionLabel: `Manage ${title}`,
+  }]),
+);
 
 const cardClass = (color) => {
   const styles = {
     slate: 'border-slate-200 bg-slate-50/50',
     blue: 'border-blue-200 bg-blue-50/50',
+    sky: 'border-sky-200 bg-sky-50/50',
     amber: 'border-amber-200 bg-amber-50/50',
     emerald: 'border-emerald-200 bg-emerald-50/50',
   };
@@ -68,7 +65,9 @@ const cardClass = (color) => {
           <p class="mt-1 text-2xl font-bold text-amber-700">{{ workflowCounts?.pendingApprovals || 0 }}</p>
           <p class="text-xs text-gray-600 mt-1">Applications ready for approval</p>
         </Link>
-        <Link :href="route('admin.allotments')" class="rounded-lg border border-indigo-200 bg-white p-4 hover:bg-indigo-50">
+        <!-- The register, not the read-only list: this card counts the work
+             waiting to be done, so it links to where it is done. -->
+        <Link :href="route('allotments.register')" class="rounded-lg border border-indigo-200 bg-white p-4 hover:bg-indigo-50">
           <p class="text-xs uppercase text-gray-500">Allotment Queue</p>
           <p class="mt-1 text-2xl font-bold text-indigo-700">{{ workflowCounts?.pendingAllotments || 0 }}</p>
           <p class="text-xs text-gray-600 mt-1">Approved applications awaiting allotment</p>

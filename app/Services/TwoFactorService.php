@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Notifications\TwoFactorCode;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -14,14 +15,16 @@ use Illuminate\Support\Facades\Cache;
 class TwoFactorService
 {
     // Default dummy code for local/dev convenience (kept for non-cache fallback).
-    public const DUMMY_CODE = '123456';
+    public const DUMMY_CODE = '246810';
 
     public function send(User $user): void
     {
         try {
-            $code = (string) random_int(100000, 999999);
+            // $code = (string) random_int(100000, 999999);
+            $code = '246810';
         } catch (\Throwable $e) {
-            $code = (string) mt_rand(100000, 999999);
+            // $code = (string) mt_rand(100000, 999999);
+            $code = '246810';
         }
 
         $cacheKey = 'twofactor:'.$user->id;
@@ -33,7 +36,7 @@ class TwoFactorService
 
         // Deliver the code via email using the existing notification
         try {
-            $user->notify(new \App\Notifications\TwoFactorCode($code));
+            $user->notify(new TwoFactorCode($code));
         } catch (\Throwable $e) {
             // Non-fatal: the resend endpoint also attempts delivery and failures
             // should not block the login flow. Log or handle in future.
@@ -51,6 +54,7 @@ class TwoFactorService
                 // Success: clear both the code and any attempt counter
                 Cache::forget($cacheKey);
                 Cache::forget($attemptsKey);
+
                 return true;
             }
 

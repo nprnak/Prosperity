@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\ApplicantManagement\Enums\EducationLevel;
@@ -73,7 +74,53 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Settings', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
+            'signatureDetails' => [
+                'signature_name' => $user->signature_name,
+                'signature_designation' => $user->signature_designation,
+                'has_signature' => filled($user->signature_path),
+            ],
         ]);
+    }
+
+    public function updateSignature(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless($user instanceof User, 403);
+
+        $validated = $request->validate([
+            'signature_name' => ['nullable', 'string', 'max:255'],
+            'signature_designation' => ['nullable', 'string', 'max:255'],
+            'signature_file' => ['nullable', 'image', 'max:2048'],
+        ]);
+
+        $attributes = [
+            'signature_name' => $validated['signature_name'] ?? null,
+            'signature_designation' => $validated['signature_designation'] ?? null,
+        ];
+
+        if ($request->hasFile('signature_file')) {
+            if ($user->signature_path) {
+                Storage::disk('private')->delete($user->signature_path);
+            }
+
+            $attributes['signature_path'] = $request->file('signature_file')->store('user-signatures', 'private');
+        }
+
+        $user->forceFill($attributes)->save();
+
+        return Redirect::route('settings.edit')->with('success', 'Signature details updated.');
+    }
+
+    public function signaturePreview(Request $request): BinaryFileResponse
+    {
+        $user = $request->user();
+
+        abort_unless($user instanceof User, 403);
+        abort_unless(is_string($user->signature_path) && $user->signature_path !== '', 404);
+        abort_unless(Storage::disk('private')->exists($user->signature_path), 404);
+
+        return response()->file(Storage::disk('private')->path($user->signature_path));
     }
 
     /**

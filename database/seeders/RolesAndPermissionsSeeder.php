@@ -92,11 +92,13 @@ class RolesAndPermissionsSeeder extends Seeder
             'report.view',
             'application.view-any',
             'application.verify',
+            'voucher.download-any',
         ],
         'application_reviewer' => [
             'report.view',
             'application.view-any',
             'application.review',
+            'voucher.download-any',
         ],
         'application_approver' => [
             'report.view',

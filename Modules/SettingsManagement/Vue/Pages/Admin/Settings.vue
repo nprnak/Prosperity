@@ -3,7 +3,10 @@ import PanelLayout from '@/Layouts/PanelLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
-const props = defineProps({ settings: Object });
+const props = defineProps({
+  settings: Object,
+  signUsers: { type: Array, default: () => [] },
+});
 
 const form = useForm({
     ...props.settings.organization,
@@ -13,6 +16,7 @@ const form = useForm({
 
 // preview helper for logo
 form.org_logo_preview = props.settings.organization?.org_logo || '';
+form.org_stamp_preview = props.settings.organization?.org_stamp || '';
 
 const onLogoChange = (e) => {
     const file = e.target.files[0];
@@ -26,6 +30,20 @@ const onLogoChange = (e) => {
         form.org_logo_preview = ev.target.result;
     };
     reader.readAsDataURL(file);
+};
+
+const onStampChange = (e) => {
+  const file = e.target.files[0];
+  form.org_stamp = file;
+  if (!file) {
+    form.org_stamp_preview = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    form.org_stamp_preview = ev.target.result;
+  };
+  reader.readAsDataURL(file);
 };
 
 const save = () => {
@@ -78,6 +96,58 @@ const save = () => {
                 <InputError :message="form.errors.org_logo" class="mt-1" />
               </div>
             </div>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="mb-1 block text-sm font-medium text-gray-700">Organization Stamp</label>
+            <div class="flex items-center gap-4">
+              <div class="w-28 h-28 bg-gray-100 rounded flex items-center justify-center overflow-hidden border">
+                <img v-if="form.org_stamp_preview" :src="form.org_stamp_preview" alt="stamp" class="object-contain w-full h-full" />
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
+              </div>
+              <div>
+                <input type="file" @change="onStampChange" accept="image/*" />
+                <p class="text-xs text-gray-500 mt-1">PNG or JPG, max 2MB. Printed on receipt as company stamp.</p>
+                <InputError :message="form.errors.org_stamp" class="mt-1" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-lg shadow">
+        <h3 class="font-semibold text-base mb-1">Receipt Sign Users</h3>
+        <p class="text-sm text-gray-500 mb-4">Choose which user details and profile signatures should print for each receipt sign position.</p>
+        <div class="grid gap-4 md:grid-cols-3">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Verifier Sign User</label>
+            <select v-model="form.receipt_verifier_user_id" class="w-full rounded-lg border border-gray-300 px-3 py-2">
+              <option value="">Use workflow verifier</option>
+              <option v-for="user in signUsers" :key="`verifier-${user.id}`" :value="String(user.id)">
+                {{ user.name }} ({{ user.email }})
+              </option>
+            </select>
+            <InputError :message="form.errors.receipt_verifier_user_id" class="mt-1" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Reviewer Sign User</label>
+            <select v-model="form.receipt_reviewer_user_id" class="w-full rounded-lg border border-gray-300 px-3 py-2">
+              <option value="">Use workflow reviewer</option>
+              <option v-for="user in signUsers" :key="`reviewer-${user.id}`" :value="String(user.id)">
+                {{ user.name }} ({{ user.email }})
+              </option>
+            </select>
+            <InputError :message="form.errors.receipt_reviewer_user_id" class="mt-1" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Approver Sign User</label>
+            <select v-model="form.receipt_approver_user_id" class="w-full rounded-lg border border-gray-300 px-3 py-2">
+              <option value="">Use workflow approver</option>
+              <option v-for="user in signUsers" :key="`approver-${user.id}`" :value="String(user.id)">
+                {{ user.name }} ({{ user.email }})
+              </option>
+            </select>
+            <InputError :message="form.errors.receipt_approver_user_id" class="mt-1" />
           </div>
         </div>
       </div>

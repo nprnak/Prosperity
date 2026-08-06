@@ -92,6 +92,7 @@ class ApplicationWizardController extends Controller
             'offering.company',
             'vouchers',
             'paymentTransactions' => fn ($query) => $query->latest(),
+            'paymentTransactions.voucher:id,payment_transaction_id,voucher_number',
             'paymentTransactions.paymentMethod:id,name,account_name,account_number,bank_name',
         ]);
 
@@ -101,6 +102,9 @@ class ApplicationWizardController extends Controller
         // the payment if recorded, otherwise the first active method.
         $collectionAccount = $application->paymentTransactions->first()?->paymentMethod
             ?? $paymentMethods->active(['id', 'name', 'account_name', 'account_number', 'bank_name'])->first();
+
+        $payment = $application->paymentTransactions->first();
+        $receiptVoucher = $payment?->voucher;
 
         return Inertia::render('Applications/Show', [
             'application' => $application,
@@ -120,6 +124,12 @@ class ApplicationWizardController extends Controller
                     'url' => route('applications.voucher-image', [$application->id, $voucher->id]),
                 ])
                 ->values(),
+            'receipt' => $receiptVoucher ? [
+                'voucherNumber' => $receiptVoucher->voucher_number,
+                'receiptNumber' => $payment?->receipt_number,
+                'showUrl' => route('vouchers.show', $receiptVoucher),
+                'downloadUrl' => route('vouchers.download', $receiptVoucher),
+            ] : null,
         ]);
     }
 

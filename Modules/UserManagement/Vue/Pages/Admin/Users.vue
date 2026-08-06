@@ -129,26 +129,6 @@ const applyRoleFilter = (role) => {
     replace: true,
   });
 };
-const roleFilters = [
-  { label: 'All Roles', value: '' },
-  { label: 'Super Admin', value: 'super_admin' },
-  { label: 'Finance Staff', value: 'finance_staff' },
-  { label: 'Profile Verifier', value: 'profile_verifier' },
-  { label: 'Profile Reviewer', value: 'profile_reviewer' },
-  { label: 'Profile Approver', value: 'profile_approver' },
-  { label: 'Application Verifier', value: 'application_verifier' },
-  { label: 'Application Reviewer', value: 'application_reviewer' },
-  { label: 'Application Approver', value: 'application_approver' },
-  { label: 'Applicant', value: 'applicant' },
-];
-
-const applyRoleFilter = (role) => {
-  router.get(route('admin.users'), role ? { role } : {}, {
-    preserveState: true,
-    preserveScroll: true,
-    replace: true,
-  });
-};
 
 // Client-side filtered users (search)
 const filteredUsers = computed(() => {
@@ -180,14 +160,14 @@ const availableRolesFor = (form) => {
   <Head title="Admin - Users Management" />
   <PanelLayout>
     <div class="p-6 bg-white rounded-lg shadow">
-      <div class="flex items-center justify-between mb-6 gap-4">
+      <div class="flex items-center justify-between gap-4 mb-6">
         <div>
           <h2 class="text-2xl font-bold text-gray-900">Users Management</h2>
           <p class="text-sm text-gray-500">Manage users, assign multiple roles and control access.</p>
         </div>
         <div class="flex items-center gap-3">
           <div class="relative">
-            <input v-model="search" type="search" placeholder="Search name, email or role" class="rounded-lg border border-gray-200 px-3 py-2 w-64 focus:border-blue-500" />
+            <input v-model="search" type="search" placeholder="Search name, email or role" class="w-64 px-3 py-2 border border-gray-200 rounded-lg focus:border-blue-500" />
           </div>
           <button :class="primaryButtonClass" @click="openCreateModal">
             Add User
@@ -228,7 +208,7 @@ const availableRolesFor = (form) => {
             <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 text-sm text-gray-900">
                 <div class="flex items-center gap-3">
-                  <div class="flex items-center justify-center w-10 h-10 bg-indigo-100 text-indigo-700 rounded-full font-semibold">{{ (user.name || '').split(' ').map(n=>n[0]).join('').slice(0,2) }}</div>
+                  <div class="flex items-center justify-center w-10 h-10 font-semibold text-indigo-700 bg-indigo-100 rounded-full">{{ (user.name || '').split(' ').map(n=>n[0]).join('').slice(0,2) }}</div>
                   <div>
                     <div class="font-medium">{{ user.name }}</div>
                     <div class="text-xs text-gray-500">Member since {{ new Date(user.created_at).toLocaleDateString() }}</div>
@@ -248,8 +228,8 @@ const availableRolesFor = (form) => {
                 <span class="px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded">Active</span>
               </td>
               <td class="px-6 py-4 space-x-2 text-sm">
-                <button class="px-3 py-1 rounded bg-yellow-50 text-yellow-700 hover:bg-yellow-100 flex items-center gap-2" @click="openEditModal(user)"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 11l6 6L21 11l-6-6-6 6z"/></svg> Edit</button>
-                <button class="px-3 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 flex items-center gap-2" @click="deleteUser(user)"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg> Delete</button>
+                <button class="flex items-center gap-2 px-3 py-1 text-yellow-700 rounded bg-yellow-50 hover:bg-yellow-100" @click="openEditModal(user)"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 11l6 6L21 11l-6-6-6 6z"/></svg> Edit</button>
+                <button class="flex items-center gap-2 px-3 py-1 text-red-700 rounded bg-red-50 hover:bg-red-100" @click="deleteUser(user)"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m5 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg> Delete</button>
               </td>
             </tr>
           </tbody>
@@ -267,13 +247,13 @@ const availableRolesFor = (form) => {
         <form @submit.prevent="submitCreate" class="space-y-4">
           <div>
             <InputLabel for="name" value="Full name" :required="true" />
-            <TextInput id="name" type="text" placeholder="John Doe" class="mt-1 block w-full" v-model="createForm.name" />
+            <TextInput id="name" type="text" placeholder="John Doe" class="block w-full mt-1" v-model="createForm.name" />
             <InputError class="mt-2" :message="createForm.errors.name" />
           </div>
 
           <div>
             <InputLabel for="email" value="Email" :required="true" />
-            <TextInput id="email" type="email" placeholder="you@company.com" class="mt-1 block w-full" v-model="createForm.email" />
+            <TextInput id="email" type="email" placeholder="you@company.com" class="block w-full mt-1" v-model="createForm.email" />
             <InputError class="mt-2" :message="createForm.errors.email" />
           </div>
 
@@ -281,16 +261,16 @@ const availableRolesFor = (form) => {
             <InputLabel for="password" value="Password" :required="true" />
             <div class="relative mt-1">
               <TextInput :type="showCreatePassword ? 'text' : 'password'" id="password" placeholder="At least 8 characters" class="block w-full pr-10" v-model="createForm.password" />
-              <button type="button" @click="showCreatePassword = !showCreatePassword" class="absolute inset-y-0 end-0 px-3 flex items-center text-gray-500" :aria-pressed="showCreatePassword">
-                <svg v-if="!showCreatePassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.85 21.85 0 015-7"/><path d="M1 1l22 22"/></svg>
+              <button type="button" @click="showCreatePassword = !showCreatePassword" class="absolute inset-y-0 flex items-center px-3 text-gray-500 end-0" :aria-pressed="showCreatePassword">
+                <svg v-if="!showCreatePassword" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.85 21.85 0 015-7"/><path d="M1 1l22 22"/></svg>
               </button>
             </div>
             <div class="mt-2">
-              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-2 overflow-hidden bg-gray-200 rounded-full">
                 <div :class="['h-full transition-all', createPasswordStrength >= 3 ? 'bg-green-500' : createPasswordStrength >= 2 ? 'bg-yellow-400' : 'bg-red-400']" :style="{ width: (createPasswordStrength/4*100) + '%' }"></div>
               </div>
-              <p class="text-xs text-gray-600 mt-1">Use at least 8 characters, include uppercase, numbers, or symbols for a stronger password.</p>
+              <p class="mt-1 text-xs text-gray-600">Use at least 8 characters, include uppercase, numbers, or symbols for a stronger password.</p>
             </div>
             <InputError class="mt-2" :message="createForm.errors.password" />
           </div>
@@ -300,15 +280,15 @@ const availableRolesFor = (form) => {
             <div class="mt-1">
               <div class="flex flex-wrap gap-2">
                 <template v-for="roleName in createForm.roles" :key="roleName">
-                  <span class="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
+                  <span class="inline-flex items-center px-3 py-1 text-sm text-blue-700 rounded-full bg-blue-50">
                     {{ roleName }}
                     <button type="button" @click="removeRoleFrom(createForm, roleName)" class="ml-2 text-xs text-blue-500">&times;</button>
                   </span>
                 </template>
                 <span v-if="!createForm.roles.length" class="text-sm text-gray-500">No roles selected</span>
               </div>
-              <div class="mt-2 flex gap-2 flex-wrap">
-                <button v-for="r in availableRolesFor(createForm)" :key="r.id" @click.prevent="addRoleTo(createForm, r.name)" class="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50">{{ r.name }}</button>
+              <div class="flex flex-wrap gap-2 mt-2">
+                <button v-for="r in availableRolesFor(createForm)" :key="r.id" @click.prevent="addRoleTo(createForm, r.name)" class="px-2 py-1 text-sm bg-white border rounded hover:bg-gray-50">{{ r.name }}</button>
               </div>
             </div>
             <InputError class="mt-2" :message="createForm.errors.roles || createForm.errors['roles.*']" />
@@ -330,13 +310,13 @@ const availableRolesFor = (form) => {
         <form @submit.prevent="submitEdit" class="space-y-4">
           <div>
             <InputLabel for="name" value="Full name" :required="true" />
-            <TextInput id="name" type="text" placeholder="John Doe" class="mt-1 block w-full" v-model="editForm.name" />
+            <TextInput id="name" type="text" placeholder="John Doe" class="block w-full mt-1" v-model="editForm.name" />
             <InputError class="mt-2" :message="editForm.errors.name" />
           </div>
 
           <div>
             <InputLabel for="email" value="Email" :required="true" />
-            <TextInput id="email" type="email" placeholder="you@company.com" class="mt-1 block w-full" v-model="editForm.email" />
+            <TextInput id="email" type="email" placeholder="you@company.com" class="block w-full mt-1" v-model="editForm.email" />
             <InputError class="mt-2" :message="editForm.errors.email" />
           </div>
 
@@ -344,13 +324,13 @@ const availableRolesFor = (form) => {
             <InputLabel for="password" value="New Password (optional)" />
             <div class="relative mt-1">
               <TextInput :type="showEditPassword ? 'text' : 'password'" id="password_edit" placeholder="At least 8 characters" class="block w-full pr-10" v-model="editForm.password" />
-              <button type="button" @click="showEditPassword = !showEditPassword" class="absolute inset-y-0 end-0 px-3 flex items-center text-gray-500" :aria-pressed="showEditPassword">
-                <svg v-if="!showEditPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.85 21.85 0 015-7"/><path d="M1 1l22 22"/></svg>
+              <button type="button" @click="showEditPassword = !showEditPassword" class="absolute inset-y-0 flex items-center px-3 text-gray-500 end-0" :aria-pressed="showEditPassword">
+                <svg v-if="!showEditPassword" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.85 21.85 0 015-7"/><path d="M1 1l22 22"/></svg>
               </button>
             </div>
             <div class="mt-2">
-              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-2 overflow-hidden bg-gray-200 rounded-full">
                 <div :class="['h-full transition-all', editPasswordStrength >= 3 ? 'bg-green-500' : editPasswordStrength >= 2 ? 'bg-yellow-400' : 'bg-red-400']" :style="{ width: (editPasswordStrength/4*100) + '%' }"></div>
               </div>
             </div>
@@ -362,15 +342,15 @@ const availableRolesFor = (form) => {
             <div class="mt-1">
               <div class="flex flex-wrap gap-2">
                 <template v-for="roleName in editForm.roles" :key="roleName">
-                  <span class="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
+                  <span class="inline-flex items-center px-3 py-1 text-sm text-blue-700 rounded-full bg-blue-50">
                     {{ roleName }}
                     <button type="button" @click="removeRoleFrom(editForm, roleName)" class="ml-2 text-xs text-blue-500">&times;</button>
                   </span>
                 </template>
                 <span v-if="!editForm.roles.length" class="text-sm text-gray-500">No roles selected</span>
               </div>
-              <div class="mt-2 flex gap-2 flex-wrap">
-                <button v-for="r in availableRolesFor(editForm)" :key="r.id" @click.prevent="addRoleTo(editForm, r.name)" class="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50">{{ r.name }}</button>
+              <div class="flex flex-wrap gap-2 mt-2">
+                <button v-for="r in availableRolesFor(editForm)" :key="r.id" @click.prevent="addRoleTo(editForm, r.name)" class="px-2 py-1 text-sm bg-white border rounded hover:bg-gray-50">{{ r.name }}</button>
               </div>
             </div>
             <InputError class="mt-2" :message="editForm.errors.roles || editForm.errors['roles.*']" />

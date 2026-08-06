@@ -1,5 +1,6 @@
 <script setup>
 import PanelLayout from '@/Layouts/PanelLayout.vue';
+import StageActions from '@/Components/StageActions.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
 import WorkflowTimeline from '@/Components/WorkflowTimeline.vue';
@@ -68,6 +69,18 @@ const statusLabel = (status) => {
 
   return labels[status] || status;
 };
+
+const canVerifyFromDetail = computed(() =>
+  can('application.verify') && props.application?.status === 'submitted',
+);
+
+const canReviewFromDetail = computed(() =>
+  can('application.review') && props.application?.status === 'verified',
+);
+
+const canApproveFromDetail = computed(() =>
+  can('application.approve') && props.application?.status === 'reviewed',
+);
 </script>
 
 <template>
@@ -285,6 +298,43 @@ const statusLabel = (status) => {
         <p class="text-sm text-gray-700"><span class="font-medium">Shares Allotted:</span> {{ application.allotment.shares_allotted || '-' }}</p>
         <p class="text-sm text-gray-700"><span class="font-medium">Allotment Date:</span> {{ formatDate(application.allotment.allotment_date) }}</p>
       </section>
+
+      <section v-if="canVerifyFromDetail" class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-blue-100">
+        <h2 class="text-lg font-semibold text-gray-900">Verifier Action</h2>
+        <p class="mt-1 mb-4 text-sm text-gray-600">
+          You can mark this application verified after reviewing the full form and documents.
+        </p>
+        <StageActions
+          :action-url="route('verifier.applications.act', application.id)"
+          :can-send-back="application.can_send_back"
+          approve-label="Mark Verified"
+        />
+      </section>
+
+      <section v-if="canReviewFromDetail" class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-indigo-100">
+        <h2 class="text-lg font-semibold text-gray-900">Reviewer Action</h2>
+        <p class="mt-1 mb-4 text-sm text-gray-600">
+          You can mark this application reviewed after checking the verifier stage outcome and full form details.
+        </p>
+        <StageActions
+          :action-url="route('reviewer.applications.act', application.id)"
+          :can-send-back="application.can_send_back"
+          approve-label="Mark Reviewed"
+        />
+      </section>
+
+      <section v-if="canApproveFromDetail" class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-emerald-100">
+        <h2 class="text-lg font-semibold text-gray-900">Approver Action</h2>
+        <p class="mt-1 mb-4 text-sm text-gray-600">
+          You can give final approval after reviewing the full form, previous remarks, and reviewer decision.
+        </p>
+        <StageActions
+          :action-url="route('approver.applications.act', application.id)"
+          :can-send-back="application.can_send_back"
+          approve-label="Approve &amp; Issue Voucher"
+        />
+      </section>
+
       <!-- One sheet per document, rendered only while that document is being
            printed. Teleported to <body> so the print rule can hide every other
            top-level node outright: hiding by visibility alone would leave the

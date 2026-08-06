@@ -2,6 +2,7 @@
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
+import UpdateSignatureDetailsForm from './Partials/UpdateSignatureDetailsForm.vue';
 import { Head } from '@inertiajs/vue3';
 
 defineProps({
@@ -10,6 +11,10 @@ defineProps({
     },
     status: {
         type: String,
+    },
+    signatureDetails: {
+        type: Object,
+        default: () => ({}),
     },
 });
 </script>
@@ -36,6 +41,10 @@ defineProps({
 
             <div class="bg-white p-4 shadow sm:rounded-lg sm:p-8">
                 <UpdatePasswordForm class="max-w-xl" />
+            </div>
+
+            <div class="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+                <UpdateSignatureDetailsForm :signature-details="signatureDetails" class="max-w-xl" />
             </div>
         </div>
     </PanelLayout>

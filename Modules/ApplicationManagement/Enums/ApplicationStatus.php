@@ -11,12 +11,12 @@ use App\Workflow\Contracts\WorkflowStatus;
  * Share application lifecycle. Only the review chain participates in the
  * workflow engine:
  *
- *   payment_verified → verified → reviewed → approved
+ *   submitted → verified → reviewed → approved
  *
- * Finance verifies the payment first; the three sign-off stages follow. The
- * banking, allotment and refund statuses are lifecycle states driven by other
- * services, so they report no pending stage and the engine refuses to act on
- * them.
+ * The application chain itself is three-stage (verifier → reviewer →
+ * approver). Banking, allotment and refund statuses are lifecycle states
+ * driven by other services, so they report no pending stage and the engine
+ * refuses to act on them.
  */
 enum ApplicationStatus: string implements HasLabels, WorkflowStatus
 {
@@ -89,6 +89,7 @@ enum ApplicationStatus: string implements HasLabels, WorkflowStatus
     public function pendingStage(): ?WorkflowStage
     {
         return match ($this) {
+            self::Submitted => WorkflowStage::Verifier,
             self::PaymentVerified => WorkflowStage::Verifier,
             self::Verified => WorkflowStage::Reviewer,
             self::Reviewed => WorkflowStage::Approver,
@@ -99,6 +100,7 @@ enum ApplicationStatus: string implements HasLabels, WorkflowStatus
     public function advance(): static
     {
         return match ($this) {
+            self::Submitted => self::Verified,
             self::PaymentVerified => self::Verified,
             self::Verified => self::Reviewed,
             self::Reviewed => self::Approved,
@@ -109,7 +111,7 @@ enum ApplicationStatus: string implements HasLabels, WorkflowStatus
     public function sendBackTarget(): ?static
     {
         return match ($this) {
-            self::Verified => self::PaymentVerified,
+            self::Verified => self::Submitted,
             self::Reviewed => self::Verified,
             default => null,
         };
@@ -122,7 +124,7 @@ enum ApplicationStatus: string implements HasLabels, WorkflowStatus
 
     public static function chainStart(): static
     {
-        return self::PaymentVerified;
+        return self::Submitted;
     }
 
     /**

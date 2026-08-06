@@ -2,7 +2,9 @@
 
 namespace Modules\VoucherManagement\Services;
 
+use App\Models\User;
 use App\Services\NepaliAmountWordsService;
+use Modules\ApplicantManagement\Models\Profile;
 use Illuminate\Support\Facades\Storage;
 use Modules\PaymentManagement\Models\PaymentDeposit;
 use Modules\SettingsManagement\Models\Setting;
@@ -54,7 +56,15 @@ class ReceiptPresenter
         $payment = $voucher->paymentTransaction;
         $application = $payment?->shareApplication;
 
-        $application?->loadMissing(['applicant', 'offering.company']);
+        $configuredVerifier = $this->configuredSigner('receipt_verifier_user_id');
+        $configuredReviewer = $this->configuredSigner('receipt_reviewer_user_id');
+        $configuredApprover = $this->configuredSigner('receipt_approver_user_id');
+
+        $verifierUser = $configuredVerifier ?? $application?->verifier;
+        $reviewerUser = $configuredReviewer ?? $application?->reviewer;
+        $approverUser = $configuredApprover ?? $application?->approver;
+
+        $application?->loadMissing(['applicant', 'offering.company', 'verifier:id,name', 'reviewer:id,name', 'approver:id,name']);
         $payment?->loadMissing('deposits');
 
         $company = $application?->offering?->company;
@@ -65,13 +75,36 @@ class ReceiptPresenter
             'payment' => $payment,
             'voucher' => $voucher,
             'deposits' => $deposits,
+            'sharesApplied' => $application?->shares_applied,
             'companyName' => $company?->name ?? Setting::get('org_name', 'Prosperity Holdings Limited'),
             'companyAddress' => $company?->address ?? Setting::get('org_address'),
             'logoDataUri' => $this->logoDataUri($company?->logo_path),
+            'companyStampDataUri' => $this->settingImageDataUri((string) Setting::get('org_stamp', ''))
+                ?? $this->settingImageDataUri((string) Setting::get('org_logo', '')),
             'amountInEnglishWords' => $this->words->toEnglishWords($payment?->amount ?? 0),
             'printedModes' => self::PRINTED_MODES,
             'tickedMode' => $this->tickedMode($payment?->payment_mode),
             'holdingIdLabel' => self::ID_TYPE_LABELS[$payment?->id_type] ?? null,
+            'stageSignatures' => [
+                'verifier' => [
+                    'name' => $verifierUser?->signature_name ?: $verifierUser?->name,
+                    'designation' => $verifierUser?->signature_designation,
+                    'signedAt' => optional($application?->verified_at)?->format('j M Y, g:i A'),
+                    'signatureDataUri' => $this->signatureDataUriForActor($verifierUser),
+                ],
+                'reviewer' => [
+                    'name' => $reviewerUser?->signature_name ?: $reviewerUser?->name,
+                    'designation' => $reviewerUser?->signature_designation,
+                    'signedAt' => optional($application?->reviewed_at)?->format('j M Y, g:i A'),
+                    'signatureDataUri' => $this->signatureDataUriForActor($reviewerUser),
+                ],
+                'approver' => [
+                    'name' => $approverUser?->signature_name ?: $approverUser?->name,
+                    'designation' => $approverUser?->signature_designation,
+                    'signedAt' => optional($application?->approved_at)?->format('j M Y, g:i A'),
+                    'signatureDataUri' => $this->signatureDataUriForActor($approverUser),
+                ],
+            ],
             'referenceLine' => $this->referenceLine($deposits),
             'paymentDateLine' => $this->paymentDateLine($deposits),
             'verificationUrl' => $this->qr->verificationUrl($voucher),
@@ -133,7 +166,85 @@ class ReceiptPresenter
             return null;
         }
 
-        return 'data:'.Storage::disk('private')->mimeType($path)
-            .';base64,'.base64_encode(Storage::disk('private')->get($path));
+        return $this->toDataUri(
+            (string) Storage::disk('private')->mimeType($path),
+            Storage::disk('private')->get($path),
+        );
+    }
+
+    private function signatureDataUriForActor(?User $actor): ?string
+    {
+        if (! $actor) {
+            return null;
+        }
+
+        if (is_string($actor->signature_path) && $actor->signature_path !== '' && Storage::disk('private')->exists($actor->signature_path)) {
+            return $this->toDataUri(
+                (string) Storage::disk('private')->mimeType($actor->signature_path),
+                Storage::disk('private')->get($actor->signature_path),
+            );
+        }
+
+        $signaturePath = Profile::query()
+            ->where('user_id', $actor->id)
+            ->first()?->documents()
+            ->where('document_type', 'signature')
+            ->value('file_path');
+
+        if (! is_string($signaturePath) || $signaturePath === '' || ! Storage::disk('private')->exists($signaturePath)) {
+            return null;
+        }
+
+        return $this->toDataUri(
+            (string) Storage::disk('private')->mimeType($signaturePath),
+            Storage::disk('private')->get($signaturePath),
+        );
+    }
+
+    private function settingImageDataUri(?string $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $value = trim($value);
+
+        if (str_starts_with($value, '/storage/')) {
+            $publicRelativePath = ltrim(substr($value, strlen('/storage/')), '/');
+
+            if (! Storage::disk('public')->exists($publicRelativePath)) {
+                return null;
+            }
+
+            return $this->toDataUri(
+                (string) Storage::disk('public')->mimeType($publicRelativePath),
+                Storage::disk('public')->get($publicRelativePath),
+            );
+        }
+
+        if (! Storage::disk('public')->exists($value)) {
+            return null;
+        }
+
+        return $this->toDataUri(
+            (string) Storage::disk('public')->mimeType($value),
+            Storage::disk('public')->get($value),
+        );
+    }
+
+    private function configuredSigner(string $settingKey): ?User
+    {
+        $id = (int) Setting::get($settingKey, 0);
+
+        if ($id <= 0) {
+            return null;
+        }
+
+        return User::query()->find($id);
+    }
+
+    private function toDataUri(string $mimeType, string $bytes): string
+    {
+        return 'data:'.$mimeType.';base64,'.base64_encode($bytes);
     }
 }

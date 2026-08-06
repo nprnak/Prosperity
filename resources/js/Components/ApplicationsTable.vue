@@ -8,6 +8,18 @@ defineProps({
 const page = usePage();
 const currency = page.props.settings?.currency_symbol || 'Rs.';
 
+const receiptOf = (app) => {
+  const payment = (app.payment_transactions || [])[0];
+  if (!payment?.receipt_number || !payment?.voucher?.id) {
+    return null;
+  }
+
+  return {
+    number: payment.receipt_number,
+    voucherId: payment.voucher.id,
+  };
+};
+
 const statusLabel = (status) => {
   const labels = {
     draft: 'Draft',
@@ -80,6 +92,15 @@ const statusClass = (status) => {
             <Link :href="route('applications.show', app.id)" class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
               View &amp; Print
             </Link>
+            <template v-if="receiptOf(app)">
+              <span class="mx-2 text-gray-300">|</span>
+              <a
+                :href="route('vouchers.download', receiptOf(app).voucherId)"
+                class="font-medium text-emerald-700 hover:text-emerald-900 hover:underline"
+              >
+                Download Receipt {{ receiptOf(app).number }}
+              </a>
+            </template>
           </td>
         </tr>
       </tbody>

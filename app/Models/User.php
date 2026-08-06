@@ -40,6 +40,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
+        'signature_name',
+        'signature_designation',
+        'signature_path',
     ];
 
     /**

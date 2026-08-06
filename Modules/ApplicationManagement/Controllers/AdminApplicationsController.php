@@ -4,6 +4,7 @@ namespace Modules\ApplicationManagement\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\ApplicantManagement\Models\Profile;
@@ -25,6 +26,11 @@ class AdminApplicationsController extends Controller
 
     public function show(Request $request, ShareApplication $application): Response
     {
+        // Verifier stage must read the form before signing it off.
+        if ($request->user()) {
+            Cache::put($this->viewedCacheKey($request->user()->id, $application->id), true, now()->addHours(8));
+        }
+
         $application = $this->applications->loadDetail($application);
 
         return Inertia::render('Admin/ApplicationShow', [
@@ -61,5 +67,10 @@ class AdminApplicationsController extends Controller
     {
         return $application->applicant?->documents
             ->contains(fn ($document) => $document->document_type === "citizenship_{$side}") ?? false;
+    }
+
+    private function viewedCacheKey(int $userId, int $applicationId): string
+    {
+        return "application:viewed:{$userId}:{$applicationId}";
     }
 }

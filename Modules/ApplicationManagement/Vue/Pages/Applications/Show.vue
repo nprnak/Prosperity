@@ -11,6 +11,7 @@ const props = defineProps({
   signatureUrl: String,
   voucherImageUrls: { type: Array, default: () => [] },
   collectionAccount: Object,
+  receipt: { type: Object, default: null },
 });
 
 // A draft is previewed from the wizard before submitting, so the page has to
@@ -126,6 +127,26 @@ const print = () => window.print();
         <span class="font-semibold">Preview of an unsubmitted draft.</span>
         This is how your form will print. Nothing has been submitted yet — go back to editing to make changes, or submit it from the application page.
       </p>
+
+      <div
+        v-if="receipt"
+        class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 print:hidden"
+      >
+        <p class="font-semibold">Application approved. Your payment receipt is ready.</p>
+        <p class="mt-1">
+          Shares applied: <span class="font-semibold">{{ application.shares_applied }}</span>
+          · Receipt No: <span class="font-semibold">{{ receipt.receiptNumber || '-' }}</span>
+          · Voucher No: <span class="font-semibold">{{ receipt.voucherNumber }}</span>
+        </p>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <Link :href="receipt.showUrl" class="font-semibold text-emerald-700 hover:text-emerald-900 hover:underline">
+            View Receipt
+          </Link>
+          <a :href="receipt.downloadUrl" class="font-semibold text-emerald-700 hover:text-emerald-900 hover:underline">
+            Download Receipt PDF
+          </a>
+        </div>
+      </div>
 
 
       <!-- Printable share application form (replica of the official PHL form) -->

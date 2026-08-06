@@ -6,11 +6,13 @@ use App\Enums\WorkflowStage;
 use App\Http\Controllers\Controller;
 use App\Workflow\WorkflowService;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
+use Modules\ApprovalManagement\Notifications\ApplicationStageProgressedNotification;
 use Modules\ApprovalManagement\Notifications\ApplicationReturnedNotification;
 use Modules\ApprovalManagement\Requests\ApplicationWorkflowActionRequest;
 
@@ -36,7 +38,7 @@ abstract class ApplicationStageController extends Controller
             'applications' => $this->applications->pendingForStage(
                 $this->stage(),
                 $request->user(),
-                ['applicant', 'paymentTransactions', 'workflowEvents.actor:id,name'],
+                ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
             ),
         ]);
     }
@@ -57,7 +59,19 @@ abstract class ApplicationStageController extends Controller
 
         $this->afterAct($request, $application, $before);
 
+        if ($redirect = $this->redirectAfterAct($request, $application, $before)) {
+            return $redirect->with('success', 'Application moved to: '.$application->status->labelEn());
+        }
+
         return back()->with('success', 'Application moved to: '.$application->status->labelEn());
+    }
+
+    /**
+     * Stage-specific success destinations (for example, approver to voucher).
+     */
+    protected function redirectAfterAct(Request $request, ShareApplication $application, ApplicationStatus $before): ?RedirectResponse
+    {
+        return null;
     }
 
     /**
@@ -68,6 +82,10 @@ abstract class ApplicationStageController extends Controller
     {
         if ($application->status === $before) {
             return;
+        }
+
+        if (in_array($application->status, [ApplicationStatus::Verified, ApplicationStatus::Reviewed], true)) {
+            $this->notifyApplicant($application, new ApplicationStageProgressedNotification($application));
         }
 
         if ($application->status === ApplicationStatus::Returned) {

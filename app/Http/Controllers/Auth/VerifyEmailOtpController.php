@@ -27,9 +27,15 @@ class VerifyEmailOtpController extends Controller
             return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
         }
 
-        if (! $user->email_otp_code
+        $stored = $user->email_otp_code;
+        $input = $request->input('code');
+        $codeMatches = Hash::isHashed($stored)
+            ? Hash::check($input, $stored)
+            : hash_equals($stored, $input);
+
+        if (! $stored
             || ! $user->email_otp_expires_at?->isFuture()
-            || ! Hash::check($request->input('code'), $user->email_otp_code)) {
+            || ! $codeMatches) {
             throw ValidationException::withMessages([
                 'code' => 'The verification code is invalid or has expired.',
             ]);

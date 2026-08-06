@@ -18,9 +18,15 @@
               font-size: 10px; line-height: 11px; font-weight: bold; margin-right: 3px; }
         .mode-item { display: inline-block; margin-right: 14px; white-space: nowrap; }
         .signatures { width: 100%; margin-top: 55px; }
-        .signatures td { width: 33%; vertical-align: bottom; }
+        .signatures td { width: 25%; vertical-align: top; }
         .sig-line { border-top: 1px dotted #1a1a1a; display: inline-block; min-width: 160px; padding-top: 3px; font-weight: bold; }
         .stamp { text-align: center; color: #555; font-weight: bold; }
+        .stamp-box { display: inline-block; width: 120px; height: 60px; border: 1.5px dashed #999; line-height: 60px; }
+        .sig-name { font-size: 10px; margin-top: 4px; font-weight: bold; }
+        .sig-designation { font-size: 9px; color: #555; margin-top: 2px; }
+        .sig-time { font-size: 9px; color: #555; margin-top: 2px; }
+        .sig-image { display: block; height: 32px; max-width: 140px; object-fit: contain; margin-bottom: 4px; }
+        .stamp-image { width: 120px; height: 60px; object-fit: contain; }
         .verify { margin-top: 28px; font-size: 10px; color: #444; }
     </style>
 </head>
@@ -41,6 +47,7 @@
         <td style="width:60%;">
             <div>Receipt No.: <span class="fill">{{ $payment->receipt_number }}</span></div>
             <div style="margin-top:8px;">Date: <span class="fill">{{ optional($voucher->generated_at)->format('jS F, Y') }}</span></div>
+            <div style="margin-top:8px;">Shares Applied: <span class="fill">{{ $sharesApplied ?: '—' }}</span></div>
         </td>
         <td style="width:40%; text-align:right; font-size:10px;">
             Voucher No: <strong>{{ $voucher->voucher_number }}</strong><br>
@@ -77,13 +84,47 @@
 
 <table class="signatures">
     <tr>
-        <td style="text-align:left;"><span class="sig-line">Issued By:</span></td>
-        <td class="stamp">Company Stamp</td>
-        <td style="text-align:right;"><span class="sig-line">Approved By:</span></td>
+        <td style="text-align:left;">
+            @if (data_get($stageSignatures, 'verifier.signatureDataUri'))
+                <img src="{{ data_get($stageSignatures, 'verifier.signatureDataUri') }}" alt="Verifier signature" class="sig-image">
+            @else
+                <span class="sig-line">Verifier Sign:</span>
+            @endif
+            <div class="sig-name">{{ data_get($stageSignatures, 'verifier.name') ?: 'Pending' }}</div>
+            <div class="sig-designation">{{ data_get($stageSignatures, 'verifier.designation') ?: '' }}</div>
+            <div class="sig-time">{{ data_get($stageSignatures, 'verifier.signedAt') ?: '' }}</div>
+        </td>
+        <td style="text-align:center;">
+            @if (data_get($stageSignatures, 'reviewer.signatureDataUri'))
+                <img src="{{ data_get($stageSignatures, 'reviewer.signatureDataUri') }}" alt="Reviewer signature" class="sig-image" style="margin-left:auto; margin-right:auto;">
+            @else
+                <span class="sig-line">Reviewer Sign:</span>
+            @endif
+            <div class="sig-name">{{ data_get($stageSignatures, 'reviewer.name') ?: 'Pending' }}</div>
+            <div class="sig-designation">{{ data_get($stageSignatures, 'reviewer.designation') ?: '' }}</div>
+            <div class="sig-time">{{ data_get($stageSignatures, 'reviewer.signedAt') ?: '' }}</div>
+        </td>
+        <td style="text-align:right;">
+            @if (data_get($stageSignatures, 'approver.signatureDataUri'))
+                <img src="{{ data_get($stageSignatures, 'approver.signatureDataUri') }}" alt="Approver signature" class="sig-image" style="margin-left:auto;">
+            @else
+                <span class="sig-line">Approver Sign:</span>
+            @endif
+            <div class="sig-name">{{ data_get($stageSignatures, 'approver.name') ?: 'Pending' }}</div>
+            <div class="sig-designation">{{ data_get($stageSignatures, 'approver.designation') ?: '' }}</div>
+            <div class="sig-time">{{ data_get($stageSignatures, 'approver.signedAt') ?: '' }}</div>
+        </td>
+        <td class="stamp">
+            @if (! empty($companyStampDataUri))
+                <img src="{{ $companyStampDataUri }}" alt="Company stamp" class="stamp-image">
+            @else
+                <span class="stamp-box">Company Stamp</span>
+            @endif
+        </td>
     </tr>
 </table>
 
-@isset($verificationQr)
+@if(! empty($verificationQr))
 <table class="verify" width="100%">
     <tr>
         <td style="width:70px;"><img src="{{ $verificationQr }}" alt="Verification QR" width="62" height="62"></td>
@@ -93,7 +134,7 @@
         </td>
     </tr>
 </table>
-@endisset
+@endif
 
 </body>
 </html>

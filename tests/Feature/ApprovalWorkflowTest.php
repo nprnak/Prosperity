@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Storage;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApprovalManagement\Notifications\ApplicationReturnedNotification;
-use Modules\VoucherManagement\Models\Voucher;
 use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
@@ -64,6 +63,187 @@ class ApprovalWorkflowTest extends TestCase
         $this->assertCount(3, $events);
         $this->assertSame(3, $events->pluck('actor_id')->unique()->count());
         $this->assertTrue($events->every(fn ($event) => filled($event->remarks)));
+    }
+
+    public function test_submitted_application_completes_three_stage_chain_without_finance_step(): void
+    {
+        Storage::fake('private');
+        Notification::fake();
+
+        $application = $this->paymentVerifiedApplication();
+        $application->update(['status' => ApplicationStatus::Submitted]);
+        $application->paymentTransactions()->latest()->first()?->update(['verification_status' => 'pending']);
+
+        $verifier = User::factory()->create()->assignRole('application_verifier');
+        $reviewer = User::factory()->create()->assignRole('application_reviewer');
+        $approver = User::factory()->create()->assignRole('application_approver');
+
+        $this->actingAs($verifier)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+
+        $this->actingAs($verifier)
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Verified at stage 1.'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(ApplicationStatus::Verified, $application->refresh()->status);
+
+        $this->actingAs($reviewer)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+
+        $this->actingAs($reviewer)
+            ->post("/reviewer/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Reviewed at stage 2.'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(ApplicationStatus::Reviewed, $application->refresh()->status);
+
+        $this->actingAs($approver)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+
+        $this->actingAs($approver)
+            ->post("/approver/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Approved at stage 3.'])
+            ->assertSessionHasNoErrors();
+
+        $application->refresh();
+        $this->assertSame(ApplicationStatus::Approved, $application->status);
+        $this->assertNotNull($application->approved_at);
+        $this->assertNotNull($application->paymentTransactions()->latest()->first()?->voucher);
+    }
+
+    public function test_verifier_stage_marks_payment_verified(): void
+    {
+        $application = $this->paymentVerifiedApplication();
+        $application->update(['status' => ApplicationStatus::Submitted]);
+
+        $payment = $application->paymentTransactions()->latest()->firstOrFail();
+        $payment->update([
+            'verification_status' => 'pending',
+            'verified_by' => null,
+            'verified_at' => null,
+        ]);
+
+        $verifier = User::factory()->create()->assignRole('application_verifier');
+
+        $this->actingAs($verifier)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+
+        $this->actingAs($verifier)
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Verified at stage 1.'])
+            ->assertSessionHasNoErrors();
+
+        $payment->refresh();
+
+        $this->assertSame('verified', $payment->verification_status);
+        $this->assertSame($verifier->id, $payment->verified_by);
+        $this->assertNotNull($payment->verified_at);
+    }
+
+    public function test_verifier_must_view_application_form_before_marking_verified(): void
+    {
+        $application = $this->paymentVerifiedApplication();
+        $application->update(['status' => ApplicationStatus::Submitted]);
+
+        $verifier = User::factory()->create()->assignRole('application_verifier');
+
+        $this->actingAs($verifier)
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Verified at stage 1.'])
+            ->assertSessionHasErrors('workflow');
+
+        $this->actingAs($verifier)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+
+        $this->actingAs($verifier)
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Verified at stage 1.'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(ApplicationStatus::Verified, $application->fresh()->status);
+    }
+
+    public function test_reviewer_must_view_application_form_before_marking_reviewed(): void
+    {
+        $application = $this->paymentVerifiedApplication();
+
+        $verifier = User::factory()->create()->assignRole('application_verifier');
+        $reviewer = User::factory()->create()->assignRole('application_reviewer');
+
+        $this->actingAs($verifier)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+
+        $this->actingAs($verifier)
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Verified at stage 1.'])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($reviewer)
+            ->post("/reviewer/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Reviewed at stage 2.'])
+            ->assertSessionHasErrors('workflow');
+
+        $this->actingAs($reviewer)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+
+        $this->actingAs($reviewer)
+            ->post("/reviewer/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Reviewed at stage 2.'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(ApplicationStatus::Reviewed, $application->fresh()->status);
+    }
+
+    public function test_approver_must_view_application_form_before_marking_approved(): void
+    {
+        Storage::fake('private');
+        Notification::fake();
+
+        $application = $this->paymentVerifiedApplication();
+
+        $verifier = User::factory()->create()->assignRole('application_verifier');
+        $reviewer = User::factory()->create()->assignRole('application_reviewer');
+        $approver = User::factory()->create()->assignRole('application_approver');
+
+        $this->actingAs($verifier)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+
+        $this->actingAs($verifier)
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Verified at stage 1.'])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($reviewer)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+
+        $this->actingAs($reviewer)
+            ->post("/reviewer/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Reviewed at stage 2.'])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($approver)
+            ->post("/approver/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Approved at stage 3.'])
+            ->assertSessionHasErrors('workflow');
+
+        $this->actingAs($approver)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+
+        $this->actingAs($approver)
+            ->post("/approver/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Approved at stage 3.'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(ApplicationStatus::Approved, $application->fresh()->status);
     }
 
     public function test_stages_cannot_be_skipped(): void

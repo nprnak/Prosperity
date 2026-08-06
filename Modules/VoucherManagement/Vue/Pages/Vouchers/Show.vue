@@ -18,7 +18,7 @@ const print = () => window.print();
         <div>
           <h2 class="text-2xl font-bold text-gray-900">Payment Receipt</h2>
           <p class="text-sm text-gray-600">
-            Application {{ receipt.applicationNumber }} · Voucher {{ receipt.voucherNumber }}
+            Application {{ receipt.applicationNumber }} · Voucher {{ receipt.voucherNumber }} · Shares {{ receipt.sharesApplied || '-' }}
           </p>
         </div>
         <div class="flex gap-2">
@@ -53,6 +53,7 @@ const print = () => window.print();
           <div class="space-y-2 text-sm">
             <div>Receipt No.: <span class="fill">{{ receipt.receiptNumber || '—' }}</span></div>
             <div>Date: <span class="fill">{{ receipt.issuedOn || '—' }}</span></div>
+            <div>Shares Applied: <span class="fill">{{ receipt.sharesApplied || '—' }}</span></div>
           </div>
           <div class="text-right text-xs text-gray-600">
             Voucher No: <strong>{{ receipt.voucherNumber }}</strong><br />
@@ -83,11 +84,58 @@ const print = () => window.print();
           <div>Date of Payment: <span class="fill">{{ receipt.paymentDateLine || '................' }}</span></div>
         </div>
 
-        <!-- Signed and stamped by hand, as on the paper original. -->
-        <div class="mt-16 grid grid-cols-3 items-end gap-6 text-sm">
-          <div><span class="sig">Issued By:</span></div>
-          <div class="text-center font-semibold text-gray-600">Company Stamp</div>
-          <div class="text-right"><span class="sig">Approved By:</span></div>
+        <!-- Signed and stamped by hand by the three stage owners and company. -->
+        <div class="mt-16 grid grid-cols-2 gap-6 text-sm sm:grid-cols-4">
+          <div>
+            <img
+              v-if="receipt.stageSignatures?.verifier?.signatureDataUri"
+              :src="receipt.stageSignatures.verifier.signatureDataUri"
+              alt="Verifier signature"
+              class="mb-1 h-10 max-w-[10rem] object-contain"
+            />
+            <span v-else class="sig">Verifier Sign:</span>
+            <p class="mt-1 text-xs font-semibold text-gray-800">{{ receipt.stageSignatures?.verifier?.name || 'Pending' }}</p>
+            <p class="text-[11px] text-gray-600">{{ receipt.stageSignatures?.verifier?.designation || '' }}</p>
+            <p class="text-[11px] text-gray-500">{{ receipt.stageSignatures?.verifier?.signedAt || '' }}</p>
+          </div>
+          <div>
+            <img
+              v-if="receipt.stageSignatures?.reviewer?.signatureDataUri"
+              :src="receipt.stageSignatures.reviewer.signatureDataUri"
+              alt="Reviewer signature"
+              class="mb-1 h-10 max-w-[10rem] object-contain"
+            />
+            <span v-else class="sig">Reviewer Sign:</span>
+            <p class="mt-1 text-xs font-semibold text-gray-800">{{ receipt.stageSignatures?.reviewer?.name || 'Pending' }}</p>
+            <p class="text-[11px] text-gray-600">{{ receipt.stageSignatures?.reviewer?.designation || '' }}</p>
+            <p class="text-[11px] text-gray-500">{{ receipt.stageSignatures?.reviewer?.signedAt || '' }}</p>
+          </div>
+          <div>
+            <img
+              v-if="receipt.stageSignatures?.approver?.signatureDataUri"
+              :src="receipt.stageSignatures.approver.signatureDataUri"
+              alt="Approver signature"
+              class="mb-1 h-10 max-w-[10rem] object-contain"
+            />
+            <span v-else class="sig">Approver Sign:</span>
+            <p class="mt-1 text-xs font-semibold text-gray-800">{{ receipt.stageSignatures?.approver?.name || 'Pending' }}</p>
+            <p class="text-[11px] text-gray-600">{{ receipt.stageSignatures?.approver?.designation || '' }}</p>
+            <p class="text-[11px] text-gray-500">{{ receipt.stageSignatures?.approver?.signedAt || '' }}</p>
+          </div>
+          <div class="text-center">
+            <img
+              v-if="receipt.companyStampDataUri"
+              :src="receipt.companyStampDataUri"
+              alt="Company stamp"
+              class="mx-auto h-20 w-28 object-contain"
+            />
+            <div
+              v-else
+              class="mx-auto flex h-20 w-28 items-center justify-center rounded border-2 border-dashed border-gray-400 text-xs font-semibold uppercase tracking-wide text-gray-600"
+            >
+              Company Stamp
+            </div>
+          </div>
         </div>
 
         <div v-if="receipt.verificationQr" class="mt-10 flex items-center gap-3 text-xs text-gray-600">

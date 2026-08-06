@@ -64,7 +64,10 @@ class ShareApplicationRepository extends Repository
      */
     public function listForUser(int $userId): Collection
     {
-        return $this->forUser($userId)->latest()->get();
+        return $this->forUser($userId)
+            ->with(['paymentTransactions:id,share_application_id,receipt_number', 'paymentTransactions.voucher:id,payment_transaction_id,voucher_number'])
+            ->latest()
+            ->get();
     }
 
     /**
@@ -96,6 +99,44 @@ class ShareApplicationRepository extends Repository
             ->with($with)
             ->latest()
             ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /**
+     * Applications this verifier has signed off at stage 1.
+     */
+    public function verifiedByUser(
+        User $user,
+        array $with = [],
+        int $perPage = 15,
+    ): LengthAwarePaginator {
+        return $this->query()
+            ->whereHas('workflowEvents', fn ($event) => $event
+                ->where('actor_id', $user->id)
+                ->where('stage', WorkflowStage::Verifier->value)
+                ->where('action', 'approve'))
+            ->with($with)
+            ->latest()
+            ->paginate($perPage, ['*'], 'verified_page')
+            ->withQueryString();
+    }
+
+    /**
+     * Applications this approver has signed off at stage 3.
+     */
+    public function approvedByUser(
+        User $user,
+        array $with = [],
+        int $perPage = 15,
+    ): LengthAwarePaginator {
+        return $this->query()
+            ->whereHas('workflowEvents', fn ($event) => $event
+                ->where('actor_id', $user->id)
+                ->where('stage', WorkflowStage::Approver->value)
+                ->where('action', 'approve'))
+            ->with($with)
+            ->latest()
+            ->paginate($perPage, ['*'], 'approved_page')
             ->withQueryString();
     }
 

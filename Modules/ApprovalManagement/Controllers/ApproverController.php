@@ -4,9 +4,15 @@ namespace Modules\ApprovalManagement\Controllers;
 
 use App\Enums\WorkflowStage;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApprovalManagement\Notifications\ApplicationApprovedNotification;
+use Modules\ApprovalManagement\Requests\ApplicationWorkflowActionRequest;
+use Modules\VoucherManagement\Models\Voucher;
 use Modules\VoucherManagement\Services\VoucherIssueService;
 
 /**
@@ -15,6 +21,8 @@ use Modules\VoucherManagement\Services\VoucherIssueService;
  */
 class ApproverController extends ApplicationStageController
 {
+    private ?Voucher $issuedVoucher = null;
+
     protected function stage(): WorkflowStage
     {
         return WorkflowStage::Approver;
@@ -25,6 +33,49 @@ class ApproverController extends ApplicationStageController
         return 'Approver/Dashboard';
     }
 
+    public function dashboard(Request $request)
+    {
+        $applications = $this->applications->pendingForStage(
+            $this->stage(),
+            $request->user(),
+            ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
+        );
+
+        $viewedApplicationIds = [];
+
+        foreach ($applications->items() as $application) {
+            if (Cache::get($this->viewedCacheKey($request->user()->id, $application->id), false)) {
+                $viewedApplicationIds[] = $application->id;
+            }
+        }
+
+        return Inertia::render($this->view(), [
+            'applications' => $applications,
+            'viewedApplicationIds' => $viewedApplicationIds,
+            'approvedByMe' => $this->applications->approvedByUser(
+                $request->user(),
+                ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
+            ),
+        ]);
+    }
+
+    public function act(ApplicationWorkflowActionRequest $request, ShareApplication $application)
+    {
+        if ($request->action()->value === 'approve' && ! Cache::get($this->viewedCacheKey($request->user()->id, $application->id), false)) {
+            throw ValidationException::withMessages([
+                'workflow' => 'Open and review the application form before marking it approved.',
+            ]);
+        }
+
+        $response = parent::act($request, $application);
+
+        if ($request->action()->value === 'approve') {
+            Cache::forget($this->viewedCacheKey($request->user()->id, $application->id));
+        }
+
+        return $response;
+    }
+
     protected function afterAct(Request $request, ShareApplication $application, ApplicationStatus $before): void
     {
         if ($application->status === $before) {
@@ -32,7 +83,7 @@ class ApproverController extends ApplicationStageController
         }
 
         if ($application->status === ApplicationStatus::Approved) {
-            $this->issueVoucher($request, $application);
+            $this->issuedVoucher = $this->issueVoucher($request, $application);
 
             return;
         }
@@ -40,10 +91,18 @@ class ApproverController extends ApplicationStageController
         parent::afterAct($request, $application, $before);
     }
 
-    private function issueVoucher(Request $request, ShareApplication $application): void
+    protected function redirectAfterAct(Request $request, ShareApplication $application, ApplicationStatus $before): ?RedirectResponse
+    {
+        if ($application->status === ApplicationStatus::Approved && $this->issuedVoucher) {
+            return redirect()->route('vouchers.show', $this->issuedVoucher->id);
+        }
+
+        return null;
+    }
+
+    private function issueVoucher(Request $request, ShareApplication $application): Voucher
     {
         $payment = $application->paymentTransactions()
-            ->where('verification_status', 'verified')
             ->latest()
             ->firstOrFail();
 
@@ -58,5 +117,12 @@ class ApproverController extends ApplicationStageController
         ])->save();
 
         $this->notifyApplicant($application, new ApplicationApprovedNotification($application, $voucher));
+
+        return $voucher;
+    }
+
+    private function viewedCacheKey(int $userId, int $applicationId): string
+    {
+        return "application:viewed:{$userId}:{$applicationId}";
     }
 }

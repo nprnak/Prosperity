@@ -2,6 +2,7 @@
 
 namespace Modules\SettingsManagement\Requests;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,6 +22,10 @@ class UpdateSettingsRequest extends FormRequest
             'contact_email' => ['group' => 'organization', 'rules' => ['required', 'email', 'max:255']],
             'support_phone' => ['group' => 'organization', 'rules' => ['nullable', 'string', 'max:50']],
             'org_logo' => ['group' => 'organization', 'rules' => ['nullable', 'image', 'max:2048']],
+            'org_stamp' => ['group' => 'organization', 'rules' => ['nullable', 'image', 'max:2048']],
+            'receipt_verifier_user_id' => ['group' => 'organization', 'rules' => ['nullable', Rule::exists(User::class, 'id')]],
+            'receipt_reviewer_user_id' => ['group' => 'organization', 'rules' => ['nullable', Rule::exists(User::class, 'id')]],
+            'receipt_approver_user_id' => ['group' => 'organization', 'rules' => ['nullable', Rule::exists(User::class, 'id')]],
 
             'mail_host' => ['group' => 'mail', 'rules' => ['nullable', 'string', 'max:255']],
             'mail_port' => ['group' => 'mail', 'rules' => ['nullable', 'integer', 'between:1,65535']],

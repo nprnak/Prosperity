@@ -11,6 +11,8 @@ use Modules\UserManagement\Controllers\ProfileController;
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::get('/settings', [ProfileController::class, 'settings'])->name('settings.edit');
+    Route::patch('/settings/signature', [ProfileController::class, 'updateSignature'])->name('settings.signature.update');
+    Route::get('/settings/signature', [ProfileController::class, 'signaturePreview'])->name('settings.signature.preview');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/applicant', [ProfileController::class, 'updateApplicantProfile'])->name('profile.applicant.update');
     Route::get('/profile/documents/{type}', [ProfileController::class, 'document'])->name('profile.documents.show');

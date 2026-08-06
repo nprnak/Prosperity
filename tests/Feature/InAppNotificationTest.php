@@ -10,6 +10,7 @@ use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Notifications\ProfileApprovedNotification;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
+use Modules\ApprovalManagement\Notifications\ApplicationStageProgressedNotification;
 use Modules\ApprovalManagement\Notifications\ApplicationReturnedNotification;
 use Modules\PaymentManagement\Notifications\PaymentVerifiedNotification;
 use Tests\Support\CreatesProfiles;
@@ -40,6 +41,32 @@ class InAppNotificationTest extends TestCase
         $this->assertNotNull($notification);
         $this->assertSame('Application Returned', $notification->data['title']);
         $this->assertStringContainsString('Blurry documents.', $notification->data['message']);
+    }
+
+    public function test_verifier_and_reviewer_approvals_notify_the_applicant_of_stage_progress(): void
+    {
+        [$user, $application] = $this->applicationAt(ApplicationStatus::PaymentVerified);
+        $verifier = User::factory()->create()->assignRole('application_verifier');
+        $reviewer = User::factory()->create()->assignRole('application_reviewer');
+
+        $this->actingAs($verifier)
+            ->post("/verifier/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Verified.'])
+            ->assertSessionHasNoErrors();
+
+        $application->refresh();
+        $this->assertSame(ApplicationStatus::Verified, $application->status);
+
+        $this->actingAs($reviewer)
+            ->post("/reviewer/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Reviewed.'])
+            ->assertSessionHasNoErrors();
+
+        $application->refresh();
+        $this->assertSame(ApplicationStatus::Reviewed, $application->status);
+
+        $this->assertSame(2, $user->notifications()->count());
+        $this->assertCount(2, $user->notifications->where('type', ApplicationStageProgressedNotification::class));
     }
 
     public function test_profile_approval_creates_an_in_app_notification(): void

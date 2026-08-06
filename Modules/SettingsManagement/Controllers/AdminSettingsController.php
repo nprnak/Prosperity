@@ -3,6 +3,7 @@
 namespace Modules\SettingsManagement\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Inertia\Inertia;
 use Modules\SettingsManagement\Models\Setting;
 use Modules\SettingsManagement\Requests\UpdateSettingsRequest;
@@ -19,11 +20,28 @@ class AdminSettingsController extends Controller
             $settings[$field['group']][$key] = $key === 'mail_password' ? '' : ($values[$key] ?? '');
         }
 
-        // include org_logo explicitly so the form can preview it
+        // include image settings explicitly so the form can preview them
         $settings['organization']['org_logo'] = $values['org_logo'] ?? '';
+        $settings['organization']['org_stamp'] = $values['org_stamp'] ?? '';
+        $settings['organization']['receipt_verifier_user_id'] = $values['receipt_verifier_user_id'] ?? '';
+        $settings['organization']['receipt_reviewer_user_id'] = $values['receipt_reviewer_user_id'] ?? '';
+        $settings['organization']['receipt_approver_user_id'] = $values['receipt_approver_user_id'] ?? '';
+
+        $signUsers = User::query()
+            ->select(['id', 'name', 'email'])
+            ->with('roles:id,name')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->roles->pluck('name')->values(),
+            ]);
 
         return Inertia::render('Admin/Settings', [
             'settings' => $settings,
+            'signUsers' => $signUsers,
         ]);
     }
 
@@ -32,9 +50,9 @@ class AdminSettingsController extends Controller
         $changed = [];
 
         foreach (UpdateSettingsRequest::fields() as $key => $field) {
-            // file handling for org_logo
-            if ($key === 'org_logo' && $request->hasFile('org_logo')) {
-                $file = $request->file('org_logo');
+            // file handling for image settings
+            if (in_array($key, ['org_logo', 'org_stamp'], true) && $request->hasFile($key)) {
+                $file = $request->file($key);
                 $path = $file->store('settings', 'public');
                 $value = '/storage/' . $path;
             } else {

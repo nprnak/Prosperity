@@ -12,9 +12,12 @@ class AdminUserSeeder extends Seeder
     {
         $password = Hash::make('password');
 
-        // Keep a single seeded user per administrative role to simplify testing
+        // Keep a seeded user per administrative role for test logins.
+        // Finance verification is a two-officer sign-off, so seed two staff.
         $users = [
             ['email' => 'superadmin@prosperity.com', 'name' => 'Super Admin', 'roles' => ['super_admin']],
+            ['email' => 'finance.one@prosperity.com', 'name' => 'Finance Staff One', 'roles' => ['finance_staff']],
+            ['email' => 'finance.two@prosperity.com', 'name' => 'Finance Staff Two', 'roles' => ['finance_staff']],
             ['email' => 'profile.verifier@prosperity.com', 'name' => 'Profile Verifier', 'roles' => ['profile_verifier']],
             ['email' => 'profile.reviewer@prosperity.com', 'name' => 'Profile Reviewer', 'roles' => ['profile_reviewer']],
             ['email' => 'profile.approver@prosperity.com', 'name' => 'Profile Approver', 'roles' => ['profile_approver']],

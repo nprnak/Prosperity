@@ -3,10 +3,18 @@ import Pagination from '@/Components/Pagination.vue';
 import StageActions from '@/Components/StageActions.vue';
 import WorkflowTimeline from '@/Components/WorkflowTimeline.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 
 // A Laravel paginator: { data, links, from, to, total }.
-defineProps({ applications: { type: Object, default: () => ({ data: [], links: [] }) } });
+defineProps({
+    applications: { type: Object, default: () => ({ data: [], links: [] }) },
+    viewedApplicationIds: { type: Array, default: () => [] },
+});
+
+const issuedVoucher = (application) =>
+    (application.payment_transactions || []).map((payment) => payment.voucher).find((voucher) => !!voucher) || null;
+
+const hasViewedForm = (application, viewedApplicationIds) => viewedApplicationIds.includes(application.id);
 </script>
 
 <template>
@@ -21,6 +29,9 @@ defineProps({ applications: { type: Object, default: () => ({ data: [], links: [
             <p class="max-w-[70ch] text-sm text-gray-700">
                 Verified applications awaiting the second sign-off. What you review goes to an approver.
                 If the verifier's judgement looks wrong, send it back a stage rather than returning it to the applicant.
+            </p>
+            <p class="max-w-[70ch] text-xs text-amber-800">
+                Before clicking Mark Reviewed, open the application form once using View Application Form.
             </p>
 
             <article
@@ -49,11 +60,37 @@ defineProps({ applications: { type: Object, default: () => ({ data: [], links: [
                 </div>
 
                 <StageActions
+                    v-if="hasViewedForm(app, viewedApplicationIds)"
                     class="mt-4"
                     :action-url="route('reviewer.applications.act', app.id)"
                     :can-send-back="app.can_send_back"
                     approve-label="Mark Reviewed"
                 />
+
+                <p
+                    v-else
+                    class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900"
+                >
+                    View Application Form first, then Mark Reviewed becomes available.
+                </p>
+
+                <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                    <Link
+                        :href="route('admin.applications.show', app.id)"
+                        class="font-medium text-blue-700 hover:text-blue-900 hover:underline"
+                    >
+                        View Application Form
+                    </Link>
+                    <a
+                        v-if="issuedVoucher(app)"
+                        :href="route('vouchers.verify', { code: issuedVoucher(app).verification_code })"
+                        target="_blank"
+                        rel="noopener"
+                        class="font-medium text-emerald-700 hover:text-emerald-900 hover:underline"
+                    >
+                        Verify Voucher
+                    </a>
+                </div>
 
                 <details class="mt-4 border-t border-gray-100 pt-3">
                     <summary class="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">

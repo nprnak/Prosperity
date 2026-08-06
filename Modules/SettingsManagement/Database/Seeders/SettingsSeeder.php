@@ -16,6 +16,10 @@ class SettingsSeeder extends Seeder
                 'contact_email' => 'contact@prosperity.com',
                 'support_phone' => '',
                 'org_logo' => '',
+                'org_stamp' => '',
+                'receipt_verifier_user_id' => '',
+                'receipt_reviewer_user_id' => '',
+                'receipt_approver_user_id' => '',
             ],
             'mail' => [
                 'mail_host' => '',

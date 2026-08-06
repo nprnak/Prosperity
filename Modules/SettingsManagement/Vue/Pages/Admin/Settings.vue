@@ -11,6 +11,23 @@ const form = useForm({
     ...props.settings.application,
 });
 
+// preview helper for logo
+form.org_logo_preview = props.settings.organization?.org_logo || '';
+
+const onLogoChange = (e) => {
+    const file = e.target.files[0];
+    form.org_logo = file;
+    if (!file) {
+        form.org_logo_preview = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        form.org_logo_preview = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+};
+
 const save = () => {
     form.put(route('admin.settings.update'), { preserveScroll: true });
 };
@@ -46,6 +63,21 @@ const save = () => {
             <label class="mb-1 block text-sm font-medium text-gray-700">Address</label>
             <input v-model="form.org_address" class="w-full rounded-lg border border-gray-300 px-3 py-2" />
             <InputError :message="form.errors.org_address" class="mt-1" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="mb-1 block text-sm font-medium text-gray-700">Organization Logo</label>
+            <div class="flex items-center gap-4">
+              <div class="w-28 h-28 bg-gray-100 rounded flex items-center justify-center overflow-hidden border">
+                <img v-if="form.org_logo_preview" :src="form.org_logo_preview" alt="logo" class="object-contain w-full h-full" />
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7l9 6 9-6"/></svg>
+              </div>
+              <div>
+                <input type="file" @change="onLogoChange" accept="image/*" />
+                <p class="text-xs text-gray-500 mt-1">PNG or JPG, max 2MB. Used on receipts, vouchers and emails.</p>
+                <InputError :message="form.errors.org_logo" class="mt-1" />
+              </div>
+            </div>
           </div>
         </div>
       </div>

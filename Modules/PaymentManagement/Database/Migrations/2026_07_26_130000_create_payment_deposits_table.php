@@ -43,7 +43,10 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index(['payment_transaction_id', 'verification_status']);
+            $table->index(
+                ['payment_transaction_id', 'verification_status'],
+                'pd_txn_status_idx'
+            );
         });
     }
 

@@ -17,8 +17,12 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        // Clear any stale 2FA pending flag when showing the login page so a
+        // previous partially-completed flow doesn't block new logins.
+        $request->session()->forget('two_factor.pending');
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
@@ -30,6 +34,9 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request, TwoFactorService $twoFactor): RedirectResponse
     {
+        // Ensure any prior pending state is cleared before attempting auth.
+        $request->session()->forget('two_factor.pending');
+
         $request->authenticate();
 
         $request->session()->regenerate();

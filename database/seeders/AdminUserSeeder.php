@@ -12,83 +12,32 @@ class AdminUserSeeder extends Seeder
     {
         $password = Hash::make('password');
 
-        // Admin Users
-        $admins = [
-            ['email' => 'admin1@prosperity.com', 'name' => 'Admin One'],
-            ['email' => 'admin2@prosperity.com', 'name' => 'Admin Two'],
-            ['email' => 'admin3@prosperity.com', 'name' => 'Admin Three'],
+        // Keep a single seeded user per administrative role to simplify testing
+        $users = [
+            ['email' => 'superadmin@prosperity.com', 'name' => 'Super Admin', 'roles' => ['super_admin']],
+            ['email' => 'profile.verifier@prosperity.com', 'name' => 'Profile Verifier', 'roles' => ['profile_verifier']],
+            ['email' => 'profile.reviewer@prosperity.com', 'name' => 'Profile Reviewer', 'roles' => ['profile_reviewer']],
+            ['email' => 'profile.approver@prosperity.com', 'name' => 'Profile Approver', 'roles' => ['profile_approver']],
+            ['email' => 'application.verifier@prosperity.com', 'name' => 'Application Verifier', 'roles' => ['application_verifier']],
+            ['email' => 'application.reviewer@prosperity.com', 'name' => 'Application Reviewer', 'roles' => ['application_reviewer']],
+            ['email' => 'application.approver@prosperity.com', 'name' => 'Application Approver', 'roles' => ['application_approver']],
         ];
 
-        foreach ($admins as $admin) {
+        foreach ($users as $u) {
             $user = User::firstOrCreate(
-                ['email' => $admin['email']],
-                ['name' => $admin['name'], 'password' => $password, 'email_verified_at' => now()]
+                ['email' => $u['email']],
+                ['name' => $u['name'], 'password' => $password, 'email_verified_at' => now()]
             );
+
             if (! $user->email_verified_at) {
                 $user->forceFill(['email_verified_at' => now()])->save();
             }
-            $user->syncRoles(['super_admin']);
-            $this->command->info("✓ Admin user created: {$user->email}");
+
+            $user->syncRoles($u['roles']);
+            $this->command->info("✓ Created user: {$user->email} roles: ".implode(',', $u['roles']));
         }
 
-        // Finance Staff Users
-        $finance = [
-            ['email' => 'finance1@prosperity.com', 'name' => 'Finance Officer One'],
-            ['email' => 'finance2@prosperity.com', 'name' => 'Finance Officer Two'],
-        ];
-
-        foreach ($finance as $staff) {
-            $user = User::firstOrCreate(
-                ['email' => $staff['email']],
-                ['name' => $staff['name'], 'password' => $password, 'email_verified_at' => now()]
-            );
-            if (! $user->email_verified_at) {
-                $user->forceFill(['email_verified_at' => now()])->save();
-            }
-            $user->syncRoles(['finance_staff']);
-            $this->command->info("✓ Finance staff user created: {$user->email}");
-        }
-
-        // Approver Users
-        $approvers = [
-            ['email' => 'approver1@prosperity.com', 'name' => 'Approver One'],
-            ['email' => 'approver2@prosperity.com', 'name' => 'Approver Two'],
-        ];
-
-        foreach ($approvers as $approver) {
-            $user = User::firstOrCreate(
-                ['email' => $approver['email']],
-                ['name' => $approver['name'], 'password' => $password, 'email_verified_at' => now()]
-            );
-            if (! $user->email_verified_at) {
-                $user->forceFill(['email_verified_at' => now()])->save();
-            }
-            $user->syncRoles(['application_approver']);
-            $this->command->info("✓ Approver user created: {$user->email}");
-        }
-
-        // Applicant Users
-        $applicants = [
-            ['email' => 'applicant1@prosperity.com', 'name' => 'Raaj Sharma'],
-            ['email' => 'applicant2@prosperity.com', 'name' => 'Priya Poudel'],
-            ['email' => 'applicant3@prosperity.com', 'name' => 'Amit Nair'],
-            ['email' => 'applicant4@prosperity.com', 'name' => 'Deepa Khanal'],
-            ['email' => 'applicant5@prosperity.com', 'name' => 'Vikram Singh'],
-        ];
-
-        foreach ($applicants as $applicant) {
-            $user = User::firstOrCreate(
-                ['email' => $applicant['email']],
-                ['name' => $applicant['name'], 'password' => $password, 'email_verified_at' => now()]
-            );
-            if (! $user->email_verified_at) {
-                $user->forceFill(['email_verified_at' => now()])->save();
-            }
-            $user->syncRoles(['applicant']);
-            $this->command->info("✓ Applicant user created: {$user->email}");
-        }
-
-        $this->command->info("\n✓ All users created successfully!");
-        $this->command->info("Default password for all users: password\n");
+        $this->command->info("\n✓ Seeded core admin users.");
+        $this->command->info("Default password for seeded users: password\n");
     }
 }

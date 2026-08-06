@@ -19,6 +19,9 @@ class AdminSettingsController extends Controller
             $settings[$field['group']][$key] = $key === 'mail_password' ? '' : ($values[$key] ?? '');
         }
 
+        // include org_logo explicitly so the form can preview it
+        $settings['organization']['org_logo'] = $values['org_logo'] ?? '';
+
         return Inertia::render('Admin/Settings', [
             'settings' => $settings,
         ]);
@@ -29,7 +32,14 @@ class AdminSettingsController extends Controller
         $changed = [];
 
         foreach (UpdateSettingsRequest::fields() as $key => $field) {
-            $value = $request->validated($key);
+            // file handling for org_logo
+            if ($key === 'org_logo' && $request->hasFile('org_logo')) {
+                $file = $request->file('org_logo');
+                $path = $file->store('settings', 'public');
+                $value = '/storage/' . $path;
+            } else {
+                $value = $request->validated($key);
+            }
 
             // blank password means "keep the current one"
             if ($key === 'mail_password' && blank($value)) {

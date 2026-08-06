@@ -60,8 +60,8 @@ const submit = () => {
         <div class="relative mt-1">
           <TextInput :type="showPassword ? 'text' : 'password'" id="password" placeholder="Enter your password" class="block w-full pr-10" v-model="form.password" required autocomplete="current-password" />
           <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 end-0 px-3 flex items-center text-gray-500" :aria-pressed="showPassword">
-            <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2.94 6.94a9.97 9.97 0 0114.12 0 9.97 9.97 0 01-14.12 0z" opacity=".2"/><path d="M10 4c3.866 0 7.09 2.69 8.483 6.363-.265.74-.63 1.44-1.073 2.07C15.09 14.31 11.866 17 8 17c-3.866 0-7.09-2.69-8.483-6.363C.782 9.897 1.147 9.197 1.412 8.456 2.91 5.21 6.045 4 10 4z"/><path d="M10 8a2 2 0 100 4 2 2 0 000-4z"/></svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 010 1.414l-1 1A9.97 9.97 0 001.417 9.636C2.91 12.79 6.045 14 10 14c.92 0 1.807-.12 2.647-.344l1.873 1.873a1 1 0 001.414-1.414l-12-12a1 1 0 00-1.414 0z" clip-rule="evenodd"/></svg>
+            <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.85 21.85 0 015-7"/><path d="M1 1l22 22"/></svg>
           </button>
         </div>
         <InputError class="mt-2" :message="form.errors.password || clientErrors.password" />

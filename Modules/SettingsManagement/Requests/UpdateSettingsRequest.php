@@ -20,6 +20,7 @@ class UpdateSettingsRequest extends FormRequest
             'org_address' => ['group' => 'organization', 'rules' => ['nullable', 'string', 'max:500']],
             'contact_email' => ['group' => 'organization', 'rules' => ['required', 'email', 'max:255']],
             'support_phone' => ['group' => 'organization', 'rules' => ['nullable', 'string', 'max:50']],
+            'org_logo' => ['group' => 'organization', 'rules' => ['nullable', 'image', 'max:2048']],
 
             'mail_host' => ['group' => 'mail', 'rules' => ['nullable', 'string', 'max:255']],
             'mail_port' => ['group' => 'mail', 'rules' => ['nullable', 'integer', 'between:1,65535']],

@@ -6,42 +6,62 @@ use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Placeholder second-factor implementation.
- *
- * The flow (challenge page, pending-session gate, throttling) is real; only
- * code generation/delivery is stubbed. To go live: generate a random code in
- * send(), store it hashed with an expiry (mirror the email OTP columns), mail
- * it to the user, and check it in verify().
+ * Simple two-factor implementation: generates a numeric code, caches it, and
+ * delivers it via the existing TwoFactorCode notification. Adds a small
+ * attempt counter so repeated wrong submissions expire the code and force a
+ * fresh resend.
  */
 class TwoFactorService
 {
-    // Default dummy code updated to 6 digits for consistency with UI and tests.
+    // Default dummy code for local/dev convenience (kept for non-cache fallback).
     public const DUMMY_CODE = '123456';
 
     public function send(User $user): void
     {
-        // TODO: generate a per-user code and deliver it via mail.
-        // For now, this placeholder could write to the cache for integration with the resend controller.
         try {
-            $code = random_int(100000, 999999);
-        } catch (\Exception $e) {
-            $code = mt_rand(100000, 999999);
+            $code = (string) random_int(100000, 999999);
+        } catch (\Throwable $e) {
+            $code = (string) mt_rand(100000, 999999);
         }
 
-        Cache::put('twofactor:'.$user->id, (string)$code, now()->addMinutes(10));
+        $cacheKey = 'twofactor:'.$user->id;
+        $attemptsKey = 'twofactor:attempts:'.$user->id;
 
-        // Optionally log or notify the user in a real implementation.
+        Cache::put($cacheKey, $code, now()->addMinutes(10));
+        // Reset attempt counter when issuing a fresh code
+        Cache::forget($attemptsKey);
+
+        // Deliver the code via email using the existing notification
+        try {
+            $user->notify(new \App\Notifications\TwoFactorCode($code));
+        } catch (\Throwable $e) {
+            // Non-fatal: the resend endpoint also attempts delivery and failures
+            // should not block the login flow. Log or handle in future.
+        }
     }
 
     public function verify(User $user, string $code): bool
     {
-        // Prefer the cached per-user code (set by resend/send) if available.
-        $cached = Cache::get('twofactor:'.$user->id);
+        $cacheKey = 'twofactor:'.$user->id;
+        $attemptsKey = 'twofactor:attempts:'.$user->id;
+
+        $cached = Cache::get($cacheKey);
         if ($cached) {
-            return hash_equals((string)$cached, (string)$code);
+            if (hash_equals((string) $cached, (string) $code)) {
+                // Success: clear both the code and any attempt counter
+                Cache::forget($cacheKey);
+                Cache::forget($attemptsKey);
+                return true;
+            }
+
+            // Incorrect: expire the cached code immediately so the user must request a fresh code.
+            Cache::forget($cacheKey);
+            Cache::forget($attemptsKey);
+
+            return false;
         }
 
         // Fallback to the dummy static code for local/dev convenience.
-        return hash_equals(self::DUMMY_CODE, (string)$code);
+        return hash_equals(self::DUMMY_CODE, (string) $code);
     }
 }

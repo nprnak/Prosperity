@@ -39,23 +39,37 @@ const staffMenuItems = [
   { label: 'Activity Log', icon: '🔍', route: 'admin.logs', startsWith: '/admin/logs', permission: 'audit.view' },
 ];
 
-const personalMenuItems = [
-  { label: 'Share Application', icon: '🧾', route: 'applications.wizard', startsWith: '/applications', permission: 'application.submit' },
-  { label: 'Profile', icon: '👤', route: 'profile.edit', startsWith: '/profile' },
-  { label: 'Settings', icon: '🛠️', route: 'settings.edit', startsWith: '/settings' },
-];
+const isApplicant = computed(() => page.props.auth?.user?.roles?.some((role) => role.name === 'applicant') ?? false);
+
+const personalMenuItems = computed(() => {
+  const base = [
+    { label: 'Settings', icon: '🛠️', route: 'settings.edit', startsWith: '/settings', permission: 'settings.manage' },
+  ];
+
+  if (isApplicant.value) {
+    // Applicants should see their Profile and the Share Application entry in the panel
+    base.unshift(
+      { label: 'Share Application', icon: '🧾', route: 'applications.wizard', startsWith: '/applications', permission: 'application.submit' },
+      { label: 'Profile', icon: '👤', route: 'profile.edit', startsWith: '/profile', permission: null }
+    );
+  }
+
+  return base;
+});
 
 const visibleStaffItems = computed(() => staffMenuItems.filter((item) => can(item.permission)));
 const isStaff = computed(() => visibleStaffItems.value.length > 0);
 
 const menuItems = computed(() => {
+  const personal = personalMenuItems.value.filter((item) => item.permission ? can(item.permission) : true);
+
   if (isStaff.value) {
-    return [...visibleStaffItems.value, ...personalMenuItems.filter((item) => can(item.permission))];
+    return [...visibleStaffItems.value, ...personal];
   }
 
   return [
     { label: 'Dashboard ', icon: '🏠', route: 'dashboard', startsWith: '/dashboard' },
-    ...personalMenuItems.filter((item) => can(item.permission)),
+    ...personal,
   ];
 });
 
@@ -65,7 +79,7 @@ const panelSubheading = computed(() =>
     ? 'Access admin modules and user-side options'
     : isStaff.value
       ? 'Modules available to your role'
-      : 'Manage settings and share application',
+      : 'Manage settings',
 );
 const panelHeaderClass = 'bg-white';
 const activeClass = computed(() =>

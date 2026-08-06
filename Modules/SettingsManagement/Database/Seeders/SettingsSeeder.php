@@ -15,6 +15,7 @@ class SettingsSeeder extends Seeder
                 'org_address' => 'Kathmandu, Nepal',
                 'contact_email' => 'contact@prosperity.com',
                 'support_phone' => '',
+                'org_logo' => '',
             ],
             'mail' => [
                 'mail_host' => '',

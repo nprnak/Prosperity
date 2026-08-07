@@ -1,9 +1,34 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { useSidebar } from '@/Composables/useSidebar';
 import { computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import {
+  HomeIcon,
+  ChartBarIcon,
+  PuzzlePieceIcon,
+  UsersIcon,
+  UserGroupIcon,
+  BuildingOffice2Icon,
+  DocumentTextIcon,
+  CreditCardIcon,
+  BanknotesIcon,
+  MagnifyingGlassIcon,
+  ClipboardDocumentCheckIcon,
+  CheckCircleIcon,
+  ClipboardDocumentListIcon,
+  PresentationChartLineIcon,
+  Cog6ToothIcon,
+  BuildingLibraryIcon,
+  ClockIcon,
+  WrenchScrewdriverIcon,
+  PaperAirplaneIcon,
+  UserCircleIcon,
+  IdentificationIcon,
+} from '@heroicons/vue/24/outline';
 
 const page = usePage();
+const { expanded, mobileOpen, closeMobile } = useSidebar();
 
 // The seeded role is super_admin; there has never been one called 'admin'.
 const isAdmin = computed(() =>
@@ -11,47 +36,58 @@ const isAdmin = computed(() =>
 );
 
 const permissions = computed(() => page.props.auth?.permissions || []);
-const can = (permission) => !permission || permissions.value.includes(permission);
+// A permission can be a single string or an array meaning "any of these" —
+// the KYC review queue is gated the same way its route is: verify, review,
+// or approve on profiles, whichever stage the user holds.
+const can = (permission) => {
+  if (!permission) return true;
+  return Array.isArray(permission)
+    ? permission.some((p) => permissions.value.includes(p))
+    : permissions.value.includes(permission);
+};
 
 // Staff items appear only when the user holds the matching permission —
 // admins hold every permission, so they still see the full menu.
 const staffMenuItems = [
-  { label: 'Dashboard', icon: '📊', route: 'admin.dashboard', startsWith: '/admin/dashboard', permission: 'dashboard.view-admin' },
-  { label: 'Role Hub', icon: '🧩', route: 'admin.roles.hub', startsWith: '/admin/roles/hub', permission: 'user.manage' },
-  { label: 'Users', icon: '👥', route: 'admin.users', startsWith: '/admin/users', permission: 'user.manage' },
-  { label: 'Focal Persons', icon: '🤝', route: 'admin.focal-persons', startsWith: '/admin/focal-persons', permission: 'focal-person.manage' },
-  { label: 'Companies', icon: '🏢', route: 'admin.companies', startsWith: '/admin/companies', permission: 'company.manage' },
-  { label: 'Applications', icon: '📝', route: 'admin.applications', startsWith: '/admin/applications', permission: 'application.view-any' },
-  { label: 'Payments', icon: '💳', route: 'admin.payments', startsWith: '/admin/payments', permission: 'payment.view-any' },
-  { label: 'Payment Methods', icon: '🏦', route: 'admin.payment-methods', startsWith: '/admin/payment-methods', permission: 'payment-method.manage' },
+  { label: 'Dashboard', icon: ChartBarIcon, route: 'admin.dashboard', startsWith: '/admin/dashboard', permission: 'dashboard.view-admin' },
+  { label: 'Role Hub', icon: PuzzlePieceIcon, route: 'admin.roles.hub', startsWith: '/admin/roles/hub', permission: 'user.manage' },
+  { label: 'Users', icon: UsersIcon, route: 'admin.users', startsWith: '/admin/users', permission: 'user.manage' },
+  { label: 'Focal Persons', icon: UserGroupIcon, route: 'admin.focal-persons', startsWith: '/admin/focal-persons', permission: 'focal-person.manage' },
+  { label: 'Companies', icon: BuildingOffice2Icon, route: 'admin.companies', startsWith: '/admin/companies', permission: 'company.manage' },
+  { label: 'Applications', icon: DocumentTextIcon, route: 'admin.applications', startsWith: '/admin/applications', permission: 'application.view-any' },
+  { label: 'Payments', icon: CreditCardIcon, route: 'admin.payments', startsWith: '/admin/payments', permission: 'payment.view-any' },
+  { label: 'Payment Methods', icon: BanknotesIcon, route: 'admin.payment-methods', startsWith: '/admin/payment-methods', permission: 'payment-method.manage' },
+  // The KYC chain (profile.*) is separate from the application chain
+  // (application.*) below — a user can hold either or both, so this is
+  // gated on any of the three profile stages rather than one.
+  { label: 'Profile Review', icon: IdentificationIcon, route: 'applicants.review', startsWith: '/applicants/review', permission: ['profile.verify', 'profile.review', 'profile.approve'] },
   // Each review stage reaches its own queue: a verifier who lands on the
   // applications list otherwise has no way back to the work waiting for them.
-  { label: 'Verifications', icon: '🔎', route: 'verifier.dashboard', startsWith: '/verifier', permission: 'application.verify' },
-  { label: 'Reviews', icon: '📑', route: 'reviewer.dashboard', startsWith: '/reviewer', permission: 'application.review' },
-  { label: 'Approvals', icon: '✅', route: 'approver.dashboard', startsWith: '/approver', permission: 'application.approve' },
+  { label: 'Verifications', icon: MagnifyingGlassIcon, route: 'verifier.dashboard', startsWith: '/verifier', permission: 'application.verify' },
+  { label: 'Reviews', icon: ClipboardDocumentCheckIcon, route: 'reviewer.dashboard', startsWith: '/reviewer', permission: 'application.review' },
+  { label: 'Approvals', icon: CheckCircleIcon, route: 'approver.dashboard', startsWith: '/approver', permission: 'application.approve' },
   // Points at the register, which is where allotments are actually recorded,
   // and gated on the permission that page requires — admin.allotments needs
   // allotment.view-any, so gating on manage sent approvers to a 403.
-  { label: 'Allotments', icon: '📋', route: 'allotments.register', startsWith: '/allotments', permission: 'allotment.manage' },
-  { label: 'Reports', icon: '📈', route: 'admin.reports', startsWith: '/admin/reports', permission: 'report.view' },
-  { label: 'Admin Settings', icon: '⚙️', route: 'admin.credentials', startsWith: '/admin/credentials', permission: 'settings.manage' },
-  { label: 'Site Settings', icon: '🏛️', route: 'admin.settings', startsWith: '/admin/settings', permission: 'settings.manage' },
-  { label: 'Activity Log', icon: '🔍', route: 'admin.logs', startsWith: '/admin/logs', permission: 'audit.view' },
+  { label: 'Allotments', icon: ClipboardDocumentListIcon, route: 'allotments.register', startsWith: '/allotments', permission: 'allotment.manage' },
+  { label: 'Reports', icon: PresentationChartLineIcon, route: 'admin.reports', startsWith: '/admin/reports', permission: 'report.view' },
+  { label: 'Admin Settings', icon: Cog6ToothIcon, route: 'admin.credentials', startsWith: '/admin/credentials', permission: 'settings.manage' },
+  { label: 'Site Settings', icon: BuildingLibraryIcon, route: 'admin.settings', startsWith: '/admin/settings', permission: 'settings.manage' },
+  { label: 'Activity Log', icon: ClockIcon, route: 'admin.logs', startsWith: '/admin/logs', permission: 'audit.view' },
 ];
 
 const isApplicant = computed(() => page.props.auth?.user?.roles?.some((role) => role.name === 'applicant') ?? false);
 
 const personalMenuItems = computed(() => {
+  // Everyone gets a way back to their own profile, staff included.
   const base = [
-    { label: 'Settings', icon: '🛠️', route: 'settings.edit', startsWith: '/settings', permission: 'settings.manage' },
+    { label: 'Profile', icon: UserCircleIcon, route: 'profile.edit', startsWith: '/profile', permission: null },
+    { label: 'Settings', icon: WrenchScrewdriverIcon, route: 'settings.edit', startsWith: '/settings', permission: 'settings.manage' },
   ];
 
   if (isApplicant.value) {
-    // Applicants should see their Profile and the Share Application entry in the panel
-    base.unshift(
-      { label: 'Share Application', icon: '🧾', route: 'applications.wizard', startsWith: '/applications', permission: 'application.submit' },
-      { label: 'Profile', icon: '👤', route: 'profile.edit', startsWith: '/profile', permission: null }
-    );
+    // Applicants additionally get the Share Application entry, placed first.
+    base.unshift({ label: 'Share Application', icon: PaperAirplaneIcon, route: 'applications.wizard', startsWith: '/applications', permission: 'application.submit' });
   }
 
   return base;
@@ -68,7 +104,7 @@ const menuItems = computed(() => {
   }
 
   return [
-    { label: 'Dashboard ', icon: '🏠', route: 'dashboard', startsWith: '/dashboard' },
+    { label: 'Dashboard', icon: HomeIcon, route: 'dashboard', startsWith: '/dashboard' },
     ...personal,
   ];
 });
@@ -81,59 +117,71 @@ const panelSubheading = computed(() =>
       ? 'Modules available to your role'
       : 'Manage settings',
 );
-const panelHeaderClass = 'bg-white';
-const activeClass = computed(() =>
-  isAdmin.value
-    ? 'bg-blue-50 border-l-4 border-blue-700 font-semibold text-blue-800'
-    : 'bg-sky-50 border-l-4 border-sky-700 font-semibold text-sky-800',
-);
 
 const isActive = (item) => page.url.startsWith(item.startsWith);
 </script>
 
 <template>
   <AuthenticatedLayout>
-    <div class="min-h-screen bg-slate-100/70">
-      <div :class="['border-b shadow-sm', panelHeaderClass]">
-        <div class="flex items-center justify-between px-4 py-3 mx-auto max-w-screen-xl sm:px-6">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Prosperity CMS</p>
-            <h1 class="text-base font-bold text-slate-900 sm:text-lg">{{ panelHeading }}</h1>
-          </div>
-          <div class="px-3 py-1 text-xs text-slate-700 border rounded border-gray-200 bg-gray-50">
-            {{ panelSubheading }}
-          </div>
-        </div>
-      </div>
+    <template v-if="$slots.header" #header>
+      <slot name="header" />
+    </template>
 
-      <div class="px-4 py-6 mx-auto max-w-screen-xl sm:px-6">
-      <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
-        <div class="md:col-span-1">
-          <div class="overflow-hidden bg-white border rounded-md shadow-sm border-slate-200">
-            <div class="px-4 py-3 border-b border-slate-200 bg-slate-50">
-              <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-700">Navigation</h2>
+    <div class="relative min-h-[calc(100vh-4rem)]">
+      <!-- Mobile backdrop -->
+      <div
+        v-if="mobileOpen"
+        class="fixed inset-0 z-30 bg-slate-900/50 md:hidden"
+        @click="closeMobile"
+      />
+
+      <!-- Sidebar -->
+      <aside
+        :class="[
+          'fixed inset-y-0 top-16 z-40 flex h-[calc(100vh-4rem)] flex-col overflow-y-auto border-r border-slate-200 bg-white shadow-sm transition-all duration-200 ease-in-out',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          'md:translate-x-0',
+          expanded ? 'w-72 md:w-64' : 'w-72 md:w-16',
+        ]"
+      >
+        <nav class="flex-1 space-y-1 px-2 py-4">
+          <Link
+            v-for="item in menuItems"
+            :key="item.route"
+            :href="route(item.route)"
+            :title="item.label"
+            :class="[
+              'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition',
+              isActive(item)
+                ? 'bg-brand-50 font-semibold text-brand'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+              !expanded && 'md:justify-center',
+            ]"
+            @click="closeMobile"
+          >
+            <component :is="item.icon" class="h-5 w-5 shrink-0" />
+            <span :class="!expanded && 'md:hidden'">{{ item.label }}</span>
+          </Link>
+        </nav>
+      </aside>
+
+      <!-- Content -->
+      <div :class="['transition-all duration-200 ease-in-out', expanded ? 'md:ml-64' : 'md:ml-16']">
+        <div class="border-b border-slate-200 bg-white shadow-sm">
+          <div class="flex items-center justify-between px-4 py-3 sm:px-6">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Prosperity CMS</p>
+              <h1 class="text-base font-bold text-slate-900 sm:text-lg">{{ panelHeading }}</h1>
             </div>
-            <nav class="divide-y divide-slate-100">
-              <Link
-                v-for="item in menuItems"
-                :key="item.route"
-                :href="route(item.route)"
-                :class="[
-                  'flex items-center px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition border-l-4 border-transparent',
-                  isActive(item) ? activeClass : '',
-                ]"
-              >
-                <span class="inline-flex items-center justify-center w-6 h-6 mr-3 text-xs rounded bg-slate-100">{{ item.icon }}</span>
-                <span class="font-medium">{{ item.label }}</span>
-              </Link>
-            </nav>
+            <div class="hidden rounded border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 sm:block">
+              {{ panelSubheading }}
+            </div>
           </div>
         </div>
 
-        <div class="md:col-span-3">
+        <div class="px-4 py-6 sm:px-6">
           <slot />
         </div>
-      </div>
       </div>
     </div>
   </AuthenticatedLayout>

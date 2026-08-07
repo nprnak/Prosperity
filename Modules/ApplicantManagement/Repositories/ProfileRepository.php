@@ -61,7 +61,7 @@ class ProfileRepository extends Repository
      * only if this user already acted at a *different* stage of the current
      * cycle, since repeating your own stage after a send-back is allowed.
      */
-    public function pendingForUser(User $user, int $perPage = 15): LengthAwarePaginator
+    public function pendingForUser(User $user, int $perPage = 15, ?string $search = null): LengthAwarePaginator
     {
         $actionable = array_filter(
             ProfileStatus::cases(),
@@ -84,6 +84,7 @@ class ProfileRepository extends Repository
                             ->where('stage', '!=', $status->pendingStage()->value)));
                 }
             })
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
             ->with('workflowEvents.actor:id,name')
             ->orderBy('profile_submitted_at')
             ->paginate($perPage)
@@ -95,13 +96,27 @@ class ProfileRepository extends Repository
      * parameter so moving through it does not reset the pending queue, which
      * sits on the same screen.
      */
-    public function recentlyReviewed(int $perPage = 10): LengthAwarePaginator
+    public function recentlyReviewed(int $perPage = 10, ?string $search = null): LengthAwarePaginator
     {
         return $this->query()
             ->whereIn('profile_status', [ProfileStatus::Approved, ProfileStatus::Returned])
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
             ->with('workflowEvents.actor:id,name')
             ->latest('updated_at')
             ->paginate($perPage, ['*'], 'decided')
             ->withQueryString();
+    }
+
+    /**
+     * Matches a name, mobile number or citizenship number, so staff can find
+     * a profile with whichever detail they have on hand.
+     */
+    private function applySearch($query, string $search)
+    {
+        return $query->where(function ($outer) use ($search) {
+            $outer->where('full_name_en', 'like', "%{$search}%")
+                ->orWhere('mobile', 'like', "%{$search}%")
+                ->orWhere('citizenship_number', 'like', "%{$search}%");
+        });
     }
 }

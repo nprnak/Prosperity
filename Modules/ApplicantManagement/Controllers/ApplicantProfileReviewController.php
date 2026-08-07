@@ -33,9 +33,12 @@ class ApplicantProfileReviewController extends Controller
 
     public function queue(Request $request)
     {
+        $search = $request->query('q');
+
         return Inertia::render('Applicants/ReviewQueue', [
-            'pending' => $this->profiles->pendingForUser($request->user()),
-            'recentlyReviewed' => $this->profiles->recentlyReviewed(),
+            'pending' => $this->profiles->pendingForUser($request->user(), search: $search),
+            'recentlyReviewed' => $this->profiles->recentlyReviewed(search: $search),
+            'filters' => ['q' => $search],
         ]);
     }
 

@@ -26,10 +26,13 @@ class VerifierController extends ApplicationStageController
 
     public function dashboard(Request $request)
     {
+        $search = $request->query('q');
+
         $pending = $this->applications->pendingForStage(
             $this->stage(),
             $request->user(),
             ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
+            search: $search,
         );
 
         $viewedApplicationIds = [];
@@ -46,7 +49,9 @@ class VerifierController extends ApplicationStageController
             'verifiedByMe' => $this->applications->verifiedByUser(
                 $request->user(),
                 ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
+                search: $search,
             ),
+            'filters' => ['q' => $search],
         ]);
     }
 

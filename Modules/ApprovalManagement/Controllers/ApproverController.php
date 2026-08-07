@@ -35,10 +35,13 @@ class ApproverController extends ApplicationStageController
 
     public function dashboard(Request $request)
     {
+        $search = $request->query('q');
+
         $applications = $this->applications->pendingForStage(
             $this->stage(),
             $request->user(),
             ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
+            search: $search,
         );
 
         $viewedApplicationIds = [];
@@ -55,7 +58,9 @@ class ApproverController extends ApplicationStageController
             'approvedByMe' => $this->applications->approvedByUser(
                 $request->user(),
                 ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
+                search: $search,
             ),
+            'filters' => ['q' => $search],
         ]);
     }
 

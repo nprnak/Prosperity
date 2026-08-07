@@ -1,5 +1,5 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import PanelLayout from '@/Layouts/PanelLayout.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({ allotments: Array, pendingApplications: Array, totalShares: Number, filters: Object });
@@ -15,9 +15,9 @@ const applyFilters = (event) => {
 
 <template>
   <Head title="Shareholder Register" />
-  <AuthenticatedLayout>
+  <PanelLayout>
     <template #header><h2 class="font-semibold text-xl">Shareholder Register</h2></template>
-    <div class="py-8 max-w-6xl mx-auto space-y-4">
+    <div class="max-w-6xl mx-auto space-y-4">
       <div class="bg-white rounded shadow p-4">Total shares allotted: <strong>{{ totalShares }}</strong></div>
       <div class="bg-white rounded shadow p-4">
         <Link :href="route('allotments.export')" class="px-3 py-2 bg-indigo-600 text-white rounded">Export Excel/CSV</Link>
@@ -47,5 +47,5 @@ const applyFilters = (event) => {
         </table>
       </div>
     </div>
-  </AuthenticatedLayout>
+  </PanelLayout>
 </template>

@@ -25,10 +25,13 @@ class ReviewerController extends ApplicationStageController
 
     public function dashboard(Request $request)
     {
+        $search = $request->query('q');
+
         $applications = $this->applications->pendingForStage(
             $this->stage(),
             $request->user(),
             ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
+            search: $search,
         );
 
         $viewedApplicationIds = [];
@@ -42,6 +45,12 @@ class ReviewerController extends ApplicationStageController
         return Inertia::render($this->view(), [
             'applications' => $applications,
             'viewedApplicationIds' => $viewedApplicationIds,
+            'reviewedByMe' => $this->applications->reviewedByUser(
+                $request->user(),
+                ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
+                search: $search,
+            ),
+            'filters' => ['q' => $search],
         ]);
     }
 

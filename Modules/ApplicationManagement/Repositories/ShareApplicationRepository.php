@@ -84,6 +84,7 @@ class ShareApplicationRepository extends Repository
         User $user,
         array $with = [],
         int $perPage = 15,
+        ?string $search = null,
     ): LengthAwarePaginator {
         $statuses = array_filter(
             ApplicationStatus::cases(),
@@ -96,6 +97,7 @@ class ShareApplicationRepository extends Repository
                 ->where('actor_id', $user->id)
                 ->whereColumn('workflow_events.cycle', 'share_applications.workflow_cycle')
                 ->where('stage', '!=', $stage->value))
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
             ->with($with)
             ->latest()
             ->paginate($perPage)
@@ -109,15 +111,38 @@ class ShareApplicationRepository extends Repository
         User $user,
         array $with = [],
         int $perPage = 15,
+        ?string $search = null,
     ): LengthAwarePaginator {
         return $this->query()
             ->whereHas('workflowEvents', fn ($event) => $event
                 ->where('actor_id', $user->id)
                 ->where('stage', WorkflowStage::Verifier->value)
                 ->where('action', 'approve'))
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
             ->with($with)
             ->latest()
             ->paginate($perPage, ['*'], 'verified_page')
+            ->withQueryString();
+    }
+
+    /**
+     * Applications this reviewer has signed off at stage 2.
+     */
+    public function reviewedByUser(
+        User $user,
+        array $with = [],
+        int $perPage = 15,
+        ?string $search = null,
+    ): LengthAwarePaginator {
+        return $this->query()
+            ->whereHas('workflowEvents', fn ($event) => $event
+                ->where('actor_id', $user->id)
+                ->where('stage', WorkflowStage::Reviewer->value)
+                ->where('action', 'approve'))
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
+            ->with($with)
+            ->latest()
+            ->paginate($perPage, ['*'], 'reviewed_page')
             ->withQueryString();
     }
 
@@ -128,16 +153,31 @@ class ShareApplicationRepository extends Repository
         User $user,
         array $with = [],
         int $perPage = 15,
+        ?string $search = null,
     ): LengthAwarePaginator {
         return $this->query()
             ->whereHas('workflowEvents', fn ($event) => $event
                 ->where('actor_id', $user->id)
                 ->where('stage', WorkflowStage::Approver->value)
                 ->where('action', 'approve'))
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
             ->with($with)
             ->latest()
             ->paginate($perPage, ['*'], 'approved_page')
             ->withQueryString();
+    }
+
+    /**
+     * Matches the application number or the applicant's name, so the same box
+     * finds a record whether staff have the number or just a name to go on.
+     */
+    private function applySearch($query, string $search)
+    {
+        return $query->where(function ($outer) use ($search) {
+            $outer->where('application_number', 'like', "%{$search}%")
+                ->orWhereHas('applicant', fn ($applicant) => $applicant
+                    ->where('full_name_en', 'like', "%{$search}%"));
+        });
     }
 
     public function listByStatus(ApplicationStatus|string|array $status, array $with = []): Collection

@@ -17,7 +17,15 @@
             $pageFile = "resources/js/Pages/{$page['component']}.vue";
             if (! file_exists(base_path($pageFile))) {
                 $moduleMatch = glob(base_path("Modules/*/Vue/Pages/{$page['component']}.vue"));
-                $pageFile = $moduleMatch ? ltrim(str_replace(base_path(), '', $moduleMatch[0]), '/') : null;
+                if ($moduleMatch) {
+                    // Windows mixes \ and / between base_path() and glob()'s match, which
+                    // would otherwise leave a stray backslash the manifest key can't match.
+                    $normalizedBase = str_replace('\\', '/', base_path());
+                    $normalizedMatch = str_replace('\\', '/', $moduleMatch[0]);
+                    $pageFile = ltrim(str_replace($normalizedBase, '', $normalizedMatch), '/');
+                } else {
+                    $pageFile = null;
+                }
             }
         @endphp
         @vite(array_filter(['resources/js/app.js', $pageFile]))

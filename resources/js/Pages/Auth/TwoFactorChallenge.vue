@@ -75,7 +75,7 @@ const submit = () => {
 };
 
 const resend = () => {
-  // Best-effort resend: call verification.otp if available. Send email if stored from login flow.
+  // Best-effort resend: call two-factor.resend if available. Send email if stored from login flow.
   const email = localStorage.getItem('last_auth_email');
   const headers = { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' };
   let options = { method: 'POST', headers };
@@ -83,7 +83,7 @@ const resend = () => {
     headers['Content-Type'] = 'application/json';
     options.body = JSON.stringify({ email });
   }
-  fetch(route('verification.otp'), options)
+  fetch(route('two-factor.resend'), options)
     .then(() => startTimer())
     .catch(() => startTimer());
 };

@@ -17,6 +17,6 @@ Route::post('/notifications/mark-read', [\App\Http\Controllers\NotificationContr
 
 use App\Http\Controllers\Auth\TwoFactorResendController;
 
-Route::post('/verification/otp', [TwoFactorResendController::class, 'resend'])->name('verification.otp');
+Route::post('/verification/otp', [TwoFactorResendController::class, 'resend'])->name('two-factor.resend');
 
 require __DIR__.'/auth.php';

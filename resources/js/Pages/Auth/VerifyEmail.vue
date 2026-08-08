@@ -19,7 +19,7 @@ const resend = () => {
 };
 
 const submitOtp = () => {
-    otpForm.post(route('verification.otp'));
+    otpForm.post(route('verification.email.otp'));
 };
 
 const verificationLinkSent = computed(

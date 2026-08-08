@@ -52,7 +52,7 @@ Route::middleware('auth')->group(function () {
 
     Route::post('verify-email/otp', [\App\Http\Controllers\Auth\VerifyEmailOtpController::class, 'store'])
         ->middleware('throttle:6,1')
-        ->name('verification.otp');
+        ->name('verification.email.otp');
 
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
         ->middleware('throttle:6,1')

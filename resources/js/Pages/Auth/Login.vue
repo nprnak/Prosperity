@@ -21,9 +21,11 @@ const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 watch(() => form.email, (val) => {
   clientErrors.value.email = val && !emailRx.test(val) ? 'Enter a valid email address' : '';
+  form.clearErrors('email', 'password');
 });
 watch(() => form.password, (val) => {
   clientErrors.value.password = val && val.length < 6 ? 'Password must be at least 6 characters' : '';
+  form.clearErrors('email', 'password');
 });
 
 const hasErrors = computed(() => Object.keys(form.errors).length || Object.values(clientErrors.value).some(Boolean));

@@ -25,6 +25,8 @@ import {
   PaperAirplaneIcon,
   UserCircleIcon,
   IdentificationIcon,
+  UserPlusIcon,
+  DocumentPlusIcon,
 } from '@heroicons/vue/24/outline';
 
 const page = usePage();
@@ -61,9 +63,13 @@ const staffMenuItems = [
   // (application.*) below — a user can hold either or both, so this is
   // gated on any of the three profile stages rather than one.
   { label: 'Profile Review', icon: IdentificationIcon, route: 'applicants.review', startsWith: '/applicants/review', permission: ['profile.verify', 'profile.review', 'profile.approve'] },
+  // Paper-based entry: only the Verifier stage transcribes a walk-in's form,
+  // since submitting also records their own sign-off for that stage.
+  { label: 'Add Applicant', icon: UserPlusIcon, route: 'applicants.add.create', startsWith: '/applicants/add', permission: 'profile.verify' },
   // Each review stage reaches its own queue: a verifier who lands on the
   // applications list otherwise has no way back to the work waiting for them.
   { label: 'Verifications', icon: MagnifyingGlassIcon, route: 'verifier.dashboard', startsWith: '/verifier', permission: 'application.verify' },
+  { label: 'Add Application', icon: DocumentPlusIcon, route: 'applications.add.pick', startsWith: '/applications/add', permission: 'application.verify' },
   { label: 'Reviews', icon: ClipboardDocumentCheckIcon, route: 'reviewer.dashboard', startsWith: '/reviewer', permission: 'application.review' },
   { label: 'Approvals', icon: CheckCircleIcon, route: 'approver.dashboard', startsWith: '/approver', permission: 'application.approve' },
   // Points at the register, which is where allotments are actually recorded,
@@ -82,7 +88,11 @@ const personalMenuItems = computed(() => {
   // Everyone gets a way back to their own profile, staff included.
   const base = [
     { label: 'Profile', icon: UserCircleIcon, route: 'profile.edit', startsWith: '/profile', permission: null },
-    { label: 'Settings', icon: WrenchScrewdriverIcon, route: 'settings.edit', startsWith: '/settings', permission: 'settings.manage' },
+    // Personal login-details/password/signature page — the route itself
+    // has no permission gate, so every authenticated user should see it.
+    // (Not to be confused with the admin-only Admin/Site Settings above,
+    // which really are gated on settings.manage.)
+    { label: 'Settings', icon: WrenchScrewdriverIcon, route: 'settings.edit', startsWith: '/settings', permission: null },
   ];
 
   if (isApplicant.value) {

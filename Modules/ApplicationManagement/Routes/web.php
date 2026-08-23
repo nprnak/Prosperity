@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\ApplicationManagement\Controllers\AdminApplicationsController;
 use Modules\ApplicationManagement\Controllers\ApplicationWizardController;
+use Modules\ApplicationManagement\Controllers\StaffApplicationController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('can:application.submit')->group(function () {
@@ -10,6 +11,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/applications/draft', [ApplicationWizardController::class, 'storeDraft'])->name('applications.draft');
         // Ownership of {application} is enforced by ShareApplicationPolicy::submit.
         Route::post('/applications/{application}/submit', [ApplicationWizardController::class, 'submit'])->name('applications.submit');
+    });
+
+    // An Application Verifier filing a paper application for an already
+    // KYC-approved applicant. Gated on application.verify alone — this is
+    // the verify stage's own work, done by transcription instead of
+    // reviewing something already submitted.
+    Route::middleware('permission:application.verify')->group(function () {
+        Route::get('/applications/add', [StaffApplicationController::class, 'pickApplicant'])->name('applications.add.pick');
+        Route::get('/applications/add/{applicant}', [StaffApplicationController::class, 'create'])->name('applications.add.create');
+        Route::post('/applications/add/{applicant}/draft', [StaffApplicationController::class, 'storeDraft'])->name('applications.add.draft');
+        Route::post('/applications/add/{applicant}/{application}/submit', [StaffApplicationController::class, 'submitAndVerify'])
+            ->whereNumber('application')->name('applications.add.submit');
     });
 
     // Ownership of {application} is enforced by ShareApplicationPolicy::view.

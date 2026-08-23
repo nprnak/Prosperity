@@ -78,11 +78,11 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function sendEmailVerificationNotification(): void
     {
-        $otp = (string) random_int(100000, 999999);
+        $otp = '246810'; // TODO: replace with (string) random_int(100000, 999999) after testing
 
         $this->forceFill([
             // 'email_otp_code' => Hash::make($otp),
-            'email_otp_code' => '246810', // TODO: remove this hardcoded value after testing
+            'email_otp_code' => $otp,
             'email_otp_expires_at' => now()->addMinutes(10),
         ])->save();
 

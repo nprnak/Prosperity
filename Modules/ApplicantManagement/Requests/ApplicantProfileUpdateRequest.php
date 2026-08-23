@@ -19,6 +19,16 @@ class ApplicantProfileUpdateRequest extends FormRequest
         return $this->user() !== null;
     }
 
+    /**
+     * Whose profile this request fills in. A KYC Verifier entering a paper
+     * form routes through {applicant}; the applicant's own submission has no
+     * such route parameter and falls back to themselves.
+     */
+    protected function targetUserId(): ?int
+    {
+        return $this->route('applicant')?->id ?? $this->user()?->id;
+    }
+
     public function rules(): array
     {
         return [
@@ -92,7 +102,7 @@ class ApplicantProfileUpdateRequest extends FormRequest
             'declarations.terms' => ['accepted'],
 
             // MeroShare / C-ASBA
-            'boid' => ['required', 'digits:16', Rule::unique('profiles', 'boid')->ignore($this->user()?->id, 'user_id')],
+            'boid' => ['required', 'digits:16', Rule::unique('profiles', 'boid')->ignore($this->targetUserId(), 'user_id')],
             'bank_name' => ['required', 'string', 'max:255'],
             'bank_code' => ['nullable', 'string', 'max:20'],
             'bank_branch' => ['required', 'string', 'max:255'],
@@ -119,7 +129,7 @@ class ApplicantProfileUpdateRequest extends FormRequest
         $maxKb = (int) Setting::get('max_upload_size_kb', 5120);
 
         $alreadyUploaded = Profile::query()
-            ->where('user_id', $this->user()?->id)
+            ->where('user_id', $this->targetUserId())
             ->whereHas('documents', fn ($q) => $q->where('document_type', $documentType))
             ->exists();
 

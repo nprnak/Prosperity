@@ -5,9 +5,21 @@ import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { computed, watch, ref, reactive } from 'vue';
 
+// Defaults reproduce the applicant's own self-service form exactly. A KYC
+// Verifier entering someone else's paper KYC (Applicants/StaffKycForm.vue)
+// overrides all four so the form saves to, and previews documents for, the
+// applicant it was opened for rather than the logged-in staff member.
+const props = defineProps({
+    applicantUser: { type: Object, default: null },
+    submitRouteName: { type: String, default: 'profile.applicant.update' },
+    submitRouteParams: { type: [Object, Array], default: () => ({}) },
+    documentRouteName: { type: String, default: 'profile.documents.show' },
+    documentRouteParams: { type: Object, default: () => ({}) },
+});
+
 const page = usePage();
 const profile = page.props.profile || {};
-const user = page.props.auth.user;
+const user = props.applicantUser || page.props.auth.user;
 const geography = page.props.geography || { provinces: [], districts: [], localLevels: [] };
 // Enum-backed option lists, shared from ProfileController::edit.
 const options = page.props.options || {
@@ -238,8 +250,8 @@ const documentTypeByInput = {
 const hasDocument = (input) =>
     (profile.documents || []).some((document) => document.document_type === documentTypeByInput[input]);
 
-const previewLink = (routeType) => route('profile.documents.show', { type: routeType, mode: 'preview' });
-const downloadLink = (routeType) => route('profile.documents.show', { type: routeType, mode: 'download' });
+const previewLink = (routeType) => route(props.documentRouteName, { ...props.documentRouteParams, type: routeType, mode: 'preview' });
+const downloadLink = (routeType) => route(props.documentRouteName, { ...props.documentRouteParams, type: routeType, mode: 'download' });
 
 const addExperience = () =>
     form.experiences.push({ organization_name: '', address: '', position: '', years: '' });
@@ -267,7 +279,7 @@ const emit = defineEmits(['saved']);
 
 const submit = () => {
     if (locked.value) return;
-    form.patch(route('profile.applicant.update'), {
+    form.patch(route(props.submitRouteName, props.submitRouteParams), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {

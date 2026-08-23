@@ -17,7 +17,20 @@ const props = defineProps({
   // {code, name} of whoever this application is currently credited to, seeded
   // from the applicant's default on a first draft.
   focalPerson: { type: Object, default: null },
+
+  // Staff mode: an Application Verifier filing a paper application on behalf
+  // of an already KYC-approved applicant (Applications/PickApplicant.vue →
+  // this page). When set, the draft/submit routes below target that
+  // applicant instead of the logged-in staff member, and submitting also
+  // records the verifier's own sign-off. Null in the normal self-service case.
+  staffApplicant: { type: Object, default: null },
+  draftRouteName: { type: String, default: 'applications.draft' },
+  draftRouteParams: { type: [Object, Array], default: () => ({}) },
+  submitRouteName: { type: String, default: 'applications.submit' },
+  submitRouteParams: { type: Object, default: () => ({}) },
 });
+
+const staffRemarks = ref('');
 
 // A deposit cannot have been made tomorrow.
 const today = new Date().toISOString().slice(0, 10);
@@ -198,7 +211,7 @@ const inputClass = (field) => {
 };
 
 const saveDraft = () => {
-  form.post(route('applications.draft'), {
+  form.post(route(props.draftRouteName, props.draftRouteParams), {
     forceFormData: true,
     preserveScroll: true,
     // Inertia keeps component state across a POST, so without this the rows
@@ -220,9 +233,12 @@ const saveDraft = () => {
 const submitFinal = () => {
   const id = props.draft?.id;
   if (!id || !profileReady.value) return;
-  useForm({
-    declaration_accepted: form.payload.declaration_accepted,
-  }).post(route('applications.submit', id));
+  if (props.staffApplicant && !staffRemarks.value.trim()) return;
+
+  const payload = { declaration_accepted: form.payload.declaration_accepted };
+  if (props.staffApplicant) payload.remarks = staffRemarks.value;
+
+  useForm(payload).post(route(props.submitRouteName, { ...props.submitRouteParams, application: id }));
 };
 </script>
 
@@ -231,10 +247,19 @@ const submitFinal = () => {
   <PanelLayout>
     <div class="py-8 max-w-6xl mx-auto space-y-6 px-4 sm:px-6">
       <div class="rounded-2xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-700 p-6 text-white shadow-lg">
-        <h3 class="text-2xl font-semibold">Share Application Portal</h3>
-        <p class="mt-2 text-sm text-blue-100">
-          Register first, login, complete your full profile, then apply for shares from the same account.
-        </p>
+        <template v-if="staffApplicant">
+          <h3 class="text-2xl font-semibold">Filing a Paper Application</h3>
+          <p class="mt-2 text-sm text-blue-100">
+            For {{ staffApplicant.name }} ({{ staffApplicant.email }}). Submitting also records your own
+            verification of this application, forwarding it straight to the review team.
+          </p>
+        </template>
+        <template v-else>
+          <h3 class="text-2xl font-semibold">Share Application Portal</h3>
+          <p class="mt-2 text-sm text-blue-100">
+            Register first, login, complete your full profile, then apply for shares from the same account.
+          </p>
+        </template>
       </div>
 
       <div v-if="applicationInReview" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
@@ -531,6 +556,19 @@ const submitFinal = () => {
           <InputError :message="payloadError('declaration_accepted') || form.errors.declaration_accepted" class="mt-2" />
         </section>
 
+        <section v-if="staffApplicant" class="rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
+          <label class="block text-sm font-medium text-gray-700">Verification remarks</label>
+          <p class="mt-1 text-xs text-gray-500">
+            Recorded against your own sign-off when you submit — e.g. what paper form this was transcribed from.
+          </p>
+          <textarea
+            v-model="staffRemarks"
+            rows="2"
+            placeholder="e.g. Entered from paper application form #123 submitted at the branch counter."
+            class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          ></textarea>
+        </section>
+
         <div class="flex flex-wrap items-center justify-end gap-3">
           <!-- Preview needs a saved draft, since the form renders from stored data. -->
           <Link
@@ -550,9 +588,9 @@ const submitFinal = () => {
           <button
             @click="submitFinal"
             class="rounded-lg bg-emerald-600 px-5 py-2.5 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
-            :disabled="!hasDraft || !form.payload.declaration_accepted || fullySubscribed"
+            :disabled="!hasDraft || !form.payload.declaration_accepted || fullySubscribed || (staffApplicant && !staffRemarks.trim())"
           >
-            Submit Application
+            {{ staffApplicant ? 'Submit & Forward to Review' : 'Submit Application' }}
           </button>
         </div>
       </div>

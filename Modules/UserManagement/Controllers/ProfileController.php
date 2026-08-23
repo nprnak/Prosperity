@@ -138,7 +138,16 @@ class ProfileController extends Controller
             $user->email_verified_at = null;
         }
 
+        $nameChanged = $user->isDirty('name');
+
         $user->save();
+
+        // The KYC form freezes once a profile is with/past the review chain,
+        // but the applicant's display name is exempt from that lock: it
+        // should always follow their account name, approved or not.
+        if ($nameChanged) {
+            $this->profiles->findByUserId($user->id)?->forceFill(['full_name_en' => $user->name])->save();
+        }
 
         return Redirect::route('settings.edit')->with('success', 'Account details updated.');
     }

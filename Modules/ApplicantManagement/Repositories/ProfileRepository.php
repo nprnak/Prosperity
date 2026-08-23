@@ -108,6 +108,21 @@ class ProfileRepository extends Repository
     }
 
     /**
+     * Approved applicants, for an Application Verifier picking who to file a
+     * paper application on behalf of — only an approved KYC may apply.
+     */
+    public function approved(?string $search = null, int $perPage = 15): LengthAwarePaginator
+    {
+        return $this->query()
+            ->where('profile_status', ProfileStatus::Approved)
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
+            ->with('user:id,name,email')
+            ->orderBy('full_name_en')
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /**
      * Matches a name, mobile number or citizenship number, so staff can find
      * a profile with whichever detail they have on hand.
      */

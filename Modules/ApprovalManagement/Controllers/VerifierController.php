@@ -6,12 +6,16 @@ use App\Enums\WorkflowStage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApprovalManagement\Requests\ApplicationWorkflowActionRequest;
 
-/** Application stage 1: acts on submitted applications. */
+/**
+ * Application stage 1: acts on submitted applications.
+ *
+ * Browsing the queue is handled by ApplicationReviewController, which merges
+ * all three stages into one page — this controller now only ever acts.
+ */
 class VerifierController extends ApplicationStageController
 {
     protected function stage(): WorkflowStage
@@ -22,37 +26,6 @@ class VerifierController extends ApplicationStageController
     protected function view(): string
     {
         return 'Verifier/Dashboard';
-    }
-
-    public function dashboard(Request $request)
-    {
-        $search = $request->query('q');
-
-        $pending = $this->applications->pendingForStage(
-            $this->stage(),
-            $request->user(),
-            ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
-            search: $search,
-        );
-
-        $viewedApplicationIds = [];
-
-        foreach ($pending->items() as $application) {
-            if (Cache::get($this->viewedCacheKey($request->user()->id, $application->id), false)) {
-                $viewedApplicationIds[] = $application->id;
-            }
-        }
-
-        return Inertia::render($this->view(), [
-            'pendingApplications' => $pending,
-            'viewedApplicationIds' => $viewedApplicationIds,
-            'verifiedByMe' => $this->applications->verifiedByUser(
-                $request->user(),
-                ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
-                search: $search,
-            ),
-            'filters' => ['q' => $search],
-        ]);
     }
 
     public function act(ApplicationWorkflowActionRequest $request, ShareApplication $application)

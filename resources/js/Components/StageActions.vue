@@ -1,6 +1,7 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { CheckCircleIcon, ArrowUturnLeftIcon, BackwardIcon } from '@heroicons/vue/24/outline';
 
 /**
  * The one place a stage acts on a record. Used by both review chains so the
@@ -58,29 +59,29 @@ const pending = (action) => busy.value && form.action === action;
             <button
                 type="button"
                 :disabled="!hasRemarks || busy"
-                class="inline-flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
                 @click="submit('approve')"
             >
-                {{ pending('approve') ? 'Working…' : approveLabel }}
+                <CheckCircleIcon class="h-4 w-4" /> {{ pending('approve') ? 'Working…' : approveLabel }}
             </button>
 
             <button
                 type="button"
                 :disabled="!hasRemarks || busy"
-                class="inline-flex items-center rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-900 transition duration-150 hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 active:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-900 transition duration-150 hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 active:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
                 @click="submit('return_to_applicant')"
             >
-                {{ pending('return_to_applicant') ? 'Working…' : 'Return to Applicant' }}
+                <ArrowUturnLeftIcon class="h-4 w-4" /> {{ pending('return_to_applicant') ? 'Working…' : 'Return to Applicant' }}
             </button>
 
             <button
                 v-if="canSendBack"
                 type="button"
                 :disabled="!hasRemarks || busy"
-                class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 transition duration-150 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600 active:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 transition duration-150 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600 active:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                 @click="submit('send_back')"
             >
-                {{ pending('send_back') ? 'Working…' : 'Send Back a Stage' }}
+                <BackwardIcon class="h-4 w-4" /> {{ pending('send_back') ? 'Working…' : 'Send Back a Stage' }}
             </button>
         </div>
 

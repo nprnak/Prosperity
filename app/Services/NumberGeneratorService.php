@@ -13,22 +13,30 @@ class NumberGeneratorService
 
     public function __construct(private readonly NepaliDateService $nepaliDates) {}
 
-    public function generateApplicationNumber(?Carbon $date = null): string
+    /**
+     * The company code is a real parameter rather than a hardcoded literal so
+     * the number is genuinely tied to which company the offering belongs to
+     * — not just visually formatted to look that way. Each company keeps its
+     * own sequence per fiscal year, so onboarding a second company doesn't
+     * skip or collide with the first's numbers.
+     */
+    public function generateApplicationNumber(string $companyCode, ?Carbon $date = null): string
     {
         $date = $date ?: now();
         $fy = $this->nepaliFiscalYearLabel($date);
+        $scope = $companyCode.':'.$fy;
 
-        $sequence = DB::transaction(function () use ($fy) {
+        $sequence = DB::transaction(function () use ($scope) {
             $row = NumberingSequence::query()
                 ->where('type', 'application')
-                ->where('scope', $fy)
+                ->where('scope', $scope)
                 ->lockForUpdate()
                 ->first();
 
             if (! $row) {
                 $row = NumberingSequence::create([
                     'type' => 'application',
-                    'scope' => $fy,
+                    'scope' => $scope,
                     'current_value' => 0,
                 ]);
                 $row->refresh();
@@ -39,12 +47,21 @@ class NumberGeneratorService
             return (int) $row->fresh()->current_value;
         });
 
-        return sprintf('PHL-%s-%06d', $fy, $sequence);
+        return sprintf('%s-%s-%06d', $companyCode, $fy, $sequence);
     }
 
-    public function generateReceiptNumber(): string
+    /**
+     * Each company keeps its own receipt sequence, so onboarding a new company
+     * starts it fresh at 1 rather than continuing another company's count.
+     * The one exception is PHL, the company the paper receipt book already in
+     * use belongs to — its sequence continues from the last number issued on
+     * paper before the system took over, not from zero.
+     */
+    public function generateReceiptNumber(string $companyCode): string
     {
-        $sequence = $this->nextGlobalNumber('receipt');
+        $bootstrap = $companyCode === 'PHL' ? 56 : 0;
+
+        $sequence = $this->nextScopedNumber('receipt', $companyCode, $bootstrap);
 
         return str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
@@ -68,18 +85,22 @@ class NumberGeneratorService
 
     private function nextGlobalNumber(string $type): int
     {
-        return DB::transaction(function () use ($type) {
+        return $this->nextScopedNumber($type, '', 0);
+    }
+
+    private function nextScopedNumber(string $type, string $scope, int $bootstrap): int
+    {
+        return DB::transaction(function () use ($type, $scope, $bootstrap) {
             $row = NumberingSequence::query()
                 ->where('type', $type)
-                ->where('scope', '')
+                ->where('scope', $scope)
                 ->lockForUpdate()
                 ->first();
 
             if (! $row) {
-                $bootstrap = $type === 'receipt' ? 56 : 0;
                 $row = NumberingSequence::create([
                     'type' => $type,
-                    'scope' => '',
+                    'scope' => $scope,
                     'current_value' => $bootstrap,
                 ]);
                 $row->refresh();

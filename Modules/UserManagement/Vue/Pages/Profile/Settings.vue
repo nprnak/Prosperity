@@ -24,9 +24,9 @@ defineProps({
 
     <PanelLayout>
         <div class="space-y-6">
-            <div class="rounded-xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-700 p-5 text-white shadow">
-                <h2 class="text-xl font-semibold">Settings</h2>
-                <p class="mt-1 text-sm text-blue-100">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-2xl font-bold text-gray-900">Settings</h2>
+                <p class="mt-1 text-sm text-gray-700">
                     Manage your login credentials here. Update username, email, and password for account login.
                 </p>
             </div>

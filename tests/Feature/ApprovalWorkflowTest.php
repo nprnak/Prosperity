@@ -356,8 +356,8 @@ class ApprovalWorkflowTest extends TestCase
         $this->actingAs(User::factory()->create()->assignRole('application_verifier'))
             ->get('/verifier/dashboard')
             ->assertInertia(fn ($page) => $page
-                ->has('applications.data', 15)
-                ->where('applications.total', 16)
+                ->has('pending.data', 15)
+                ->where('pending.total', 16)
             );
     }
 
@@ -371,9 +371,9 @@ class ApprovalWorkflowTest extends TestCase
 
         $this->actingAs($verifier)->get('/verifier/dashboard')
             ->assertInertia(fn ($page) => $page
-                ->component('Verifier/Dashboard', false)
-                ->has('applications.data', 1)
-                ->where('applications.data.0.id', $pending->id)
+                ->component('ApplicationReview', false)
+                ->has('pending.data', 1)
+                ->where('pending.data.0.id', $pending->id)
             );
     }
 

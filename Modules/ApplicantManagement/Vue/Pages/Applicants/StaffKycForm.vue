@@ -23,27 +23,25 @@ const submitAndVerify = () => {
     <Head :title="`KYC — ${applicant.name}`" />
 
     <PanelLayout>
-        <template #header>
-            <h2 class="text-xl font-semibold text-gray-900">Entering KYC for {{ applicant.name }}</h2>
-        </template>
-
         <div class="mx-auto max-w-5xl space-y-6">
-            <div class="rounded-lg border bg-white p-4 flex items-start justify-between gap-4">
-                <div class="flex-1">
-                    <h3 class="text-lg font-semibold text-slate-900">{{ applicant.name }}</h3>
-                    <p class="mt-1 text-sm text-slate-600">{{ applicant.email }}</p>
-                    <div class="mt-4 max-w-sm">
-                        <div class="flex items-center justify-between text-sm font-medium text-slate-600">
-                            <span>KYC Completion</span>
-                            <span>{{ completionPercent }}%</span>
-                        </div>
-                        <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                            <div class="h-full rounded-full bg-brand transition-all" :style="{ width: `${completionPercent}%` }" />
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div class="flex-1">
+                        <h2 class="text-2xl font-bold text-gray-900">{{ applicant.name }}</h2>
+                        <p class="mt-1 text-sm text-gray-700">{{ applicant.email }}</p>
+                        <div class="mt-4 max-w-sm">
+                            <div class="flex items-center justify-between text-sm font-medium text-gray-700">
+                                <span>KYC Completion</span>
+                                <span>{{ completionPercent }}%</span>
+                            </div>
+                            <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                                <div class="h-full rounded-full bg-brand transition-all" :style="{ width: `${completionPercent}%` }" />
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="text-sm text-slate-600">
-                    Status: <span class="font-semibold uppercase">{{ profile?.profile_status ?? 'incomplete' }}</span>
+                    <div class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-700 ring-1 ring-gray-200">
+                        {{ profile?.profile_status ?? 'incomplete' }}
+                    </div>
                 </div>
             </div>
 
@@ -58,8 +56,8 @@ const submitAndVerify = () => {
             </div>
 
             <div v-if="canSubmit" class="bg-white p-4 shadow sm:rounded-lg sm:p-6">
-                <h3 class="text-lg font-semibold text-slate-900">Forward to review</h3>
-                <p class="mt-1 text-sm text-slate-600">
+                <h3 class="text-lg font-semibold text-gray-900">Forward to review</h3>
+                <p class="mt-1 text-sm text-gray-700">
                     Once everything above is saved and complete, forward this KYC to the Reviewer queue. Your own
                     verification of it is recorded automatically — it will not sit in your own Verifications queue.
                 </p>

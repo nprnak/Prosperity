@@ -24,13 +24,13 @@ class ApplicationNumberingTest extends TestCase
         // 16 July 2026 is Ashad 32, 2083 — the last day of FY 2082/83.
         $this->assertStringStartsWith(
             'PHL-2082-',
-            $numbers->generateApplicationNumber(Carbon::parse('2026-07-16')),
+            $numbers->generateApplicationNumber('PHL', Carbon::parse('2026-07-16')),
         );
 
         // 17 July 2026 is Shrawan 1, 2083 — the first day of FY 2083/84.
         $this->assertStringStartsWith(
             'PHL-2083-',
-            $numbers->generateApplicationNumber(Carbon::parse('2026-07-17')),
+            $numbers->generateApplicationNumber('PHL', Carbon::parse('2026-07-17')),
         );
     }
 
@@ -41,14 +41,14 @@ class ApplicationNumberingTest extends TestCase
         // Poush 2083 — mid fiscal year 2083/84.
         $this->assertStringStartsWith(
             'PHL-2083-',
-            $numbers->generateApplicationNumber(Carbon::parse('2027-01-10')),
+            $numbers->generateApplicationNumber('PHL', Carbon::parse('2027-01-10')),
         );
 
         // Baisakh 2084 — the BS year has rolled over, but the fiscal year
         // has not; it still runs to Ashad end.
         $this->assertStringStartsWith(
             'PHL-2083-',
-            $numbers->generateApplicationNumber(Carbon::parse('2027-04-20')),
+            $numbers->generateApplicationNumber('PHL', Carbon::parse('2027-04-20')),
         );
     }
 
@@ -56,8 +56,8 @@ class ApplicationNumberingTest extends TestCase
     {
         $numbers = app(NumberGeneratorService::class);
 
-        $first = $numbers->generateApplicationNumber(Carbon::parse('2026-08-01'));
-        $second = $numbers->generateApplicationNumber(Carbon::parse('2026-08-02'));
+        $first = $numbers->generateApplicationNumber('PHL', Carbon::parse('2026-08-01'));
+        $second = $numbers->generateApplicationNumber('PHL', Carbon::parse('2026-08-02'));
 
         $this->assertSame('PHL-2083-000001', $first);
         $this->assertSame('PHL-2083-000002', $second);
@@ -65,7 +65,7 @@ class ApplicationNumberingTest extends TestCase
         // A different fiscal year starts its own count.
         $this->assertSame(
             'PHL-2084-000001',
-            $numbers->generateApplicationNumber(Carbon::parse('2027-08-01')),
+            $numbers->generateApplicationNumber('PHL', Carbon::parse('2027-08-01')),
         );
     }
 }

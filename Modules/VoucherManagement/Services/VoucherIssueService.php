@@ -28,7 +28,8 @@ class VoucherIssueService
         // submission, where one was taken per declared deposit and burned even
         // on applications that were never approved.
         if (! $payment->receipt_number) {
-            $payment->forceFill(['receipt_number' => $this->numbers->generateReceiptNumber()])->save();
+            $companyCode = $application->offering?->company?->code ?? 'PHL';
+            $payment->forceFill(['receipt_number' => $this->numbers->generateReceiptNumber($companyCode)])->save();
         }
 
         /** @var Voucher $voucher */

@@ -73,4 +73,52 @@ class NepaliDateService
 
         return $year >= self::MIN_AD_YEAR && $year <= self::MAX_AD_YEAR;
     }
+
+    /**
+     * The BS year/month/day a Gregorian date falls on, for pre-filling a BS
+     * date picker when editing an existing record. Null when out of range.
+     *
+     * @return array{year: int, month: int, day: int}|null
+     */
+    public function toBikramSambatParts(?DateTimeInterface $date): ?array
+    {
+        if (! $this->supports($date)) {
+            return null;
+        }
+
+        try {
+            $formatted = LaravelNepaliDate::from($date->format('Y-m-d'))->toNepaliDate('Y-m-d', 'en');
+            [$year, $month, $day] = array_map('intval', explode('-', $formatted));
+
+            return ['year' => $year, 'month' => $month, 'day' => $day];
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * The Gregorian date a BS year/month/day falls on — the reverse of
+     * toBikramSambat(), for a BS date picker that stores an AD date column.
+     */
+    public function toGregorian(int $bsYear, int $bsMonth, int $bsDay): ?string
+    {
+        try {
+            return LaravelNepaliDate::from(
+                ['year' => $bsYear, 'month' => $bsMonth, 'day' => $bsDay],
+                calendar: 'np',
+            )->toEnglishDate('Y-m-d');
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    /** How many days a given BS month has — they vary 29-32 by almanac. */
+    public function daysInBsMonth(int $bsYear, int $bsMonth): ?int
+    {
+        try {
+            return LaravelNepaliDate::daysInMonth($bsMonth, $bsYear);
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
 }

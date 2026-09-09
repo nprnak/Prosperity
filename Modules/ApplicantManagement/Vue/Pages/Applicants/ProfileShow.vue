@@ -27,6 +27,13 @@ const props = defineProps({
 const dash = '—';
 const show = (value) => (value === null || value === undefined || value === '' ? dash : value);
 
+// 10 digits displayed as 000-111-111-1, matching the KYC form's input.
+const showNid = (value) => {
+    if (!value) return dash;
+    const parts = [value.slice(0, 3), value.slice(3, 6), value.slice(6, 9), value.slice(9, 10)];
+    return parts.filter(Boolean).join('-');
+};
+
 const formatDate = (value) => (value
     ? new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' })
     : dash);
@@ -52,10 +59,14 @@ const identity = computed(() => [
     ['Gender', show(a.gender)],
     ['Nationality', show(a.nationality)],
     ['Marital status', show(a.marital_status)],
-    ['Father', show(a.father_name)],
-    ['Mother', show(a.mother_name)],
-    ['Grandfather', show(a.grandfather_name)],
-    ['Spouse', show(a.spouse_name)],
+    ['Father (EN)', show(a.father_name_en)],
+    ['Father (NP)', show(a.father_name_np)],
+    ['Mother (EN)', show(a.mother_name_en)],
+    ['Mother (NP)', show(a.mother_name_np)],
+    ['Grandfather (EN)', show(a.grandfather_name_en)],
+    ['Grandfather (NP)', show(a.grandfather_name_np)],
+    ['Spouse (EN)', show(a.spouse_name_en)],
+    ['Spouse (NP)', show(a.spouse_name_np)],
     ['Education', show(a.education)],
     ['Occupation', show(a.occupation)],
 ]);
@@ -71,14 +82,13 @@ const documentNumbers = computed(() => [
     ['Citizenship no.', show(a.citizenship_number)],
     ['Issued district', show(a.citizenship_issued_district)],
     ['Issued date', formatDate(a.citizenship_issued_date)],
-    ['National ID no.', show(a.national_id_number)],
+    ['National ID no.', showNid(a.national_id_number)],
     ['PAN', show(a.pan_number)],
 ]);
 
 const banking = computed(() => [
     ['BOID', show(a.boid)],
     ['Bank', show(a.bank_name)],
-    ['Bank code', show(a.bank_code)],
     ['Branch', show(a.bank_branch)],
     ['Account no.', show(a.bank_account_number)],
     ['Account holder', show(a.account_holder_name)],
@@ -90,7 +100,8 @@ const documentLabels = {
     photo: 'Photograph',
     citizenship_front: 'Citizenship — front',
     citizenship_back: 'Citizenship — back',
-    national_id: 'National ID',
+    national_id_front: 'National ID — front',
+    national_id_back: 'National ID — back',
     pan: 'PAN certificate',
     signature: 'Signature',
 };
@@ -99,7 +110,8 @@ const slugByType = {
     photo: 'photo',
     citizenship_front: 'citizenship-front',
     citizenship_back: 'citizenship-back',
-    national_id: 'national-id',
+    national_id_front: 'national-id-front',
+    national_id_back: 'national-id-back',
     pan: 'pan',
     signature: 'signature',
 };
@@ -131,8 +143,28 @@ const unmet = computed(() => Object.entries(props.completionChecks)
     .filter(([, satisfied]) => !satisfied)
     .map(([field]) => field.replace(/_/g, ' ')));
 
+// Mirrors Modules\ApplicantManagement\Enums\SourceOfFunds.
+const sourceLabels = {
+    salary: 'Salary / Remuneration',
+    dividend: 'Dividend',
+    share_trading: 'Share Trading',
+    property_sale: 'Sale of Property',
+    house_rent: 'House Rent',
+    foreign_employment: 'Foreign Employment',
+    loan_or_borrowing: 'Loan or Borrowing',
+    ancestral_property: 'Ancestral Property',
+    business: 'Business / Trade',
+    other: 'Other',
+    savings: 'Savings',
+};
+
 const sources = computed(() => (a.sources_of_funds || [])
-    .map((source) => source.other_text || source.source)
+    .map((source) => {
+        const label = sourceLabels[source.source_type] || source.source_type;
+        return source.source_type === 'other' && source.description
+            ? `${label} (${source.description})`
+            : label;
+    })
     .filter(Boolean));
 
 // The applicant's default focal person. Applications keep their own copy, so
@@ -352,10 +384,10 @@ const saveAmendment = () => {
                     class="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2"
                 >
                     <div v-for="[label, value] in [
-                        ['Name', show(nominee.name)],
-                        ['Relation', show(nominee.relation)],
+                        ['Name', show(nominee.full_name)],
+                        ['Relation', show(nominee.relationship)],
                         ['Mobile', show(nominee.mobile)],
-                        ['Citizenship no.', show(nominee.citizenship_number)],
+                        ['Address', show(nominee.address)],
                     ]" :key="label">
                         <dt class="text-xs font-medium uppercase tracking-wide text-gray-600">{{ label }}</dt>
                         <dd class="mt-0.5 text-sm text-gray-900">{{ value }}</dd>

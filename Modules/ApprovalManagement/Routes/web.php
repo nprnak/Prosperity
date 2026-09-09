@@ -1,26 +1,37 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\ApprovalManagement\Controllers\ApplicationReviewController;
 use Modules\ApprovalManagement\Controllers\ApproverController;
 use Modules\ApprovalManagement\Controllers\ReviewerController;
 use Modules\ApprovalManagement\Controllers\VerifierController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Application chain: verifier → reviewer → approver. Each stage has one
-    // endpoint; the action (approve / reject / return / send back) travels in
-    // the request body and WorkflowService decides whether it is allowed.
+    // Application chain: verifier → reviewer → approver. Each stage has its
+    // own act endpoint — the action (approve / reject / return / send back)
+    // travels in the request body and WorkflowService decides whether it is
+    // allowed, and each stage's afterAct() still differs (the verifier marks
+    // payments verified, the approver issues the voucher). Browsing the
+    // queue, though, is one shared page: ApplicationReviewController merges
+    // all three stages the way the KYC review queue already does, and the
+    // three legacy dashboard URLs below are kept as aliases onto it so
+    // existing links (post-login redirect, the admin panel) keep working.
+    Route::get('/applications/review', [ApplicationReviewController::class, 'dashboard'])
+        ->middleware('permission:application.verify|application.review|application.approve')
+        ->name('applications.review');
+
     Route::middleware('can:application.verify')->group(function () {
-        Route::get('/verifier/dashboard', [VerifierController::class, 'dashboard'])->name('verifier.dashboard');
+        Route::get('/verifier/dashboard', [ApplicationReviewController::class, 'dashboard'])->name('verifier.dashboard');
         Route::post('/verifier/applications/{application}/act', [VerifierController::class, 'act'])->name('verifier.applications.act');
     });
 
     Route::middleware('can:application.review')->group(function () {
-        Route::get('/reviewer/dashboard', [ReviewerController::class, 'dashboard'])->name('reviewer.dashboard');
+        Route::get('/reviewer/dashboard', [ApplicationReviewController::class, 'dashboard'])->name('reviewer.dashboard');
         Route::post('/reviewer/applications/{application}/act', [ReviewerController::class, 'act'])->name('reviewer.applications.act');
     });
 
     Route::middleware('can:application.approve')->group(function () {
-        Route::get('/approver/dashboard', [ApproverController::class, 'dashboard'])->name('approver.dashboard');
+        Route::get('/approver/dashboard', [ApplicationReviewController::class, 'dashboard'])->name('approver.dashboard');
         Route::post('/approver/applications/{application}/act', [ApproverController::class, 'act'])->name('approver.applications.act');
     });
 });

@@ -65,8 +65,11 @@ class PrescribedReportsTest extends TestCase
     }
 
     /**
-     * An approved holding with its deposit already verified, which is what the
-     * register counts as paid.
+     * An approved holding with its deposit already verified. The Share Lagat
+     * register reads the deposit straight off the declared voucher(s); the
+     * other prescribed reports read it off the payment transaction, so both
+     * are created here with the same amount to keep every report's figures
+     * consistent with the same fixture.
      */
     protected function holding(
         Profile $applicant,
@@ -77,6 +80,7 @@ class PrescribedReportsTest extends TestCase
         ?int $focalPersonId = null,
     ): ShareApplication {
         $declared = number_format($shares * (float) $offering->share_rate, 2, '.', '');
+        $amount = $deposited ?? $declared;
 
         $application = ShareApplication::create([
             'applicant_id' => $applicant->id,
@@ -93,10 +97,17 @@ class PrescribedReportsTest extends TestCase
         PaymentTransaction::create([
             'share_application_id' => $application->id,
             'receipt_number' => 'RCP-'.$application->id,
-            'amount' => $deposited ?? $declared,
+            'amount' => $amount,
             'payment_mode' => 'online_transfer',
             'payment_date' => now()->toDateString(),
             'verification_status' => 'verified',
+        ]);
+
+        $application->vouchers()->create([
+            'payment_type' => 'online_transfer',
+            'deposited_bank' => 'Test Bank',
+            'transaction_code' => 'TXN-'.$application->id,
+            'amount' => $amount,
         ]);
 
         return $application;
@@ -133,7 +144,7 @@ class PrescribedReportsTest extends TestCase
     public function test_the_register_compiles_a_holders_repeat_applications_into_one_row(): void
     {
         $offering = $this->offering('PHL', '175.00');
-        $holder = $this->shareholder(['full_name_np' => 'सुनिल कुमार खरेल', 'father_name' => 'डम्बर प्रसाद खरेल']);
+        $holder = $this->shareholder(['full_name_np' => 'सुनिल कुमार खरेल', 'father_name_np' => 'डम्बर प्रसाद खरेल']);
 
         // The scenario from note 2 of the format: approved twice in one issue.
         $this->holding($holder, $offering, 2000);
@@ -142,7 +153,8 @@ class PrescribedReportsTest extends TestCase
         $rows = $this->rowsOf('share-lagat');
 
         $this->assertCount(1, $rows);
-        $this->assertSame(7000, $rows[0]['shares']);
+        // Every number on this register prints in Devanagari numerals.
+        $this->assertSame('७,०००', $rows[0]['shares']);
         $this->assertSame('सुनिल कुमार खरेल', explode("\n", $rows[0]['name_address'])[0]);
         $this->assertSame('डम्बर प्रसाद खरेल', $rows[0]['father_or_spouse']);
     }
@@ -156,9 +168,9 @@ class PrescribedReportsTest extends TestCase
 
         $rows = $this->rowsOf('share-lagat');
 
-        $this->assertSame('175,000.00', $rows[0]['total_paid']);
-        $this->assertSame('100,000.00', $rows[0]['paid']);
-        $this->assertSame('75,000.00', $rows[0]['premium']);
+        $this->assertSame('१७५,०००.००', $rows[0]['total_paid']);
+        $this->assertSame('१००,०००.००', $rows[0]['paid']);
+        $this->assertSame('७५,०००.००', $rows[0]['premium']);
         // Fully paid, so the format prints छैन। rather than 0.00.
         $this->assertSame('छैन।', $rows[0]['outstanding']);
     }
@@ -170,10 +182,10 @@ class PrescribedReportsTest extends TestCase
 
         $rows = $this->rowsOf('share-lagat');
 
-        $this->assertSame('60,000.00', $rows[0]['total_paid']);
-        $this->assertSame('40,000.00', $rows[0]['outstanding']);
+        $this->assertSame('६०,०००.००', $rows[0]['total_paid']);
+        $this->assertSame('४०,०००.००', $rows[0]['outstanding']);
         // Deposited less than par, so there is no premium to report.
-        $this->assertSame('0.00', $rows[0]['premium']);
+        $this->assertSame('०.००', $rows[0]['premium']);
     }
 
     public function test_the_register_counts_only_approved_holdings(): void
@@ -188,7 +200,7 @@ class PrescribedReportsTest extends TestCase
 
         // Only the allotted holding is on the register.
         $this->assertCount(1, $rows);
-        $this->assertSame(300, $rows[0]['shares']);
+        $this->assertSame('३००', $rows[0]['shares']);
     }
 
     public function test_the_register_scopes_to_one_offering(): void
@@ -200,10 +212,10 @@ class PrescribedReportsTest extends TestCase
         $this->holding($holder, $first, 1000);
         $this->holding($holder, $second, 2000);
 
-        $this->assertSame(3000, $this->rowsOf('share-lagat')[0]['shares']);
+        $this->assertSame('३,०००', $this->rowsOf('share-lagat')[0]['shares']);
         $this->assertSame(
-            2000,
-            $this->rowsOf('share-lagat', ['share_offering_id' => $second->id])[0]['shares'],
+            '२,०००',
+            $this->rowsOf('share-lagat', ['share_offering_ids' => $second->id])[0]['shares'],
         );
     }
 

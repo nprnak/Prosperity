@@ -43,7 +43,7 @@ class ApplicationWizardService
     /**
      * @throws ValidationException
      */
-    public function saveDraft(User $user, array $payload): ShareApplication
+    public function saveDraft(User $user, array $payload, ?int $enteredBy = null): ShareApplication
     {
         $applicant = $this->profiles->findByUserId($user->id);
 
@@ -101,7 +101,12 @@ class ApplicationWizardService
             $applicant->sourcesOfFunds()->whereNotIn('source_type', $sources ?: [''])->delete();
 
             foreach ($sources as $source) {
-                $applicant->sourcesOfFunds()->updateOrCreate(['source_type' => $source]);
+                $applicant->sourcesOfFunds()->updateOrCreate(
+                    ['source_type' => $source],
+                    // Only "other" carries free text; every other row's description
+                    // is cleared so an unticked-then-reticked box doesn't keep stale text.
+                    ['description' => $source === 'other' ? ($payload['investment_source_other_detail'] ?? null) : null],
+                );
             }
         }
 
@@ -126,6 +131,12 @@ class ApplicationWizardService
             // application owns its own value, so re-assigning the default later
             // leaves this offering's attribution alone.
             $application->focal_person_id = $applicant->focal_person_id;
+
+            // Recorded once, at creation, so an Application Verifier can find
+            // "applications I filed" — null for the normal self-service path.
+            if ($enteredBy) {
+                $application->entered_by = $enteredBy;
+            }
         }
 
         $attributes = [
@@ -259,7 +270,8 @@ class ApplicationWizardService
         }
 
         if (str_starts_with($application->application_number, 'DRAFT-')) {
-            $application->application_number = $this->numbers->generateApplicationNumber();
+            $companyCode = $application->offering?->company?->code ?? 'PHL';
+            $application->application_number = $this->numbers->generateApplicationNumber($companyCode);
         }
 
         $fromStatus = $application->status;

@@ -23,9 +23,11 @@ class ApplicantProfileService
      */
     private const SCALAR_FIELDS = [
         'title', 'full_name_np', 'gender', 'date_of_birth', 'nationality', 'marital_status',
-        'father_name', 'mother_name', 'grandfather_name', 'spouse_name', 'occupation', 'education',
-        'mobile', 'citizenship_number', 'citizenship_issued_district', 'citizenship_issued_date',
-        'national_id_number', 'pan_number', 'boid', 'bank_name', 'bank_code',
+        'father_name_en', 'father_name_np', 'mother_name_en', 'mother_name_np',
+        'grandfather_name_en', 'grandfather_name_np', 'spouse_name_en', 'spouse_name_np',
+        'occupation', 'education',
+        'mobile', 'citizenship_number', 'citizenship_number_np', 'citizenship_issued_district', 'citizenship_issued_date',
+        'national_id_number', 'pan_number', 'boid', 'bank_name',
         'bank_branch', 'bank_account_number', 'account_holder_name', 'asba_consent',
     ];
 
@@ -36,7 +38,8 @@ class ApplicantProfileService
         'photo' => ['type' => 'photo', 'number_field' => null],
         'citizenship_front' => ['type' => 'citizenship_front', 'number_field' => 'citizenship_number'],
         'citizenship_back' => ['type' => 'citizenship_back', 'number_field' => 'citizenship_number'],
-        'national_id_doc' => ['type' => 'national_id', 'number_field' => 'national_id_number'],
+        'national_id_front' => ['type' => 'national_id_front', 'number_field' => 'national_id_number'],
+        'national_id_back' => ['type' => 'national_id_back', 'number_field' => 'national_id_number'],
         'pan_doc' => ['type' => 'pan', 'number_field' => 'pan_number'],
         'signature' => ['type' => 'signature', 'number_field' => null],
     ];
@@ -49,10 +52,25 @@ class ApplicantProfileService
 
         return DB::transaction(function () use ($user, $request, $validated) {
             $profile = $this->profiles->firstOrNewForUser($user->id);
+            $isNewProfile = ! $profile->exists;
 
             // A profile in the hands of the review chain must not change under
-            // the stages that have already signed it off.
-            if ($profile->exists && ! $profile->profile_status->isEditableByApplicant()) {
+            // the stages that have already signed it off. The one exception:
+            // a KYC Verifier editing a paper-entered profile (routed through
+            // {applicant}) may also fix it when a Reviewer has just sent it
+            // back to the Verifier stage (Submitted) — that send-back exists
+            // precisely so the record can be corrected and re-forwarded.
+            //
+            // A brand-new profile has no profile_status yet (null until the
+            // fill below), so it must short-circuit before either check below
+            // ever touches it — there is nothing to block on for a record
+            // that doesn't exist yet.
+            $isStaffEntry = $request->route('applicant') !== null;
+            $editable = $isNewProfile
+                || $profile->profile_status->isEditableByApplicant()
+                || ($isStaffEntry && $profile->profile_status === ProfileStatus::Submitted);
+
+            if (! $editable) {
                 throw new WorkflowException(
                     'Your profile is with the review team ('
                     .$profile->profile_status->labelEn().') and cannot be edited right now.'
@@ -71,6 +89,12 @@ class ApplicantProfileService
 
             if (blank($profile->profile_status)) {
                 $profile->profile_status = ProfileStatus::Incomplete;
+            }
+
+            // Recorded once, at creation, so a Verifier can find "profiles I
+            // entered" — set outside $fillable since only this staff path may.
+            if ($isNewProfile && $isStaffEntry) {
+                $profile->entered_by = $request->user()->id;
             }
 
             $profile->save();
@@ -132,10 +156,15 @@ class ApplicantProfileService
     {
         $sources = array_values(array_unique((array) ($validated['sources'] ?? [])));
 
-        $profile->sourcesOfFunds()->whereNotIn('source_type', $sources)->delete();
+        $profile->sourcesOfFunds()->whereNotIn('source_type', $sources ?: [''])->delete();
 
         foreach ($sources as $source) {
-            $profile->sourcesOfFunds()->updateOrCreate(['source_type' => $source]);
+            $profile->sourcesOfFunds()->updateOrCreate(
+                ['source_type' => $source],
+                // Only "other" carries free text; every other row's description
+                // is cleared so an unticked-then-reticked box doesn't keep stale text.
+                ['description' => $source === 'other' ? ($validated['source_other_detail'] ?? null) : null],
+            );
         }
     }
 

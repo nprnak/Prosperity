@@ -12,9 +12,9 @@ defineProps({
     <Head title="Dashboard" />
 
     <PanelLayout>
-        <div class="rounded-2xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-700 p-6 text-white shadow-lg">
-            <h2 class="text-2xl font-semibold">Welcome Back</h2>
-            <p class="mt-2 text-sm text-blue-100">Use the panel to complete your profile and manage your share application.</p>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-2xl font-bold text-gray-900">Welcome Back</h2>
+            <p class="mt-1 text-sm text-gray-700">Use the panel to complete your profile and manage your share application.</p>
         </div>
 
         <div class="mt-6 bg-white p-6 shadow-sm sm:rounded-2xl ring-1 ring-gray-100">

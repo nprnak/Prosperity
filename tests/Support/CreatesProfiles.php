@@ -31,8 +31,10 @@ trait CreatesProfiles
             'date_of_birth' => '1990-01-01',
             'gender' => Gender::Male,
             'marital_status' => MaritalStatus::Single,
-            'father_name' => 'F',
-            'grandfather_name' => 'GF',
+            'father_name_en' => 'F',
+            'father_name_np' => 'फ',
+            'grandfather_name_en' => 'GF',
+            'grandfather_name_np' => 'जिएफ',
             'mobile' => '98000000'.$user->id,
             'email' => $user->email,
         ], $overrides));
@@ -56,7 +58,8 @@ trait CreatesProfiles
     {
         $profile = $this->minimalProfile($user, array_merge([
             'full_name_en' => 'Test Applicant '.$user->id,
-            'mother_name' => 'Mother',
+            'mother_name_en' => 'Mother',
+            'mother_name_np' => 'आमा',
             'education' => EducationLevel::Bachelors,
             'citizenship_number' => 'CTZ-'.$user->id,
             // national_id_number is validated as exactly 10 digits.

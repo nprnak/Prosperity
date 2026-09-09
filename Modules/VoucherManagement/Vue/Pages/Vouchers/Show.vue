@@ -1,6 +1,7 @@
 <script setup>
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import { Head } from '@inertiajs/vue3';
+import { PrinterIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
 
 defineProps({
   receipt: { type: Object, required: true },
@@ -24,16 +25,16 @@ const print = () => window.print();
         <div class="flex gap-2">
           <button
             type="button"
-            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             @click="print"
           >
-            Print
+            <PrinterIcon class="h-4 w-4" /> Print
           </button>
           <a
             :href="downloadUrl"
-            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
-            Download PDF
+            <ArrowDownTrayIcon class="h-4 w-4" /> Download PDF
           </a>
         </div>
       </div>
@@ -56,7 +57,6 @@ const print = () => window.print();
             <div>Shares Applied: <span class="fill">{{ receipt.sharesApplied || '—' }}</span></div>
           </div>
           <div class="text-right text-xs text-gray-600">
-            Voucher No: <strong>{{ receipt.voucherNumber }}</strong><br />
             Application No: <strong>{{ receipt.applicationNumber }}</strong>
           </div>
         </div>
@@ -84,44 +84,9 @@ const print = () => window.print();
           <div>Date of Payment: <span class="fill">{{ receipt.paymentDateLine || '................' }}</span></div>
         </div>
 
-        <!-- Signed and stamped by hand by the three stage owners and company. -->
-        <div class="mt-16 grid grid-cols-2 gap-6 text-sm sm:grid-cols-4">
-          <div>
-            <img
-              v-if="receipt.stageSignatures?.verifier?.signatureDataUri"
-              :src="receipt.stageSignatures.verifier.signatureDataUri"
-              alt="Verifier signature"
-              class="mb-1 h-10 max-w-[10rem] object-contain"
-            />
-            <span v-else class="sig">Verifier Sign:</span>
-            <p class="mt-1 text-xs font-semibold text-gray-800">{{ receipt.stageSignatures?.verifier?.name || 'Pending' }}</p>
-            <p class="text-[11px] text-gray-600">{{ receipt.stageSignatures?.verifier?.designation || '' }}</p>
-            <p class="text-[11px] text-gray-500">{{ receipt.stageSignatures?.verifier?.signedAt || '' }}</p>
-          </div>
-          <div>
-            <img
-              v-if="receipt.stageSignatures?.reviewer?.signatureDataUri"
-              :src="receipt.stageSignatures.reviewer.signatureDataUri"
-              alt="Reviewer signature"
-              class="mb-1 h-10 max-w-[10rem] object-contain"
-            />
-            <span v-else class="sig">Reviewer Sign:</span>
-            <p class="mt-1 text-xs font-semibold text-gray-800">{{ receipt.stageSignatures?.reviewer?.name || 'Pending' }}</p>
-            <p class="text-[11px] text-gray-600">{{ receipt.stageSignatures?.reviewer?.designation || '' }}</p>
-            <p class="text-[11px] text-gray-500">{{ receipt.stageSignatures?.reviewer?.signedAt || '' }}</p>
-          </div>
-          <div>
-            <img
-              v-if="receipt.stageSignatures?.approver?.signatureDataUri"
-              :src="receipt.stageSignatures.approver.signatureDataUri"
-              alt="Approver signature"
-              class="mb-1 h-10 max-w-[10rem] object-contain"
-            />
-            <span v-else class="sig">Approver Sign:</span>
-            <p class="mt-1 text-xs font-semibold text-gray-800">{{ receipt.stageSignatures?.approver?.name || 'Pending' }}</p>
-            <p class="text-[11px] text-gray-600">{{ receipt.stageSignatures?.approver?.designation || '' }}</p>
-            <p class="text-[11px] text-gray-500">{{ receipt.stageSignatures?.approver?.signedAt || '' }}</p>
-          </div>
+        <!-- Stamped by hand by the company; the review chain's sign-offs are
+             tracked in the workflow trail, not repeated on the receipt. -->
+        <div class="mt-16 flex justify-end text-sm">
           <div class="text-center">
             <img
               v-if="receipt.companyStampDataUri"
@@ -171,13 +136,6 @@ const print = () => window.print();
   font-weight: 700;
 }
 
-.sig {
-  display: inline-block;
-  min-width: 10rem;
-  border-top: 1px dotted #111827;
-  padding-top: 3px;
-  font-weight: 600;
-}
 </style>
 
 <style>

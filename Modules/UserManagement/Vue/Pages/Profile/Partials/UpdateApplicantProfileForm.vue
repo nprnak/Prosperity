@@ -1,5 +1,6 @@
 <script setup>
 import InputError from '@/Components/InputError.vue';
+import NepaliDatePicker from '@/Components/NepaliDatePicker.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
@@ -29,6 +30,7 @@ const options = page.props.options || {
 const permanent = profile.permanent_address || {};
 const temporary = profile.temporary_address || {};
 const savedSources = (profile.sources_of_funds || []).map((source) => source.source_type);
+const savedSourceOtherDetail = (profile.sources_of_funds || []).find((source) => source.source_type === 'other')?.description || '';
 const savedNominee = (profile.nominees || [])[0] || {};
 const savedExperiences = (profile.experiences || []).map((experience) => ({
     organization_name: experience.organization_name || '',
@@ -50,10 +52,14 @@ const form = useForm({
     gender: profile.gender || '',
     nationality: profile.nationality || 'Nepali',
     marital_status: profile.marital_status || 'single',
-    father_name: profile.father_name || '',
-    mother_name: profile.mother_name || '',
-    grandfather_name: profile.grandfather_name || '',
-    spouse_name: profile.spouse_name || '',
+    father_name_en: profile.father_name_en || '',
+    father_name_np: profile.father_name_np || '',
+    mother_name_en: profile.mother_name_en || '',
+    mother_name_np: profile.mother_name_np || '',
+    grandfather_name_en: profile.grandfather_name_en || '',
+    grandfather_name_np: profile.grandfather_name_np || '',
+    spouse_name_en: profile.spouse_name_en || '',
+    spouse_name_np: profile.spouse_name_np || '',
     occupation: profile.occupation || '',
     education: profile.education || '',
 
@@ -79,6 +85,7 @@ const form = useForm({
 
     // 5. Identity
     citizenship_number: profile.citizenship_number || '',
+    citizenship_number_np: profile.citizenship_number_np || '',
     citizenship_issued_district: profile.citizenship_issued_district || '',
     citizenship_issued_date: profile.citizenship_issued_date || '',
     national_id_number: profile.national_id_number || '',
@@ -88,12 +95,14 @@ const form = useForm({
     photo: null,
     citizenship_front: null,
     citizenship_back: null,
-    national_id_doc: null,
+    national_id_front: null,
+    national_id_back: null,
     pan_doc: null,
     signature: null,
 
-    // 7. Source of investment
-    sources: savedSources.length ? savedSources : ['salary'],
+    // 7. Source of investment — optional; "Other" carries a free-text detail.
+    sources: savedSources,
+    source_other_detail: savedSourceOtherDetail,
 
     // 8. Nominee
     nominee: {
@@ -106,21 +115,31 @@ const form = useForm({
     // 9. Professional experience
     experiences: savedExperiences,
 
-    // 10. Declaration
+    // 10. Declaration — one combined statement rather than three separate ticks.
     declarations: {
-        information_true: Boolean(profile.declaration_accepted),
-        funds_legal: Boolean(profile.declaration_accepted),
-        terms: Boolean(profile.declaration_accepted),
+        accepted: Boolean(profile.declaration_accepted),
     },
 
     // MeroShare / C-ASBA
     boid: profile.boid || '',
     bank_name: profile.bank_name || '',
-    bank_code: profile.bank_code || '',
     bank_branch: profile.bank_branch || '',
     bank_account_number: profile.bank_account_number || '',
     account_holder_name: profile.account_holder_name || '',
     asba_consent: Boolean(profile.asba_consent),
+});
+
+// Displayed as 000-111-111-1; stored as the plain 10 digits the server
+// validates (digits:10), so this is purely a display/typing convenience.
+const nationalIdDisplay = computed({
+    get() {
+        const digits = (form.national_id_number || '').replace(/\D/g, '');
+        const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6, 9), digits.slice(9, 10)];
+        return parts.filter(Boolean).join('-');
+    },
+    set(value) {
+        form.national_id_number = value.replace(/\D/g, '').slice(0, 10);
+    },
 });
 
 // Age is derived from the date of birth, never typed by the applicant.
@@ -164,7 +183,8 @@ const sourceOptions = options.sourcesOfFunds;
 const documentSlots = [
     { input: 'citizenship_front', label: 'Citizenship Front', routeType: 'citizenship-front' },
     { input: 'citizenship_back', label: 'Citizenship Back', routeType: 'citizenship-back' },
-    { input: 'national_id_doc', label: 'National ID', routeType: 'national-id' },
+    { input: 'national_id_front', label: 'National ID Front', routeType: 'national-id-front' },
+    { input: 'national_id_back', label: 'National ID Back', routeType: 'national-id-back' },
     { input: 'pan_doc', label: 'PAN Certificate', routeType: 'pan' },
     { input: 'photo', label: 'Recent Photograph', routeType: 'photo' },
     { input: 'signature', label: 'Signature Image', routeType: 'signature' },
@@ -241,7 +261,8 @@ const closeModal = () => {
 const documentTypeByInput = {
     citizenship_front: 'citizenship_front',
     citizenship_back: 'citizenship_back',
-    national_id_doc: 'national_id',
+    national_id_front: 'national_id_front',
+    national_id_back: 'national_id_back',
     pan_doc: 'pan',
     photo: 'photo',
     signature: 'signature',
@@ -330,8 +351,8 @@ const submit = () => {
                     <InputError class="mt-1" :message="form.errors.full_name_np" />
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-700">Date of Birth *</label>
-                    <TextInput v-model="form.date_of_birth" type="date" :class="fieldClass('date_of_birth')" />
+                    <label class="text-sm font-medium text-gray-700">Date of Birth (B.S.) *</label>
+                    <NepaliDatePicker v-model="form.date_of_birth" required />
                     <InputError class="mt-1" :message="form.errors.date_of_birth" />
                 </div>
                 <div>
@@ -358,23 +379,42 @@ const submit = () => {
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-700">Father's Name *</label>
-                    <TextInput v-model="form.father_name" type="text" placeholder="e.g. Krishna Prasad Sharma" :class="fieldClass('father_name')" />
-                    <InputError class="mt-1" :message="form.errors.father_name" />
+                    <label class="text-sm font-medium text-gray-700">Father's Name (English) *</label>
+                    <TextInput v-model="form.father_name_en" type="text" placeholder="e.g. Krishna Prasad Sharma" :class="fieldClass('father_name_en')" />
+                    <InputError class="mt-1" :message="form.errors.father_name_en" />
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-700">Mother's Name *</label>
-                    <TextInput v-model="form.mother_name" type="text" placeholder="e.g. Sita Devi Sharma" :class="fieldClass('mother_name')" />
-                    <InputError class="mt-1" :message="form.errors.mother_name" />
+                    <label class="text-sm font-medium text-gray-700">Father's Name (Nepali) *</label>
+                    <TextInput v-model="form.father_name_np" type="text" placeholder="e.g. कृष्ण प्रसाद शर्मा" :class="fieldClass('father_name_np')" />
+                    <InputError class="mt-1" :message="form.errors.father_name_np" />
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-700">Grandfather's Name *</label>
-                    <TextInput v-model="form.grandfather_name" type="text" placeholder="e.g. Tej Bahadur Sharma" :class="fieldClass('grandfather_name')" />
-                    <InputError class="mt-1" :message="form.errors.grandfather_name" />
+                    <label class="text-sm font-medium text-gray-700">Mother's Name (English)</label>
+                    <TextInput v-model="form.mother_name_en" type="text" placeholder="e.g. Sita Devi Sharma" :class="fieldClass('mother_name_en')" />
+                    <InputError class="mt-1" :message="form.errors.mother_name_en" />
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-700">Spouse's Name</label>
-                    <TextInput v-model="form.spouse_name" type="text" placeholder="Optional" :class="fieldClass('spouse_name')" />
+                    <label class="text-sm font-medium text-gray-700">Mother's Name (Nepali)</label>
+                    <TextInput v-model="form.mother_name_np" type="text" placeholder="e.g. सीता देवी शर्मा" :class="fieldClass('mother_name_np')" />
+                    <InputError class="mt-1" :message="form.errors.mother_name_np" />
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-700">Grandfather's Name (English) *</label>
+                    <TextInput v-model="form.grandfather_name_en" type="text" placeholder="e.g. Tej Bahadur Sharma" :class="fieldClass('grandfather_name_en')" />
+                    <InputError class="mt-1" :message="form.errors.grandfather_name_en" />
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-700">Grandfather's Name (Nepali) *</label>
+                    <TextInput v-model="form.grandfather_name_np" type="text" placeholder="e.g. तेज बहादुर शर्मा" :class="fieldClass('grandfather_name_np')" />
+                    <InputError class="mt-1" :message="form.errors.grandfather_name_np" />
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-700">Spouse's Name (English)</label>
+                    <TextInput v-model="form.spouse_name_en" type="text" placeholder="Optional" :class="fieldClass('spouse_name_en')" />
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-700">Spouse's Name (Nepali)</label>
+                    <TextInput v-model="form.spouse_name_np" type="text" placeholder="Optional" :class="fieldClass('spouse_name_np')" />
                 </div>
                 <div>
                     <label class="text-sm font-medium text-gray-700">Occupation</label>
@@ -515,6 +555,12 @@ const submit = () => {
                     <InputError class="mt-1" :message="form.errors.citizenship_number" />
                 </div>
                 <div>
+                    <label class="text-sm font-medium text-gray-700">Citizenship No. (Nepali) — नागरिकता नं.</label>
+                    <TextInput v-model="form.citizenship_number_np" type="text" placeholder="e.g. २७-०१-०६६-०३५२५४" :class="fieldClass('citizenship_number_np')" />
+                    <InputError class="mt-1" :message="form.errors.citizenship_number_np" />
+                    <p class="mt-1 text-xs text-gray-500">Optional — as printed on the certificate, used on Nepali-language reports.</p>
+                </div>
+                <div>
                     <label class="text-sm font-medium text-gray-700">Citizenship Issued District</label>
                     <select v-model="form.citizenship_issued_district" :class="fieldClass('citizenship_issued_district')">
                         <option value="">—</option>
@@ -524,13 +570,13 @@ const submit = () => {
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-700">Citizenship Issued Date</label>
-                    <TextInput v-model="form.citizenship_issued_date" type="date" :class="fieldClass('citizenship_issued_date')" />
+                    <label class="text-sm font-medium text-gray-700">Citizenship Issued Date (B.S.)</label>
+                    <NepaliDatePicker v-model="form.citizenship_issued_date" />
                     <InputError class="mt-1" :message="form.errors.citizenship_issued_date" />
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-700">National ID No. (10 digits) *</label>
-                    <TextInput v-model="form.national_id_number" type="text" placeholder="e.g. 1234567890" :class="fieldClass('national_id_number')" />
+                    <label class="text-sm font-medium text-gray-700">National ID No. *</label>
+                    <TextInput v-model="nationalIdDisplay" type="text" placeholder="e.g. 000-111-111-1" maxlength="13" :class="fieldClass('national_id_number')" />
                     <InputError class="mt-1" :message="form.errors.national_id_number" />
                 </div>
                 <div>
@@ -583,6 +629,7 @@ const submit = () => {
         <!-- 7. Source of Investment -->
         <section class="rounded-xl border border-gray-100 bg-gray-50 p-4">
             <h3 class="text-base font-semibold text-gray-800">7. Source of Investment</h3>
+            <p class="mt-1 text-sm text-gray-500">Optional — select any that apply.</p>
             <div class="mt-3 grid gap-2 md:grid-cols-2">
                 <label v-for="option in sourceOptions" :key="option.value" class="flex items-center gap-3 text-sm text-gray-700">
                     <input v-model="form.sources" type="checkbox" :value="option.value" class="rounded border-gray-300 text-blue-600" />
@@ -590,6 +637,12 @@ const submit = () => {
                 </label>
             </div>
             <InputError class="mt-1" :message="form.errors.sources" />
+
+            <div v-if="form.sources.includes('other')" class="mt-3">
+                <label class="text-sm font-medium text-gray-700">Please specify</label>
+                <TextInput v-model="form.source_other_detail" type="text" placeholder="e.g. Insurance claim" :class="fieldClass('source_other_detail')" />
+                <InputError class="mt-1" :message="form.errors.source_other_detail" />
+            </div>
         </section>
 
         <!-- 8. Nominee / Share Beneficiary -->
@@ -670,10 +723,6 @@ const submit = () => {
                     <InputError class="mt-1" :message="form.errors.bank_name" />
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-700">Bank Code</label>
-                    <TextInput v-model="form.bank_code" type="text" placeholder="Optional" :class="fieldClass('bank_code')" />
-                </div>
-                <div>
                     <label class="text-sm font-medium text-gray-700">Bank Branch *</label>
                     <TextInput v-model="form.bank_branch" type="text" placeholder="e.g. New Road" :class="fieldClass('bank_branch')" />
                     <InputError class="mt-1" :message="form.errors.bank_branch" />
@@ -683,7 +732,7 @@ const submit = () => {
                     <TextInput v-model="form.bank_account_number" type="text" :class="fieldClass('bank_account_number')" />
                     <InputError class="mt-1" :message="form.errors.bank_account_number" />
                 </div>
-                <div class="md:col-span-2">
+                <div>
                     <label class="text-sm font-medium text-gray-700">Account Holder Name *</label>
                     <TextInput v-model="form.account_holder_name" type="text" placeholder="As per bank account" :class="fieldClass('account_holder_name')" />
                     <InputError class="mt-1" :message="form.errors.account_holder_name" />
@@ -699,21 +748,17 @@ const submit = () => {
         <!-- 10. Declaration -->
         <section class="rounded-xl border border-blue-100 bg-blue-50 p-4">
             <h3 class="text-base font-semibold text-blue-800">10. Declaration</h3>
-            <div class="mt-3 space-y-2">
+            <div class="mt-3">
                 <label class="flex items-start gap-3 text-sm text-gray-700">
-                    <input v-model="form.declarations.information_true" type="checkbox" class="mt-0.5 rounded border-gray-300 text-blue-600" />
-                    <span>I confirm that the information provided is true. *</span>
-                </label>
-                <label class="flex items-start gap-3 text-sm text-gray-700">
-                    <input v-model="form.declarations.funds_legal" type="checkbox" class="mt-0.5 rounded border-gray-300 text-blue-600" />
-                    <span>I confirm that the source of funds is legal and I am not blacklisted. *</span>
-                </label>
-                <label class="flex items-start gap-3 text-sm text-gray-700">
-                    <input v-model="form.declarations.terms" type="checkbox" class="mt-0.5 rounded border-gray-300 text-blue-600" />
-                    <span>I agree to the terms and conditions, and accept the investment risk myself. *</span>
+                    <input v-model="form.declarations.accepted" type="checkbox" class="mt-0.5 rounded border-gray-300 text-blue-600" />
+                    <span>
+                        I confirm that the information provided is true, that the source of funds is legal
+                        and I am not blacklisted, and I agree to the terms and conditions, accepting the
+                        investment risk myself. *
+                    </span>
                 </label>
             </div>
-            <InputError class="mt-1" :message="form.errors['declarations.information_true'] || form.errors['declarations.funds_legal'] || form.errors['declarations.terms']" />
+            <InputError class="mt-1" :message="form.errors['declarations.accepted']" />
         </section>
 
         </fieldset>

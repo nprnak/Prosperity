@@ -17,14 +17,10 @@ const submit = () => {
     <Head title="Add Applicant" />
 
     <PanelLayout>
-        <template #header>
-            <h2 class="text-xl font-semibold text-gray-900">Add Applicant</h2>
-        </template>
-
         <div class="mx-auto max-w-2xl space-y-6">
-            <div class="rounded-lg border bg-white p-4">
-                <h3 class="text-lg font-semibold text-slate-900">Paper-based KYC entry</h3>
-                <p class="mt-1 text-sm text-slate-600">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-2xl font-bold text-gray-900">Paper-based KYC Entry</h2>
+                <p class="mt-1 text-sm text-gray-700">
                     For a walk-in applicant who filled a physical form instead of registering online.
                     First create their account, then enter their KYC details on the next page. Once you
                     submit it for review, it goes straight to the Reviewer queue — your own verification

@@ -38,6 +38,9 @@ class ApplicantProfileReviewController extends Controller
         return Inertia::render('Applicants/ReviewQueue', [
             'pending' => $this->profiles->pendingForUser($request->user(), search: $search),
             'recentlyReviewed' => $this->profiles->recentlyReviewed(search: $search),
+            // Only meaningful for a KYC Verifier, but harmless (and simplest)
+            // to include for anyone — empty for staff who have entered none.
+            'enteredByMe' => $this->profiles->enteredBy($request->user()->id, search: $search),
             'filters' => ['q' => $search],
         ]);
     }

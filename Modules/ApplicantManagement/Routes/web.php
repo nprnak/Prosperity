@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\ApplicantManagement\Controllers\ApplicantFocalPersonController;
+use Modules\ApplicantManagement\Controllers\ApplicantListController;
 use Modules\ApplicantManagement\Controllers\ApplicantProfileReviewController;
 use Modules\ApplicantManagement\Controllers\ApplicantProfileSubmissionController;
 use Modules\ApplicantManagement\Controllers\StaffApplicantController;
@@ -11,22 +12,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/profile/submit', [ApplicantProfileSubmissionController::class, 'store'])
         ->name('profile.submit');
 
+    // The full roster of approved applicants, open to either review chain —
+    // an Application Verifier searching for who to file on behalf of needs
+    // this same list, not just KYC staff.
+    Route::middleware('permission:profile.verify|profile.review|profile.approve|application.verify|application.review|application.approve|application.view-any')
+        ->get('/applicants/list', [ApplicantListController::class, 'index'])->name('applicants.index');
+
     // Attribution, not review — kept outside the KYC-stage group below so the
     // gating reads honestly: only focal-person.manage opens this, not the
     // reviewer permissions that open the detail page it is rendered on.
     Route::patch('/applicants/{applicant}/focal-person', [ApplicantFocalPersonController::class, 'update'])
         ->middleware('can:focal-person.manage')->name('applicants.focal-person.update');
 
-    // Any KYC stage role reaches the queue; WorkflowService decides which
-    // records that person may actually act on.
+    // Any KYC stage role reaches the queue and may act; WorkflowService
+    // decides which records that person may actually act on. The application
+    // chain has no business here — acting on a KYC profile isn't theirs.
     Route::middleware('permission:profile.verify|profile.review|profile.approve')->group(function () {
         Route::get('/applicants/review', [ApplicantProfileReviewController::class, 'queue'])->name('applicants.review');
 
-        // The detail page and its documents are further gated by ProfilePolicy::view.
+        Route::post('/applicants/{applicant}/profile/act', [ApplicantProfileReviewController::class, 'act'])->name('applicants.profile.act');
+    });
+
+    // Viewing one profile (and its documents), though, is shared with the
+    // application chain too — an Application Verifier/Reviewer/Approver
+    // reasonably needs to see the KYC behind a share application, and the
+    // Applicant List links here for both chains. Further gated by
+    // ProfilePolicy::view, which allows the same permission set.
+    Route::middleware('permission:profile.verify|profile.review|profile.approve|application.verify|application.review|application.approve')->group(function () {
         Route::get('/applicants/{applicant}/profile', [ApplicantProfileReviewController::class, 'show'])->name('applicants.profile.show');
         Route::get('/applicants/{applicant}/profile/documents/{type}', [ApplicantProfileReviewController::class, 'document'])->name('applicants.profile.documents.show');
-
-        Route::post('/applicants/{applicant}/profile/act', [ApplicantProfileReviewController::class, 'act'])->name('applicants.profile.act');
+        // One applicant's own application history, reached from their row on
+        // the Applicant List.
+        Route::get('/applicants/{applicant}/applications', [ApplicantListController::class, 'applications'])->name('applicants.applications');
     });
 
     // Correcting an already-approved profile is the approver's to do, not any

@@ -23,16 +23,9 @@ Route::get('/dashboard', function () {
         return redirect()->route('applicants.review');
     }
 
-    if ($user?->hasRole('application_verifier')) {
-        return redirect()->route('verifier.dashboard');
-    }
-
-    if ($user?->hasRole('application_reviewer')) {
-        return redirect()->route('reviewer.dashboard');
-    }
-
-    if ($user?->hasRole('application_approver')) {
-        return redirect()->route('approver.dashboard');
+    // The three application stages share one queue, the way the KYC one does.
+    if ($user?->hasAnyRole(['application_verifier', 'application_reviewer', 'application_approver'])) {
+        return redirect()->route('applications.review');
     }
 
     return Inertia::render('Dashboard', [

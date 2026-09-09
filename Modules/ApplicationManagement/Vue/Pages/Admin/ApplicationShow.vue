@@ -1,14 +1,26 @@
 <script setup>
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import StageActions from '@/Components/StageActions.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
 import WorkflowTimeline from '@/Components/WorkflowTimeline.vue';
+import { ArrowLeftIcon, DocumentTextIcon, ReceiptPercentIcon, ArrowDownTrayIcon, DocumentPlusIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
   application: Object,
   citizenshipUrls: { type: Array, default: () => [] },
+  photoUrl: { type: String, default: null },
+  signatureUrl: { type: String, default: null },
+  receipt: { type: Object, default: null },
+  backUrl: { type: String, default: null },
+  backLabel: { type: String, default: 'Back to Applications' },
+  addApplicationUrl: { type: String, default: null },
 });
+
+const nominee = computed(() => (props.application.applicant?.nominees || [])[0] || null);
+const sourcesOfFunds = computed(() =>
+  (props.application.applicant?.sources_of_funds || []).map((source) => source.source_type),
+);
 
 // Printing one document at a time: the chosen sheet is the only thing the
 // print stylesheet reveals, so nothing else on the page comes along with it.
@@ -30,16 +42,6 @@ const page = usePage();
 const can = (permission) => (page.props.auth?.permissions || []).includes(permission);
 
 const vouchers = computed(() => props.application.vouchers || []);
-
-// Submission now creates the receipt and its deposits, so there is nothing to
-// "record" here any more — finance verifies each deposit on the finance
-// dashboard, and this page reports where that has got to.
-const deposits = computed(() =>
-  (props.application.payment_transactions || []).flatMap((payment) => payment.deposits || []),
-);
-
-const verifyPayment = (paymentId, status) =>
-  useForm({ status, notes: '' }).post(route('finance.payments.verify', paymentId), { preserveScroll: true });
 
 const formatDate = (value) => {
   if (!value) return '-';
@@ -93,9 +95,27 @@ const canApproveFromDetail = computed(() =>
           <h1 class="text-2xl font-bold text-gray-900">Application Details</h1>
           <p class="text-sm text-gray-600">Application No: {{ application.application_number }}</p>
         </div>
-        <Link :href="route('admin.applications')" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-          Back to Applications
-        </Link>
+        <div class="flex flex-wrap items-center gap-2">
+          <Link
+            v-if="addApplicationUrl"
+            :href="addApplicationUrl"
+            class="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600"
+          >
+            <DocumentPlusIcon class="h-4 w-4" /> Add Application
+          </Link>
+          <Link
+            :href="route('applications.show', application.id)"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <DocumentTextIcon class="h-4 w-4" /> Application Form
+          </Link>
+          <Link
+            :href="backUrl || route('admin.applications')"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeftIcon class="h-4 w-4" /> {{ backLabel }}
+          </Link>
+        </div>
       </div>
 
       <div class="grid gap-6 lg:grid-cols-2">
@@ -123,6 +143,41 @@ const canApproveFromDetail = computed(() =>
           <p class="text-sm text-gray-700"><span class="font-medium">Reviewed By:</span> {{ application.reviewer?.name || '-' }}</p>
           <p class="text-sm text-gray-700"><span class="font-medium">Reviewed At:</span> {{ formatDate(application.reviewed_at) }}</p>
           <p class="text-sm text-gray-700" v-if="application.rejection_reason"><span class="font-medium">Rejection Reason:</span> {{ application.rejection_reason }}</p>
+        </section>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-3">
+        <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100 space-y-3 lg:col-span-1">
+          <h2 class="text-lg font-semibold text-gray-900">Photo &amp; Signature</h2>
+          <div class="flex gap-4">
+            <div class="flex h-28 w-24 items-center justify-center rounded border border-gray-200 bg-gray-50">
+              <img v-if="photoUrl" :src="photoUrl" alt="Applicant photo" class="h-full w-full object-cover" />
+              <span v-else class="text-xs text-gray-400">No photo</span>
+            </div>
+            <div class="flex h-28 w-40 items-center justify-center rounded border border-gray-200 bg-gray-50">
+              <img v-if="signatureUrl" :src="signatureUrl" alt="Applicant signature" class="max-h-full max-w-full object-contain" />
+              <span v-else class="text-xs text-gray-400">No signature</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100 space-y-2 lg:col-span-1">
+          <h2 class="text-lg font-semibold text-gray-900">Source of Funds</h2>
+          <p v-if="!sourcesOfFunds.length" class="text-sm text-gray-500">Not declared.</p>
+          <ul v-else class="list-inside list-disc text-sm text-gray-700">
+            <li v-for="source in sourcesOfFunds" :key="source" class="capitalize">{{ source.replace(/_/g, ' ') }}</li>
+          </ul>
+        </section>
+
+        <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100 space-y-1 lg:col-span-1">
+          <h2 class="text-lg font-semibold text-gray-900">Nominee</h2>
+          <template v-if="nominee">
+            <p class="text-sm text-gray-700"><span class="font-medium">Name:</span> {{ nominee.full_name }}</p>
+            <p class="text-sm text-gray-700"><span class="font-medium">Relationship:</span> {{ nominee.relationship || '-' }}</p>
+            <p class="text-sm text-gray-700"><span class="font-medium">Mobile:</span> {{ nominee.mobile || '-' }}</p>
+            <p class="text-sm text-gray-700"><span class="font-medium">Address:</span> {{ nominee.address || '-' }}</p>
+          </template>
+          <p v-else class="text-sm text-gray-500">No nominee on file.</p>
         </section>
       </div>
 
@@ -180,34 +235,6 @@ const canApproveFromDetail = computed(() =>
         <p v-else class="text-sm text-gray-500">The applicant has not declared any bank vouchers.</p>
       </section>
 
-      <section v-if="deposits.length" class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h2 class="text-lg font-semibold text-gray-900 mb-1">Deposits</h2>
-        <p class="text-sm text-gray-500 mb-4">
-          The bank transfers behind this application's receipt. Each is verified against its own
-          slip on the finance dashboard; the receipt is signed off once they all are.
-        </p>
-        <table class="w-full text-sm">
-          <thead class="border-b text-left text-xs uppercase text-gray-500">
-            <tr>
-              <th class="py-2">Reference</th>
-              <th class="py-2">Bank</th>
-              <th class="py-2">Amount</th>
-              <th class="py-2">Deposited</th>
-              <th class="py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y">
-            <tr v-for="deposit in deposits" :key="deposit.id">
-              <td class="py-2 font-medium text-gray-900">{{ deposit.cheque_no || deposit.reference_no || '-' }}</td>
-              <td class="py-2 text-gray-600">{{ deposit.bank_name || '-' }}</td>
-              <td class="py-2 text-gray-900">{{ deposit.amount }}</td>
-              <td class="py-2 text-gray-600">{{ deposit.payment_date || '-' }}</td>
-              <td class="py-2 capitalize text-gray-700">{{ deposit.verification_status }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-
       <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
         <h2 class="text-lg font-semibold text-gray-900">Review Trail</h2>
         <p class="mt-1 mb-4 text-sm text-gray-600">
@@ -216,80 +243,20 @@ const canApproveFromDetail = computed(() =>
         <WorkflowTimeline :events="application.workflow_events ?? []" order="asc" />
       </section>
 
-      <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h2 class="text-lg font-semibold text-gray-900">Payment &amp; Lifecycle Events</h2>
-        <p class="mt-1 mb-4 text-sm text-gray-600">
-          Status changes driven outside the review chain, such as payment verification.
-        </p>
-        <div v-if="application.events?.length" class="space-y-3">
-          <div v-for="event in application.events" :key="event.id" class="rounded-lg border border-gray-200 p-3">
-            <p class="text-sm text-gray-900">
-              {{ statusLabel(event.from_status || '-') }} -> {{ statusLabel(event.to_status) }}
-            </p>
-            <p class="text-xs text-gray-600 mt-1">By: {{ event.actor?.name || 'System' }} | {{ formatDate(event.created_at) }}</p>
-            <p v-if="event.remarks" class="text-xs text-gray-600 mt-1">{{ event.remarks }}</p>
-          </div>
+      <section v-if="receipt" class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Receipt</h2>
+        <p class="text-sm text-gray-700 mb-3"><span class="font-medium">Receipt No:</span> {{ receipt.receiptNumber || '-' }}</p>
+        <div class="overflow-hidden rounded-lg border border-gray-200" style="height: 32rem;">
+          <iframe :src="receipt.downloadUrl" title="Receipt preview" class="h-full w-full"></iframe>
         </div>
-        <p v-else class="text-sm text-gray-500">No lifecycle events recorded yet.</p>
-      </section>
-
-      <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Payment Transactions</h2>
-
-        <div v-if="application.payment_transactions?.length" class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b">
-              <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt No</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Verification</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sign-offs</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Voucher</th>
-                <th class="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y">
-              <tr v-for="payment in application.payment_transactions" :key="payment.id" class="hover:bg-gray-50">
-                <td class="px-4 py-3">{{ payment.receipt_number }}</td>
-                <td class="px-4 py-3">{{ $page.props.settings?.currency_symbol || 'Rs.' }} {{ payment.amount }}</td>
-                <td class="px-4 py-3 capitalize">{{ payment.payment_mode }}</td>
-                <td class="px-4 py-3 capitalize">{{ payment.verification_status }}</td>
-                <td class="px-4 py-3 text-xs text-gray-600">
-                  <div>Checked By: {{ payment.checker?.name || '—' }}</div>
-                  <div>Reviewed By: {{ payment.verifier?.name || '—' }}</div>
-                  <div>Approved By: {{ payment.approver?.name || '—' }}</div>
-                </td>
-                <td class="px-4 py-3">
-                  <a
-                    v-if="payment.voucher"
-                    :href="route('vouchers.download', payment.voucher.id)"
-                    class="text-blue-700 underline"
-                  >{{ payment.voucher.voucher_number }} — Print Receipt</a>
-                  <span v-else>-</span>
-                </td>
-                <td class="px-4 py-3 text-right whitespace-nowrap">
-                  <template v-if="can('payment.verify') && payment.verification_status === 'pending'">
-                    <button
-                      v-if="!payment.checked_by"
-                      class="text-xs font-semibold text-green-700 underline mr-3"
-                      @click="verifyPayment(payment.id, 'verified')"
-                    >Verify</button>
-                    <button
-                      v-else-if="payment.checked_by !== $page.props.auth.user.id"
-                      class="text-xs font-semibold text-green-700 underline mr-3"
-                      @click="verifyPayment(payment.id, 'verified')"
-                    >Re-verify</button>
-                    <span v-else class="text-xs text-gray-500 mr-3">Awaiting re-verification by another officer</span>
-                    <button class="text-xs font-semibold text-red-700 underline" @click="verifyPayment(payment.id, 'rejected')">Reject</button>
-                  </template>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="mt-3 flex flex-wrap gap-3">
+          <Link :href="receipt.showUrl" class="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-900">
+            <ReceiptPercentIcon class="h-4 w-4" /> View Receipt
+          </Link>
+          <a :href="receipt.downloadUrl" class="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-900">
+            <ArrowDownTrayIcon class="h-4 w-4" /> Download Receipt PDF
+          </a>
         </div>
-
-        <p v-else class="text-sm text-gray-500">No payments recorded for this application.</p>
       </section>
 
       <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-100" v-if="application.allotment">

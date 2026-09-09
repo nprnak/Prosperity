@@ -108,17 +108,40 @@ class ProfileRepository extends Repository
     }
 
     /**
-     * Approved applicants, for an Application Verifier picking who to file a
-     * paper application on behalf of — only an approved KYC may apply.
+     * Approved applicants — for an Application Verifier picking who to file a
+     * paper application on behalf of, and for the Applicant List page.
+     *
+     * $enteredBy narrows this to the profiles a given staff member entered
+     * themselves: the Applicant List shows every approved applicant to
+     * whoever can see the applications list (application.view-any) and only
+     * their own paper entries to a verifier/reviewer/approver, who has no
+     * business browsing the full roster.
      */
-    public function approved(?string $search = null, int $perPage = 15): LengthAwarePaginator
+    public function approved(?string $search = null, ?int $enteredBy = null, int $perPage = 15): LengthAwarePaginator
     {
         return $this->query()
             ->where('profile_status', ProfileStatus::Approved)
+            ->when($enteredBy, fn ($query) => $query->where('entered_by', $enteredBy))
             ->when($search, fn ($query) => $this->applySearch($query, $search))
-            ->with('user:id,name,email')
+            ->with(['user:id,name,email', 'enteredBy:id,name', 'permanentAddress'])
             ->orderBy('full_name_en')
             ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /**
+     * Profiles this KYC Verifier filed themselves from a paper form — a
+     * different list from pendingForUser(), which is everything waiting on
+     * whichever stage they hold, self-submitted included.
+     */
+    public function enteredBy(int $verifierId, int $perPage = 15, ?string $search = null): LengthAwarePaginator
+    {
+        return $this->query()
+            ->where('entered_by', $verifierId)
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
+            ->with('workflowEvents.actor:id,name')
+            ->latest('id')
+            ->paginate($perPage, ['*'], 'entered')
             ->withQueryString();
     }
 

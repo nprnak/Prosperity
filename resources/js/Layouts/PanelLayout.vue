@@ -11,22 +11,17 @@ import {
   UserGroupIcon,
   BuildingOffice2Icon,
   DocumentTextIcon,
-  CreditCardIcon,
   BanknotesIcon,
-  MagnifyingGlassIcon,
   ClipboardDocumentCheckIcon,
-  CheckCircleIcon,
-  ClipboardDocumentListIcon,
   PresentationChartLineIcon,
-  Cog6ToothIcon,
   BuildingLibraryIcon,
   ClockIcon,
   WrenchScrewdriverIcon,
   PaperAirplaneIcon,
   UserCircleIcon,
   IdentificationIcon,
-  UserPlusIcon,
   DocumentPlusIcon,
+  QueueListIcon,
 } from '@heroicons/vue/24/outline';
 
 const page = usePage();
@@ -50,6 +45,16 @@ const can = (permission) => {
 
 // Staff items appear only when the user holds the matching permission —
 // admins hold every permission, so they still see the full menu.
+// Who can browse the Applicant List. Application Verifier is deliberately
+// left out: they have their own purpose-built "Add Application" picker for
+// finding who to file for, so the generic roster would just be a second,
+// redundant way to reach the same thing.
+const APPLICANT_LIST_PERMISSIONS = [
+  'profile.verify', 'profile.review', 'profile.approve',
+  'application.review', 'application.approve',
+  'application.view-any',
+];
+
 const staffMenuItems = [
   { label: 'Dashboard', icon: ChartBarIcon, route: 'admin.dashboard', startsWith: '/admin/dashboard', permission: 'dashboard.view-admin' },
   { label: 'Role Hub', icon: PuzzlePieceIcon, route: 'admin.roles.hub', startsWith: '/admin/roles/hub', permission: 'user.manage' },
@@ -57,27 +62,23 @@ const staffMenuItems = [
   { label: 'Focal Persons', icon: UserGroupIcon, route: 'admin.focal-persons', startsWith: '/admin/focal-persons', permission: 'focal-person.manage' },
   { label: 'Companies', icon: BuildingOffice2Icon, route: 'admin.companies', startsWith: '/admin/companies', permission: 'company.manage' },
   { label: 'Applications', icon: DocumentTextIcon, route: 'admin.applications', startsWith: '/admin/applications', permission: 'application.view-any' },
-  { label: 'Payments', icon: CreditCardIcon, route: 'admin.payments', startsWith: '/admin/payments', permission: 'payment.view-any' },
   { label: 'Payment Methods', icon: BanknotesIcon, route: 'admin.payment-methods', startsWith: '/admin/payment-methods', permission: 'payment-method.manage' },
+  // The roster of approved applicants, shared by both review chains.
+  { label: 'Applicant List', icon: QueueListIcon, route: 'applicants.index', startsWith: '/applicants/list', permission: APPLICANT_LIST_PERMISSIONS },
   // The KYC chain (profile.*) is separate from the application chain
   // (application.*) below — a user can hold either or both, so this is
   // gated on any of the three profile stages rather than one.
   { label: 'Profile Review', icon: IdentificationIcon, route: 'applicants.review', startsWith: '/applicants/review', permission: ['profile.verify', 'profile.review', 'profile.approve'] },
-  // Paper-based entry: only the Verifier stage transcribes a walk-in's form,
-  // since submitting also records their own sign-off for that stage.
-  { label: 'Add Applicant', icon: UserPlusIcon, route: 'applicants.add.create', startsWith: '/applicants/add', permission: 'profile.verify' },
-  // Each review stage reaches its own queue: a verifier who lands on the
-  // applications list otherwise has no way back to the work waiting for them.
-  { label: 'Verifications', icon: MagnifyingGlassIcon, route: 'verifier.dashboard', startsWith: '/verifier', permission: 'application.verify' },
+  // Paper-based KYC entry moved onto the Applicant List page itself (an
+  // "Add Applicant" button at its top) rather than living in the sidebar.
+  // The three application stages share one queue too, the same way Profile
+  // Review does — whichever of the three permissions a user holds gets them
+  // in, and the page itself shows only what's actually theirs to act on.
+  { label: 'Application Review', icon: ClipboardDocumentCheckIcon, route: 'applications.review', startsWith: '/applications/review', permission: ['application.verify', 'application.review', 'application.approve'] },
+  // The Application Verifier's own way to find who to file for — kept
+  // separate from the Applicant List, which they don't otherwise need.
   { label: 'Add Application', icon: DocumentPlusIcon, route: 'applications.add.pick', startsWith: '/applications/add', permission: 'application.verify' },
-  { label: 'Reviews', icon: ClipboardDocumentCheckIcon, route: 'reviewer.dashboard', startsWith: '/reviewer', permission: 'application.review' },
-  { label: 'Approvals', icon: CheckCircleIcon, route: 'approver.dashboard', startsWith: '/approver', permission: 'application.approve' },
-  // Points at the register, which is where allotments are actually recorded,
-  // and gated on the permission that page requires — admin.allotments needs
-  // allotment.view-any, so gating on manage sent approvers to a 403.
-  { label: 'Allotments', icon: ClipboardDocumentListIcon, route: 'allotments.register', startsWith: '/allotments', permission: 'allotment.manage' },
   { label: 'Reports', icon: PresentationChartLineIcon, route: 'admin.reports', startsWith: '/admin/reports', permission: 'report.view' },
-  { label: 'Admin Settings', icon: Cog6ToothIcon, route: 'admin.credentials', startsWith: '/admin/credentials', permission: 'settings.manage' },
   { label: 'Site Settings', icon: BuildingLibraryIcon, route: 'admin.settings', startsWith: '/admin/settings', permission: 'settings.manage' },
   { label: 'Activity Log', icon: ClockIcon, route: 'admin.logs', startsWith: '/admin/logs', permission: 'audit.view' },
 ];
@@ -85,19 +86,21 @@ const staffMenuItems = [
 const isApplicant = computed(() => page.props.auth?.user?.roles?.some((role) => role.name === 'applicant') ?? false);
 
 const personalMenuItems = computed(() => {
-  // Everyone gets a way back to their own profile, staff included.
+  // Personal login-details/password/signature page — the route itself
+  // has no permission gate, so every authenticated user should see it.
+  // (Not to be confused with the admin-only Admin/Site Settings above,
+  // which really are gated on settings.manage.)
   const base = [
-    { label: 'Profile', icon: UserCircleIcon, route: 'profile.edit', startsWith: '/profile', permission: null },
-    // Personal login-details/password/signature page — the route itself
-    // has no permission gate, so every authenticated user should see it.
-    // (Not to be confused with the admin-only Admin/Site Settings above,
-    // which really are gated on settings.manage.)
     { label: 'Settings', icon: WrenchScrewdriverIcon, route: 'settings.edit', startsWith: '/settings', permission: null },
   ];
 
   if (isApplicant.value) {
-    // Applicants additionally get the Share Application entry, placed first.
-    base.unshift({ label: 'Share Application', icon: PaperAirplaneIcon, route: 'applications.wizard', startsWith: '/applications', permission: 'application.submit' });
+    // Only applicants hold a KYC profile to manage — staff (verifiers
+    // included) have no Profile record, so the link is meaningless for them.
+    base.unshift(
+      { label: 'Share Application', icon: PaperAirplaneIcon, route: 'applications.wizard', startsWith: '/applications', permission: 'application.submit' },
+      { label: 'Profile', icon: UserCircleIcon, route: 'profile.edit', startsWith: '/profile', permission: null },
+    );
   }
 
   return base;

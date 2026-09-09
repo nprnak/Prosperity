@@ -24,6 +24,10 @@ const props = defineProps({
   // applicant instead of the logged-in staff member, and submitting also
   // records the verifier's own sign-off. Null in the normal self-service case.
   staffApplicant: { type: Object, default: null },
+  // The company's active collection accounts, shown at the top of the form
+  // in staff mode so the verifier can match the paper slip in hand against
+  // the right account before transcribing it.
+  collectionAccounts: { type: Array, default: () => [] },
   draftRouteName: { type: String, default: 'applications.draft' },
   draftRouteParams: { type: [Object, Array], default: () => ({}) },
   submitRouteName: { type: String, default: 'applications.submit' },
@@ -72,6 +76,7 @@ const form = useForm({
   step: 2,
   payload: {
     investment_sources: (props.draft?.applicant?.sources_of_funds || []).map((source) => source.source_type),
+    investment_source_other_detail: (props.draft?.applicant?.sources_of_funds || []).find((source) => source.source_type === 'other')?.description || '',
     share_heir_name: props.draft?.applicant?.nominees?.[0]?.full_name || '',
     share_heir_relation: props.draft?.applicant?.nominees?.[0]?.relationship || '',
     share_heir_mobile: props.draft?.applicant?.nominees?.[0]?.mobile || '',
@@ -83,12 +88,21 @@ const form = useForm({
   },
 });
 
+// Mirrors Modules\ApplicantManagement\Enums\SourceOfFunds — kept in step since
+// the wizard's investment-source checkboxes write to the same profile
+// sources-of-funds rows the KYC form does.
 const investmentSourceOptions = [
-  { value: 'salary', label: 'Salary' },
+  { value: 'salary', label: 'Salary / Remuneration' },
   { value: 'dividend', label: 'Dividend' },
-  { value: 'property_sale', label: 'Property Sale' },
-  { value: 'house_rent', label: 'House Rent' },
   { value: 'share_trading', label: 'Share Trading' },
+  { value: 'property_sale', label: 'Sale of Property' },
+  { value: 'house_rent', label: 'House Rent' },
+  { value: 'foreign_employment', label: 'Foreign Employment' },
+  { value: 'loan_or_borrowing', label: 'Loan or Borrowing' },
+  { value: 'ancestral_property', label: 'Ancestral Property' },
+  { value: 'business', label: 'Business / Trade' },
+  { value: 'other', label: 'Other (please specify)' },
+  { value: 'savings', label: 'Savings' },
 ];
 
 const addVoucher = () => form.payload.vouchers.push(blankVoucher());
@@ -140,6 +154,38 @@ const estimatedTotal = computed(() => {
 
   return (shares * Number.parseFloat(selectedOffering.value.share_rate)).toFixed(2);
 });
+
+// With exactly two vouchers, Voucher 2's amount is whatever of the total
+// Voucher 1 didn't cover — filled in automatically so the verifier doesn't
+// have to do the subtraction by hand, but only until they type into it
+// themselves; from then on it's theirs to edit like any other field.
+const voucher2AutoFilled = ref(true);
+
+const onAmountInput = (index) => {
+  if (index === 1 && form.payload.vouchers.length === 2) {
+    voucher2AutoFilled.value = false;
+  }
+};
+
+watch(
+  () => form.payload.vouchers.length,
+  (length) => {
+    if (length === 2) voucher2AutoFilled.value = true;
+  },
+);
+
+watch(
+  () => [form.payload.vouchers.length, form.payload.vouchers[0]?.amount, estimatedTotal.value],
+  () => {
+    if (form.payload.vouchers.length !== 2 || !voucher2AutoFilled.value) return;
+
+    const total = Number.parseFloat(estimatedTotal.value || '0');
+    const first = Number.parseFloat(form.payload.vouchers[0].amount || '0');
+    const remainder = Math.max(0, total - first);
+
+    form.payload.vouchers[1].amount = remainder.toFixed(2);
+  },
+);
 
 const sharesRemaining = computed(() => selectedOffering.value?.shares_remaining ?? null);
 
@@ -246,20 +292,37 @@ const submitFinal = () => {
   <Head title="Share Application" />
   <PanelLayout>
     <div class="py-8 max-w-6xl mx-auto space-y-6 px-4 sm:px-6">
-      <div class="rounded-2xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-700 p-6 text-white shadow-lg">
+      <div class="bg-white rounded-lg shadow p-6">
         <template v-if="staffApplicant">
-          <h3 class="text-2xl font-semibold">Filing a Paper Application</h3>
-          <p class="mt-2 text-sm text-blue-100">
+          <h2 class="text-2xl font-bold text-gray-900">Filing a Paper Application</h2>
+          <p class="mt-1 text-sm text-gray-700">
             For {{ staffApplicant.name }} ({{ staffApplicant.email }}). Submitting also records your own
             verification of this application, forwarding it straight to the review team.
           </p>
         </template>
         <template v-else>
-          <h3 class="text-2xl font-semibold">Share Application Portal</h3>
-          <p class="mt-2 text-sm text-blue-100">
+          <h2 class="text-2xl font-bold text-gray-900">Share Application Portal</h2>
+          <p class="mt-1 text-sm text-gray-700">
             Register first, login, complete your full profile, then apply for shares from the same account.
           </p>
         </template>
+      </div>
+
+      <div v-if="staffApplicant && collectionAccounts.length" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+        <h4 class="text-sm font-semibold uppercase tracking-wide text-emerald-800">Company Collection Accounts</h4>
+        <p class="mt-1 text-xs text-emerald-700">Match the deposit slip against one of these before transcribing the voucher below.</p>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            v-for="account in collectionAccounts"
+            :key="account.id"
+            class="rounded-lg border border-emerald-200 bg-white p-3 text-sm"
+          >
+            <p class="font-semibold text-gray-900">{{ account.name }}</p>
+            <p class="text-gray-700">{{ account.bank_name }}</p>
+            <p class="text-gray-700">A/C Name: {{ account.account_name }}</p>
+            <p class="font-mono text-gray-900">A/C No: {{ account.account_number }}</p>
+          </div>
+        </div>
       </div>
 
       <div v-if="applicationInReview" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
@@ -391,6 +454,7 @@ const submitFinal = () => {
                 Paid in more than one deposit? Add a voucher for each. Every slip needs its own transaction code.
               </p>
             </div>
+            <InputError :message="payloadError('vouchers')" class="mt-2" />
 
             <div
               v-for="(voucher, index) in form.payload.vouchers"
@@ -412,7 +476,7 @@ const submitFinal = () => {
               <!-- Six tracks so five fields still fill every row: 2+2+2, then 3+3. -->
               <div class="mt-3 grid gap-4 md:grid-cols-6">
                 <div class="md:col-span-2">
-                  <label class="mb-1 block text-sm font-medium text-gray-700">Payment Type</label>
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Payment Type{{ staffApplicant ? ' *' : '' }}</label>
                   <select v-model="voucher.payment_type" :class="inputClass(`vouchers.${index}.payment_type`)">
                     <option value="">Select payment type</option>
                     <option value="cheque">Cheque</option>
@@ -425,33 +489,39 @@ const submitFinal = () => {
                   <InputError :message="payloadError(`vouchers.${index}.payment_type`)" class="mt-1" />
                 </div>
                 <div class="md:col-span-2">
-                  <label class="mb-1 block text-sm font-medium text-gray-700">Paying Bank</label>
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Paying Bank{{ staffApplicant ? ' *' : '' }}</label>
                   <input v-model="voucher.deposited_bank" type="text" placeholder="e.g. Nepal Bank Limited" :class="inputClass(`vouchers.${index}.deposited_bank`)" />
                   <InputError :message="payloadError(`vouchers.${index}.deposited_bank`)" class="mt-1" />
                 </div>
                 <div class="md:col-span-2">
-                  <label class="mb-1 block text-sm font-medium text-gray-700">Transaction Code / Cheque No</label>
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Transaction Code / Cheque No{{ staffApplicant ? ' *' : '' }}</label>
                   <input v-model="voucher.transaction_code" type="text" placeholder="e.g. 1234567 or cheque number" :class="inputClass(`vouchers.${index}.transaction_code`)" />
                   <InputError :message="payloadError(`vouchers.${index}.transaction_code`)" class="mt-1" />
                 </div>
                 <div class="md:col-span-3">
-                  <label class="mb-1 block text-sm font-medium text-gray-700">ASBA Reference</label>
-                  <input v-model="voucher.asba_reference" type="text" placeholder="Reference from this bank, if available" :class="inputClass(`vouchers.${index}.asba_reference`)" />
-                  <InputError :message="payloadError(`vouchers.${index}.asba_reference`)" class="mt-1" />
-                </div>
-                <div class="md:col-span-3">
-                  <label class="mb-1 block text-sm font-medium text-gray-700">Amount Deposited</label>
-                  <input v-model="voucher.amount" type="number" step="0.01" min="0" placeholder="Leave blank to split the total" :class="inputClass(`vouchers.${index}.amount`)" />
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Amount Deposited{{ staffApplicant ? ' *' : '' }}</label>
+                  <input
+                    v-model="voucher.amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    :placeholder="staffApplicant ? 'e.g. 50000.00' : 'Leave blank to split the total'"
+                    :class="inputClass(`vouchers.${index}.amount`)"
+                    @input="onAmountInput(index)"
+                  />
                   <InputError :message="payloadError(`vouchers.${index}.amount`)" class="mt-1" />
+                  <p v-if="staffApplicant && index === 1 && form.payload.vouchers.length === 2 && voucher2AutoFilled" class="mt-1 text-xs text-gray-500">
+                    Auto-filled as the remainder of the total after Voucher 1. Edit it if the slip says otherwise.
+                  </p>
                 </div>
                 <div class="md:col-span-3">
-                  <label class="mb-1 block text-sm font-medium text-gray-700">Date of Deposit</label>
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Date of Deposit{{ staffApplicant ? ' *' : '' }}</label>
                   <input v-model="voucher.payment_date" type="date" :max="today" :class="inputClass(`vouchers.${index}.payment_date`)" />
                   <InputError :message="payloadError(`vouchers.${index}.payment_date`)" class="mt-1" />
                   <p class="mt-1 text-xs text-gray-500">The day the money left your account, as shown on the slip.</p>
                 </div>
                 <div class="md:col-span-6">
-                  <label class="mb-1 block text-sm font-medium text-gray-700">Bank Voucher Image</label>
+                  <label class="mb-1 block text-sm font-medium text-gray-700">Bank Voucher Image{{ staffApplicant ? ' *' : '' }}</label>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -497,6 +567,17 @@ const submitFinal = () => {
                 </label>
               </div>
               <InputError :message="payloadError('investment_sources')" class="mt-1" />
+
+              <div v-if="form.payload.investment_sources.includes('other')" class="mt-3">
+                <label class="mb-1 block text-sm font-medium text-gray-700">Please specify</label>
+                <input
+                  v-model="form.payload.investment_source_other_detail"
+                  type="text"
+                  placeholder="e.g. Insurance claim"
+                  :class="inputClass('investment_source_other_detail')"
+                />
+                <InputError :message="payloadError('investment_source_other_detail')" class="mt-1" />
+              </div>
             </div>
 
             <!-- Three heir fields fill a three-column row exactly. -->

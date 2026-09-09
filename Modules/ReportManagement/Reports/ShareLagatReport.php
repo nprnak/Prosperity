@@ -3,11 +3,15 @@
 namespace Modules\ReportManagement\Reports;
 
 use App\Services\NepaliDateService;
+use App\Services\NepaliNumeralService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\CompanyManagement\Models\Company;
 use Modules\CompanyManagement\Models\ShareOffering;
+use Modules\SettingsManagement\Models\District;
+use Modules\SettingsManagement\Models\LocalLevel;
 
 /**
  * शेयर लगत विवरण — the share register, one row per shareholder.
@@ -16,12 +20,15 @@ use Modules\CompanyManagement\Models\ShareOffering;
  * was approved twice in the same issue (2,000 then 5,000) holds 7,000 and must
  * appear once. The money columns follow the format's own definitions:
  *
- *   जम्मा चुक्ता भएको रकम  = verified deposits
+ *   जम्मा चुक्ता भएको रकम  = the sum of every declared bank voucher's amount
  *   चुक्ता भएको रकम        = shares × 100 (par)
  *   प्रिमियम               = deposits − par
  *
  * so प्रिमियम falls out of the two figures either side of it rather than being
- * derived from the offering rate.
+ * derived from the offering rate. The whole document is filed in Nepali, so
+ * every number on it — serials, shares, amounts, the citizenship number — is
+ * rendered in Devanagari numerals, and addresses print the geography's Nepali
+ * names rather than the English ones the KYC form stores them under.
  */
 class ShareLagatReport extends BaseReport
 {
@@ -40,7 +47,15 @@ class ShareLagatReport extends BaseReport
      */
     private const LINE = "\n";
 
-    public function __construct(private NepaliDateService $nepaliDates) {}
+    /** Districts and local levels keyed by their English name, Nepali value. */
+    private ?array $districtsNp = null;
+
+    private ?array $localLevelsNp = null;
+
+    public function __construct(
+        private NepaliDateService $nepaliDates,
+        private NepaliNumeralService $numerals,
+    ) {}
 
     public function key(): string
     {
@@ -63,9 +78,56 @@ class ShareLagatReport extends BaseReport
             .'selected issue. Paid, premium and outstanding amounts follow the prescribed format.';
     }
 
+    /**
+     * Company narrows the offering list; the offering itself may be left
+     * blank (every offering), set once, or several picked at once — a
+     * shareholder register spanning more than one issue of the same company.
+     */
     public function filters(): array
     {
-        return $this->issueFilters();
+        return [
+            [
+                'key' => 'company_id',
+                'label' => 'Company',
+                'type' => 'select',
+                'placeholder' => 'All companies',
+                'options' => Company::query()->orderBy('name')->get(['id', 'name'])
+                    ->map(fn (Company $company) => ['value' => $company->id, 'label' => $company->name])
+                    ->all(),
+            ],
+            [
+                'key' => 'share_offering_ids',
+                'label' => 'Offering',
+                'type' => 'multiselect',
+                'placeholder' => 'All offerings',
+                'dependsOn' => 'company_id',
+                'options' => $this->offerings()
+                    ->map(fn (ShareOffering $offering) => [
+                        'value' => $offering->id,
+                        'label' => $this->offeringLabel($offering),
+                        'parent' => $offering->company_id,
+                    ])
+                    ->all(),
+            ],
+        ];
+    }
+
+    /**
+     * Offerings in filter scope — overrides BaseReport's single-offering
+     * version to also recognise the multi-select share_offering_ids this
+     * report actually filters by.
+     *
+     * @param  array<string, mixed>  $filters
+     * @return Collection<int, ShareOffering>
+     */
+    protected function offerings(array $filters = []): Collection
+    {
+        return ShareOffering::query()
+            ->with('company:id,name,code')
+            ->when($filters['company_id'] ?? null, fn ($q, $companyId) => $q->where('company_id', $companyId))
+            ->when(filled($filters['share_offering_ids'] ?? null), fn ($q) => $q->whereIn('id', (array) $filters['share_offering_ids']))
+            ->orderBy('id')
+            ->get();
     }
 
     public function totalsLabel(): string
@@ -127,9 +189,11 @@ class ShareLagatReport extends BaseReport
 
     public function rows(array $filters = []): array
     {
+        $offeringIds = array_filter((array) ($filters['share_offering_ids'] ?? []));
+
         $applications = ShareApplication::query()
             ->whereIn('status', $this->holdingStatuses())
-            ->when($filters['share_offering_id'] ?? null, fn ($q, $offeringId) => $q->where('share_offering_id', $offeringId))
+            ->when($offeringIds !== [], fn ($q) => $q->whereIn('share_offering_id', $offeringIds))
             ->when($filters['company_id'] ?? null, fn ($q, $companyId) => $q->whereHas(
                 'offering', fn ($offering) => $offering->where('company_id', $companyId)
             ))
@@ -143,7 +207,7 @@ class ShareLagatReport extends BaseReport
             return [];
         }
 
-        $deposits = $this->verifiedDepositsByApplication($applications->pluck('id')->all());
+        $deposits = $this->voucherAmountsByApplication($applications->pluck('id')->all());
         $promoters = $this->promoterByOffering($applications->pluck('share_offering_id')->filter()->unique()->all());
 
         $profiles = Profile::query()
@@ -173,11 +237,11 @@ class ShareLagatReport extends BaseReport
             $outstanding = $declared - $totalPaid;
 
             $rows[] = [
-                'sn' => ++$serial,
+                'sn' => $this->digits(++$serial),
                 'name_address' => $this->nameAndAddress($profile),
-                'father_or_spouse' => $profile->father_name ?: ($profile->spouse_name ?: self::NONE_NP),
+                'father_or_spouse' => $profile->father_name_np ?: ($profile->spouse_name_np ?: self::NONE_NP),
                 'citizenship' => $this->citizenship($profile),
-                'shares' => $shares,
+                'shares' => $this->digits(number_format($shares)),
                 'total_paid' => $this->amount($totalPaid),
                 'paid' => $this->amount($par),
                 'premium' => $this->amount(max(0, $totalPaid - $par)),
@@ -195,7 +259,7 @@ class ShareLagatReport extends BaseReport
     public function totals(array $rows): array
     {
         return [
-            'shares' => number_format($this->sumColumn($rows, 'shares')),
+            'shares' => $this->digits(number_format($this->sumColumn($rows, 'shares'))),
             'total_paid' => $this->amount($this->sumColumn($rows, 'total_paid')),
             'paid' => $this->amount($this->sumColumn($rows, 'paid')),
             'premium' => $this->amount($this->sumColumn($rows, 'premium')),
@@ -203,8 +267,24 @@ class ShareLagatReport extends BaseReport
     }
 
     /**
+     * BaseReport's version only ever recognises ASCII digits when it strips a
+     * formatted cell back down to a number — but every cell here is already
+     * rendered in Devanagari, so summing the footer would silently come out
+     * as zero without converting back to ASCII first.
+     */
+    protected function sumColumn(array $rows, string $key): float
+    {
+        return array_sum(array_map(
+            fn (array $row) => (float) preg_replace('/[^0-9.\-]/', '', $this->numerals->toAscii((string) ($row[$key] ?? 0))),
+            $rows,
+        ));
+    }
+
+    /**
      * Name in Nepali where the KYC captured one, since this register is filed
      * in Nepali, with the permanent address beneath it as the format shows.
+     * District and local level print the geography's own Nepali name rather
+     * than the English one the address is stored under.
      *
      * The address goes on its own line rather than after a comma — see
      * self::LINE for why that is not merely cosmetic.
@@ -214,9 +294,9 @@ class ShareLagatReport extends BaseReport
         $address = $profile->permanentAddress;
 
         $parts = array_filter([
-            $address?->local_level,
-            $address?->ward_no ? 'वडा नं. '.$address->ward_no : null,
-            $address?->district,
+            $address?->local_level ? $this->localLevelNp($address->local_level) : null,
+            $address?->ward_no ? 'वडा नं. '.$this->digits($address->ward_no) : null,
+            $address?->district ? $this->districtNp($address->district) : null,
         ]);
 
         $name = $profile->full_name_np ?: $profile->full_name_en;
@@ -224,13 +304,22 @@ class ShareLagatReport extends BaseReport
         return $parts === [] ? $name : $name.self::LINE.implode(', ', $parts);
     }
 
+    /**
+     * The citizenship number as printed on the certificate: the Nepali value
+     * captured on the KYC form when there is one, otherwise the English
+     * number's digits converted — same numbers, same order, just Devanagari.
+     */
     private function citizenship(Profile $profile): string
     {
-        $number = $profile->citizenship_number ?: self::NONE_NP;
+        $number = $profile->citizenship_number_np
+            ?: ($profile->citizenship_number ? $this->digits($profile->citizenship_number) : null)
+            ?: self::NONE_NP;
 
-        return $profile->citizenship_issued_district
-            ? $number.','.self::LINE.$profile->citizenship_issued_district
-            : $number;
+        $district = $profile->citizenship_issued_district
+            ? $this->districtNp($profile->citizenship_issued_district)
+            : null;
+
+        return $district ? $number.','.self::LINE.$district : $number;
     }
 
     /**
@@ -296,8 +385,58 @@ class ShareLagatReport extends BaseReport
             ->all();
     }
 
+    /**
+     * जम्मा चुक्ता भएको रकम — the total actually paid in, summed straight from
+     * every bank voucher declared against the application rather than from
+     * the payment transaction's own amount, since that figure is only ever
+     * set once at submission and does not necessarily track a voucher added
+     * or corrected afterwards.
+     *
+     * @param  array<int, int>  $applicationIds
+     * @return array<int, string>
+     */
+    private function voucherAmountsByApplication(array $applicationIds): array
+    {
+        if ($applicationIds === []) {
+            return [];
+        }
+
+        return DB::table('share_application_vouchers')
+            ->selectRaw('share_application_id, COALESCE(SUM(amount), 0) as total')
+            ->whereIn('share_application_id', $applicationIds)
+            ->groupBy('share_application_id')
+            ->pluck('total', 'share_application_id')
+            ->map(fn ($total) => (string) $total)
+            ->all();
+    }
+
     private function amount(float $value): string
     {
-        return number_format($value, 2, '.', ',');
+        return $this->digits(number_format($value, 2, '.', ','));
+    }
+
+    private function digits(string|int|float $value): string
+    {
+        return $this->numerals->toDevanagari($value);
+    }
+
+    /**
+     * The Nepali name for a district stored under its English one, e.g.
+     * "Kathmandu" → "काठमाडौं". Loaded once per report render — the whole
+     * table is 77 rows — rather than a query per shareholder.
+     */
+    private function districtNp(string $nameEn): string
+    {
+        $this->districtsNp ??= District::query()->pluck('name_np', 'name_en')->all();
+
+        return $this->districtsNp[$nameEn] ?? $nameEn;
+    }
+
+    /** The Nepali name for a local level stored under its English one. */
+    private function localLevelNp(string $nameEn): string
+    {
+        $this->localLevelsNp ??= LocalLevel::query()->pluck('name_np', 'name_en')->all();
+
+        return $this->localLevelsNp[$nameEn] ?? $nameEn;
     }
 }

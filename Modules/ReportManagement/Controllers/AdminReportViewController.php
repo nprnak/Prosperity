@@ -130,6 +130,9 @@ class AdminReportViewController extends Controller
 
             $filters[$key] = match ($definition['type']) {
                 'select' => $this->selectValue($definition, $value),
+                // Sent as a comma-joined string, the same convention the
+                // column picker uses, rather than a bracketed array param.
+                'multiselect' => $this->selectValues($definition, is_string($value) ? explode(',', $value) : (array) $value),
                 default => filled($value) ? (string) $value : null,
             };
         }
@@ -157,6 +160,36 @@ class AdminReportViewController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Same as selectValue(), for a filter that picks any number of options at
+     * once — one offering, several, or (by leaving it empty) all of them.
+     *
+     * @param  array<string, mixed>  $definition
+     * @return array<int, mixed>|null
+     */
+    protected function selectValues(array $definition, mixed $value): ?array
+    {
+        $candidates = array_filter((array) $value, fn ($v) => filled($v));
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        $matched = [];
+
+        foreach ($candidates as $candidate) {
+            foreach ($definition['options'] ?? [] as $option) {
+                if ((string) $option['value'] === (string) $candidate) {
+                    $matched[] = $option['value'];
+
+                    break;
+                }
+            }
+        }
+
+        return $matched === [] ? null : $matched;
     }
 
     /**
@@ -198,10 +231,12 @@ class AdminReportViewController extends Controller
                 continue;
             }
 
-            $option = collect($definition['options'] ?? [])
-                ->firstWhere(fn (array $option) => (string) $option['value'] === (string) $value);
+            $options = collect($definition['options'] ?? []);
+            $optionLabel = fn ($v) => $options->firstWhere(fn (array $option) => (string) $option['value'] === (string) $v)['label'] ?? (string) $v;
 
-            $labels[$definition['label']] = $option['label'] ?? (string) $value;
+            $labels[$definition['label']] = is_array($value)
+                ? collect($value)->map($optionLabel)->implode(', ')
+                : $optionLabel($value);
         }
 
         return $labels;

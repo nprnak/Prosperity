@@ -23,14 +23,29 @@ const props = defineProps({
   org: { type: Object, default: () => ({ name: '', address: '' }) },
 });
 
-const form = ref({ ...props.filters });
+// A multiselect filter always binds to an array — seeded from whatever the
+// server sent back (or empty, meaning "all") rather than null, which a
+// native multi-select can't represent.
+const seedForm = () => {
+  const seeded = { ...props.filters };
+
+  props.filterDefinitions.forEach((definition) => {
+    if (definition.type === 'multiselect' && !Array.isArray(seeded[definition.key])) {
+      seeded[definition.key] = [];
+    }
+  });
+
+  return seeded;
+};
+
+const form = ref(seedForm());
 const chosen = ref([...props.visibleColumns]);
 const showColumns = ref(false);
 
 // A fresh report has its own filters and columns; re-seed rather than carrying
 // the previous report's selection across.
 watch(() => props.report.key, () => {
-  form.value = { ...props.filters };
+  form.value = seedForm();
   chosen.value = [...props.visibleColumns];
 });
 
@@ -50,6 +65,15 @@ const query = () => {
   const params = {};
 
   Object.entries(form.value).forEach(([key, value]) => {
+    // A multiselect's array goes over the wire as a comma-joined string, the
+    // same convention the column picker below already uses — simpler and
+    // more predictable than relying on axios/qs to serialise a bracketed
+    // array param the same way on every request.
+    if (Array.isArray(value)) {
+      if (value.length) params[key] = value.join(',');
+      return;
+    }
+
     if (value !== null && value !== '' && value !== undefined) params[key] = value;
   });
 
@@ -69,11 +93,15 @@ const apply = () => router.get(route('admin.reports.show', props.report.key), qu
 });
 
 const clearFilters = () => {
-  Object.keys(form.value).forEach((key) => (form.value[key] = null));
+  props.filterDefinitions.forEach((definition) => {
+    form.value[definition.key] = definition.type === 'multiselect' ? [] : null;
+  });
   apply();
 };
 
-// Clearing a parent filter strands the dependent selection, so drop it too.
+// Clearing a parent filter strands the dependent selection, so drop it too —
+// for a multiselect, only the choices that are no longer valid, not the
+// whole array.
 watch(() => props.filterDefinitions.map((definition) => form.value[definition.key]).join('|'), () => {
   props.filterDefinitions.forEach((definition) => {
     if (!definition.dependsOn) return;
@@ -81,11 +109,23 @@ watch(() => props.filterDefinitions.map((definition) => form.value[definition.ke
     const parent = form.value[definition.dependsOn];
     const value = form.value[definition.key];
 
+    if (!parent) return;
+
+    const valid = optionsFor(definition);
+
+    if (Array.isArray(value)) {
+      const kept = value.filter((v) => valid.some((option) => String(option.value) === String(v)));
+
+      if (kept.length !== value.length) form.value[definition.key] = kept;
+
+      return;
+    }
+
     if (!value) return;
 
-    const stillValid = optionsFor(definition).some((option) => String(option.value) === String(value));
+    const stillValid = valid.some((option) => String(option.value) === String(value));
 
-    if (parent && !stillValid) form.value[definition.key] = null;
+    if (!stillValid) form.value[definition.key] = null;
   });
 });
 
@@ -146,6 +186,16 @@ const alignClass = (column) => (column.align === 'right' ? 'text-right' : 'text-
                   {{ option.label }}
                 </option>
               </select>
+              <select
+                v-else-if="definition.type === 'multiselect'"
+                v-model="form[definition.key]"
+                multiple
+                class="h-28 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option v-for="option in optionsFor(definition)" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
               <input
                 v-else
                 v-model="form[definition.key]"
@@ -153,6 +203,9 @@ const alignClass = (column) => (column.align === 'right' ? 'text-right' : 'text-
                 :placeholder="definition.placeholder || ''"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               />
+              <p v-if="definition.type === 'multiselect'" class="mt-1 text-xs text-gray-500">
+                {{ form[definition.key]?.length ? `${form[definition.key].length} selected` : (definition.placeholder || 'All') }} — Ctrl/Cmd-click to pick several.
+              </p>
             </div>
           </div>
 

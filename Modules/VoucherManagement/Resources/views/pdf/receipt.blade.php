@@ -50,7 +50,6 @@
             <div style="margin-top:8px;">Shares Applied: <span class="fill">{{ $sharesApplied ?: '—' }}</span></div>
         </td>
         <td style="width:40%; text-align:right; font-size:10px;">
-            Voucher No: <strong>{{ $voucher->voucher_number }}</strong><br>
             Application No: <strong>{{ $application->application_number }}</strong>
         </td>
     </tr>
@@ -84,37 +83,7 @@
 
 <table class="signatures">
     <tr>
-        <td style="text-align:left;">
-            @if (data_get($stageSignatures, 'verifier.signatureDataUri'))
-                <img src="{{ data_get($stageSignatures, 'verifier.signatureDataUri') }}" alt="Verifier signature" class="sig-image">
-            @else
-                <span class="sig-line">Verifier Sign:</span>
-            @endif
-            <div class="sig-name">{{ data_get($stageSignatures, 'verifier.name') ?: 'Pending' }}</div>
-            <div class="sig-designation">{{ data_get($stageSignatures, 'verifier.designation') ?: '' }}</div>
-            <div class="sig-time">{{ data_get($stageSignatures, 'verifier.signedAt') ?: '' }}</div>
-        </td>
-        <td style="text-align:center;">
-            @if (data_get($stageSignatures, 'reviewer.signatureDataUri'))
-                <img src="{{ data_get($stageSignatures, 'reviewer.signatureDataUri') }}" alt="Reviewer signature" class="sig-image" style="margin-left:auto; margin-right:auto;">
-            @else
-                <span class="sig-line">Reviewer Sign:</span>
-            @endif
-            <div class="sig-name">{{ data_get($stageSignatures, 'reviewer.name') ?: 'Pending' }}</div>
-            <div class="sig-designation">{{ data_get($stageSignatures, 'reviewer.designation') ?: '' }}</div>
-            <div class="sig-time">{{ data_get($stageSignatures, 'reviewer.signedAt') ?: '' }}</div>
-        </td>
-        <td style="text-align:right;">
-            @if (data_get($stageSignatures, 'approver.signatureDataUri'))
-                <img src="{{ data_get($stageSignatures, 'approver.signatureDataUri') }}" alt="Approver signature" class="sig-image" style="margin-left:auto;">
-            @else
-                <span class="sig-line">Approver Sign:</span>
-            @endif
-            <div class="sig-name">{{ data_get($stageSignatures, 'approver.name') ?: 'Pending' }}</div>
-            <div class="sig-designation">{{ data_get($stageSignatures, 'approver.designation') ?: '' }}</div>
-            <div class="sig-time">{{ data_get($stageSignatures, 'approver.signedAt') ?: '' }}</div>
-        </td>
-        <td class="stamp">
+        <td class="stamp" style="text-align:right; width:100%;">
             @if (! empty($companyStampDataUri))
                 <img src="{{ $companyStampDataUri }}" alt="Company stamp" class="stamp-image">
             @else

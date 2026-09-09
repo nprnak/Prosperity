@@ -2,6 +2,7 @@
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { ArrowLeftIcon, PrinterIcon, ReceiptPercentIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
   application: Object,
@@ -12,14 +13,23 @@ const props = defineProps({
   voucherImageUrls: { type: Array, default: () => [] },
   collectionAccount: Object,
   receipt: { type: Object, default: null },
+  backRoute: { type: String, default: null },
+  backLabel: { type: String, default: null },
 });
 
 // A draft is previewed from the wizard before submitting, so the page has to
 // say so plainly — an unsubmitted form must not read as a filed one.
 const isDraft = computed(() => props.application?.status === 'draft');
 
+// Staff previewing someone else's application aren't the wizard's audience —
+// and the route is permission-gated shut to them anyway — so the backend
+// points them at the admin detail page instead.
+const backHref = computed(() => props.backRoute || route('applications.wizard'));
+const backText = computed(() => props.backLabel || (isDraft.value ? 'Back to Editing' : 'Back to Applications'));
+
 const applicant = computed(() => props.application?.applicant || {});
 const company = computed(() => props.application?.offering?.company || {});
+const focalPersonName = computed(() => props.application?.focal_person?.name);
 
 const accountHolderName = computed(
   () => props.collectionAccount?.account_name
@@ -43,6 +53,14 @@ const clientIdCells = computed(() => Array.from({ length: 8 }, (_, i) => boid.va
 
 const formatDate = (value) => (value ? String(value).slice(0, 10) : '');
 
+// 10 digits printed as 000-111-111-1, matching the KYC form's input.
+const formatNid = (value) => {
+    if (!value) return '';
+    const digits = String(value);
+    const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6, 9), digits.slice(9, 10)];
+    return parts.filter(Boolean).join('-');
+};
+
 const submittedDate = computed(() => formatDate(props.application?.submitted_at));
 
 // Nepali labels come from the Title/MaritalStatus/EducationLevel enums via the
@@ -61,16 +79,28 @@ const maritalNp = computed(() => applicant.value.marital_status_label_np || 'व
 
 const educationNp = computed(() => applicant.value.education_label_np || '');
 
+// Mirrors Modules\ApplicantManagement\Enums\SourceOfFunds, in the same order
+// the prescribed printed form lists them.
 const sourceLabels = {
   salary: 'पारिश्रमिक',
-  dividend: 'लाभांश',
+  dividend: 'लाभांस',
+  share_trading: 'शेयर कारोबार',
   property_sale: 'सम्पत्ति विक्री',
   house_rent: 'घर बहाल',
-  share_trading: 'शेयर कारोवार',
+  foreign_employment: 'बैदेशिक रोजगारी',
+  loan_or_borrowing: 'ऋण वा सापटी',
+  ancestral_property: 'पैतृक सम्पत्ति',
+  business: 'व्यापार/व्यवसाय',
+  other: 'अन्य भए (खुलाउने)',
+  savings: 'वचत',
 };
 
 const selectedSources = computed(
   () => (applicant.value.sources_of_funds || []).map((source) => source.source_type),
+);
+
+const otherSourceDetail = computed(
+  () => (applicant.value.sources_of_funds || []).find((source) => source.source_type === 'other')?.description,
 );
 
 const vouchers = computed(() => props.application.vouchers || []);
@@ -112,14 +142,14 @@ const print = () => window.print();
   <PanelLayout>
     <div class="space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link :href="route('applications.wizard')" class="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">
-          &larr; {{ isDraft ? 'Back to Editing' : 'Back to Applications' }}
+        <Link :href="backHref" class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">
+          <ArrowLeftIcon class="h-4 w-4" /> {{ backText }}
         </Link>
         <button
           @click="print"
           class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
         >
-          🖨️ Print Form
+          <PrinterIcon class="h-4 w-4" /> Print Form
         </button>
       </div>
 
@@ -139,11 +169,11 @@ const print = () => window.print();
           · Voucher No: <span class="font-semibold">{{ receipt.voucherNumber }}</span>
         </p>
         <div class="mt-3 flex flex-wrap items-center gap-3">
-          <Link :href="receipt.showUrl" class="font-semibold text-emerald-700 hover:text-emerald-900 hover:underline">
-            View Receipt
+          <Link :href="receipt.showUrl" class="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:text-emerald-900 hover:underline">
+            <ReceiptPercentIcon class="h-4 w-4" /> View Receipt
           </Link>
-          <a :href="receipt.downloadUrl" class="font-semibold text-emerald-700 hover:text-emerald-900 hover:underline">
-            Download Receipt PDF
+          <a :href="receipt.downloadUrl" class="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:text-emerald-900 hover:underline">
+            <ArrowDownTrayIcon class="h-4 w-4" /> Download Receipt PDF
           </a>
         </div>
       </div>
@@ -276,12 +306,12 @@ const print = () => window.print();
               <td class="border border-black px-2 py-1"><span class="font-semibold">पेशा:</span> {{ applicant.occupation }}</td>
             </tr>
             <tr>
-              <td colspan="2" class="border border-black px-2 py-1"><span class="font-semibold">बुबाको नाम, थर:</span> {{ applicant.father_name }}</td>
-              <td class="border border-black px-2 py-1"><span class="font-semibold">बाजेको नाम, थर:</span> {{ applicant.grandfather_name }}</td>
+              <td colspan="2" class="border border-black px-2 py-1"><span class="font-semibold">बुबाको नाम, थर:</span> {{ applicant.father_name_np }}</td>
+              <td class="border border-black px-2 py-1"><span class="font-semibold">बाजेको नाम, थर:</span> {{ applicant.grandfather_name_np }}</td>
               <td class="border border-black px-2 py-1">{{ maritalNp }}</td>
             </tr>
             <tr>
-              <td colspan="2" class="border border-black px-2 py-1"><span class="font-semibold">पति/पत्नीको नाम, थर:</span> {{ applicant.spouse_name }}</td>
+              <td colspan="2" class="border border-black px-2 py-1"><span class="font-semibold">पति/पत्नीको नाम, थर:</span> {{ applicant.spouse_name_np }}</td>
               <td class="border border-black px-2 py-1"><span class="font-semibold">शैक्षिक योग्यता:</span> {{ educationNp }}</td>
               <td class="border border-black px-2 py-1"><span class="font-semibold">पेशा:</span> {{ applicant.occupation }}</td>
             </tr>
@@ -310,7 +340,7 @@ const print = () => window.print();
               <td class="border border-black px-2 py-1"><span class="font-semibold">मोबाईल नं:</span> {{ applicant.mobile }}</td>
             </tr>
             <tr>
-              <td colspan="2" class="border border-black px-2 py-1"><span class="font-semibold">राष्ट्रिय परिचय पत्र नं:</span> {{ applicant.national_id_number }}</td>
+              <td colspan="2" class="border border-black px-2 py-1"><span class="font-semibold">राष्ट्रिय परिचय पत्र नं:</span> {{ formatNid(applicant.national_id_number) }}</td>
               <td class="border border-black px-2 py-1"><span class="font-semibold">PAN:</span> {{ applicant.pan_number }}</td>
               <td class="border border-black px-2 py-1"><span class="font-semibold">इमेल:</span> {{ applicant.email }}</td>
             </tr>
@@ -319,7 +349,9 @@ const print = () => window.print();
                 <span class="font-semibold">लगानीको स्रोत:</span>
                 <template v-for="(label, key, index) in sourceLabels" :key="key">
                   <span v-if="index" class="mx-1">/</span>
-                  <span :class="selectedSources.includes(key) ? 'font-bold underline' : ''">{{ label }}</span>
+                  <span :class="selectedSources.includes(key) ? 'font-bold underline' : ''">
+                    {{ label }}<template v-if="key === 'other' && selectedSources.includes('other') && otherSourceDetail">: {{ otherSourceDetail }}</template>
+                  </span>
                 </template>
               </td>
             </tr>
@@ -357,7 +389,11 @@ const print = () => window.print();
         </p>
 
         <div class="mt-8 flex items-end justify-between">
-          <div>सम्पर्क सञ्चालक/ कम्पनी प्रतिनिधि : .............................................</div>
+          <div>
+            सम्पर्क सञ्चालक/ कम्पनी प्रतिनिधि :
+            <span v-if="focalPersonName" class="font-semibold">{{ focalPersonName }}</span>
+            <span v-else>.............................................</span>
+          </div>
           <div class="text-center">
             <!-- The uploaded signature stands in for the dotted rule; if it is
                  missing or fails to load, the rule comes back to be signed by hand. -->

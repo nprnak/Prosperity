@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApprovalManagement\Notifications\ApplicationApprovedNotification;
@@ -18,6 +17,9 @@ use Modules\VoucherManagement\Services\VoucherIssueService;
 /**
  * Application stage 3: final sign-off. Approval here is what issues the
  * voucher and notifies the applicant.
+ *
+ * Browsing the queue is handled by ApplicationReviewController, which merges
+ * all three stages into one page — this controller now only ever acts.
  */
 class ApproverController extends ApplicationStageController
 {
@@ -31,37 +33,6 @@ class ApproverController extends ApplicationStageController
     protected function view(): string
     {
         return 'Approver/Dashboard';
-    }
-
-    public function dashboard(Request $request)
-    {
-        $search = $request->query('q');
-
-        $applications = $this->applications->pendingForStage(
-            $this->stage(),
-            $request->user(),
-            ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
-            search: $search,
-        );
-
-        $viewedApplicationIds = [];
-
-        foreach ($applications->items() as $application) {
-            if (Cache::get($this->viewedCacheKey($request->user()->id, $application->id), false)) {
-                $viewedApplicationIds[] = $application->id;
-            }
-        }
-
-        return Inertia::render($this->view(), [
-            'applications' => $applications,
-            'viewedApplicationIds' => $viewedApplicationIds,
-            'approvedByMe' => $this->applications->approvedByUser(
-                $request->user(),
-                ['applicant', 'paymentTransactions.voucher', 'workflowEvents.actor:id,name'],
-                search: $search,
-            ),
-            'filters' => ['q' => $search],
-        ]);
     }
 
     public function act(ApplicationWorkflowActionRequest $request, ShareApplication $application)

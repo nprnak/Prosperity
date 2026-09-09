@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Repositories\Repository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 
@@ -45,6 +46,8 @@ class ShareApplicationRepository extends Repository
     {
         return $application->load([
             'applicant.documents',
+            'applicant.nominees',
+            'applicant.sourcesOfFunds',
             'reviewer:id,name,email',
             'allotment',
             'vouchers',
@@ -101,6 +104,68 @@ class ShareApplicationRepository extends Repository
             ->with($with)
             ->latest()
             ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /**
+     * The queue for whichever stage(s) a member of staff holds, in one list —
+     * a user with several stage permissions (an admin, say) sees every one of
+     * them at once rather than needing a separate queue per stage. Mirrors
+     * ProfileRepository::pendingForUser(), which the KYC review queue already
+     * merges the three stages into one page around.
+     */
+    public function pendingForUser(
+        User $user,
+        array $with = [],
+        int $perPage = 15,
+        ?string $search = null,
+    ): LengthAwarePaginator {
+        $actionable = array_filter(
+            ApplicationStatus::cases(),
+            fn (ApplicationStatus $status) => $status->pendingStage() !== null
+                && $user->can($status->pendingStage()->permission('application')),
+        );
+
+        if ($actionable === []) {
+            return new Paginator([], 0, $perPage, 1, ['path' => request()->url()]);
+        }
+
+        return $this->query()
+            ->where(function ($outer) use ($actionable, $user) {
+                foreach ($actionable as $status) {
+                    $outer->orWhere(fn ($q) => $q
+                        ->where('status', $status)
+                        ->whereDoesntHave('workflowEvents', fn ($event) => $event
+                            ->where('actor_id', $user->id)
+                            ->whereColumn('workflow_events.cycle', 'share_applications.workflow_cycle')
+                            ->where('stage', '!=', $status->pendingStage()->value)));
+                }
+            })
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
+            ->with($with)
+            ->latest()
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /**
+     * Applications this staff member has signed off, at whichever stage(s)
+     * they hold — the "decided" tab of the merged review queue.
+     */
+    public function decidedByUser(
+        User $user,
+        array $with = [],
+        int $perPage = 10,
+        ?string $search = null,
+    ): LengthAwarePaginator {
+        return $this->query()
+            ->whereHas('workflowEvents', fn ($event) => $event
+                ->where('actor_id', $user->id)
+                ->where('action', 'approve'))
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
+            ->with($with)
+            ->latest('updated_at')
+            ->paginate($perPage, ['*'], 'decided')
             ->withQueryString();
     }
 
@@ -164,6 +229,26 @@ class ShareApplicationRepository extends Repository
             ->with($with)
             ->latest()
             ->paginate($perPage, ['*'], 'approved_page')
+            ->withQueryString();
+    }
+
+    /**
+     * Applications this Application Verifier filed themselves from a paper
+     * form — a different list from pendingForStage(), which is everything
+     * waiting on whichever stage they hold, self-submitted included.
+     */
+    public function enteredBy(
+        int $verifierId,
+        array $with = [],
+        int $perPage = 15,
+        ?string $search = null,
+    ): LengthAwarePaginator {
+        return $this->query()
+            ->where('entered_by', $verifierId)
+            ->when($search, fn ($query) => $this->applySearch($query, $search))
+            ->with($with)
+            ->latest()
+            ->paginate($perPage, ['*'], 'entered_page')
             ->withQueryString();
     }
 

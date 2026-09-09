@@ -10,12 +10,15 @@ class ProfilePolicy
 {
     /**
      * Who may read a KYC profile in full — the applicant it belongs to, or
-     * anyone holding a stage in the review chain.
+     * anyone holding a stage in either review chain.
      *
      * Stage holders are granted the whole chain rather than only the stage a
      * profile currently sits at: a reviewer needs to open records they have
      * already verified, and the queue's act-once rule is a separate control
-     * enforced by WorkflowService when they try to *act*.
+     * enforced by WorkflowService when they try to *act*. The application
+     * chain is included too — an Application Verifier/Reviewer/Approver
+     * judging a share application reasonably needs to see the KYC behind it,
+     * and the Applicant List is shared between both chains.
      */
     public function view(User $user, Profile $profile): bool
     {
@@ -26,6 +29,11 @@ class ProfilePolicy
         return $user->hasAnyPermission(
             array_map(
                 fn (WorkflowStage $stage) => $stage->permission('profile'),
+                WorkflowStage::cases(),
+            )
+        ) || $user->hasAnyPermission(
+            array_map(
+                fn (WorkflowStage $stage) => $stage->permission('application'),
                 WorkflowStage::cases(),
             )
         );

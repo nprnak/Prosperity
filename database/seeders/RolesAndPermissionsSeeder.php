@@ -88,21 +88,22 @@ class RolesAndPermissionsSeeder extends Seeder
         'profile_approver' => [
             'profile.approve',
         ],
+        // These three deliberately hold nothing beyond their own stage: no
+        // application.view-any (the applications list is finance/admin
+        // territory) and no report.view (their job is one queue, not the
+        // reporting suite) — mirrors how profile_verifier/reviewer/approver
+        // hold only their own profile.* permission. ShareApplicationPolicy
+        // and the admin.applications.show route both accept the stage
+        // permission on its own, so this doesn't block their own workflow.
         'application_verifier' => [
-            'report.view',
-            'application.view-any',
             'application.verify',
             'voucher.download-any',
         ],
         'application_reviewer' => [
-            'report.view',
-            'application.view-any',
             'application.review',
             'voucher.download-any',
         ],
         'application_approver' => [
-            'report.view',
-            'application.view-any',
             'application.approve',
             'application.reject',
             'allotment.manage',

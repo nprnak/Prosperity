@@ -28,7 +28,6 @@ class AmendProfileRequest extends FormRequest
             'mobile' => ['sometimes', 'string', 'max:50'],
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'bank_name' => ['sometimes', 'string', 'max:255'],
-            'bank_code' => ['sometimes', 'nullable', 'string', 'max:50'],
             'bank_branch' => ['sometimes', 'string', 'max:255'],
             'bank_account_number' => ['sometimes', 'string', 'max:100'],
             'account_holder_name' => ['sometimes', 'string', 'max:255'],

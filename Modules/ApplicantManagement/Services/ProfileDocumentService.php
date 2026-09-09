@@ -24,7 +24,8 @@ class ProfileDocumentService
         'photo' => 'photo',
         'citizenship-front' => 'citizenship_front',
         'citizenship-back' => 'citizenship_back',
-        'national-id' => 'national_id',
+        'national-id-front' => 'national_id_front',
+        'national-id-back' => 'national_id_back',
         'pan' => 'pan',
         'signature' => 'signature',
     ];

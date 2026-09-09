@@ -2,6 +2,7 @@
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
+import { EyeIcon, DocumentTextIcon, ReceiptPercentIcon, FunnelIcon } from '@heroicons/vue/24/outline';
 
 defineProps({
   applications: Array,
@@ -73,7 +74,9 @@ const statusLabel = (status) => {
         <h2 class="text-2xl font-bold text-gray-900">Applications Management</h2>
         <div class="space-x-2">
           <input type="text" placeholder="Search applications..." class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600" />
-          <button class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Filter</button>
+          <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+            <FunnelIcon class="h-4 w-4" /> Filter
+          </button>
         </div>
       </div>
 
@@ -87,8 +90,6 @@ const statusLabel = (status) => {
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shares</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted Date</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
@@ -104,20 +105,31 @@ const statusLabel = (status) => {
                   {{ statusLabel(app.status) }}
                 </span>
               </td>
-              <td class="px-6 py-4 text-sm">
-                <span v-if="receiptOf(app)" class="font-semibold text-gray-900">{{ receiptOf(app).number }}</span>
-                <span v-else class="text-gray-400">—</span>
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-600">{{ app.submitted_at }}</td>
-              <td class="px-6 py-4 text-sm space-x-3">
-                <Link :href="route('admin.applications.show', app.id)" class="text-indigo-600 hover:text-indigo-900 font-semibold">View</Link>
-                <Link
-                  v-if="receiptOf(app)?.voucherId && canOpenReceipts($page)"
-                  :href="route('vouchers.show', receiptOf(app).voucherId)"
-                  class="font-semibold text-blue-600 hover:text-blue-900"
-                >
-                  Receipt
-                </Link>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">
+                <div class="flex items-center gap-3">
+                  <Link
+                    :href="route('admin.applications.show', app.id)"
+                    class="text-indigo-600 hover:text-indigo-900"
+                    title="View"
+                  >
+                    <EyeIcon class="h-4 w-4" />
+                  </Link>
+                  <Link
+                    :href="route('applications.show', app.id)"
+                    class="text-slate-600 hover:text-slate-900"
+                    title="Application Form"
+                  >
+                    <DocumentTextIcon class="h-4 w-4" />
+                  </Link>
+                  <Link
+                    v-if="receiptOf(app)?.voucherId && canOpenReceipts($page)"
+                    :href="route('vouchers.show', receiptOf(app).voucherId)"
+                    class="text-blue-600 hover:text-blue-900"
+                    title="Receipt"
+                  >
+                    <ReceiptPercentIcon class="h-4 w-4" />
+                  </Link>
+                </div>
               </td>
             </tr>
           </tbody>

@@ -17,6 +17,7 @@ use Modules\ApplicationManagement\Requests\StoreDraftStepRequest;
 use Modules\ApplicationManagement\Requests\SubmitApplicationRequest;
 use Modules\ApplicationManagement\Services\ApplicationWizardService;
 use Modules\CompanyManagement\Repositories\ShareOfferingRepository;
+use Modules\PaymentManagement\Repositories\PaymentMethodRepository;
 
 /**
  * An Application Verifier filing a paper-based share application on behalf
@@ -46,7 +47,7 @@ class StaffApplicationController extends Controller
         ]);
     }
 
-    public function create(Request $request, User $applicant, ShareOfferingRepository $offerings)
+    public function create(Request $request, User $applicant, ShareOfferingRepository $offerings, PaymentMethodRepository $paymentMethods)
     {
         abort_unless($applicant->hasRole('applicant'), 404);
 
@@ -71,6 +72,9 @@ class StaffApplicationController extends Controller
             'profileStatus' => $applicantProfile->profile_status,
             'offerings' => $offerings->openNow(),
             'focalPerson' => $this->focalPersonSummary($draft, $applicantProfile),
+            // Shown at the top of the paper-entry form so the verifier can read
+            // off which account the deposit slip in hand should match.
+            'collectionAccounts' => $paymentMethods->active(['id', 'name', 'account_name', 'account_number', 'bank_name']),
             // Staff mode: the form posts to the applicant-scoped routes below
             // instead of the self-service ones, and shows whose application this is.
             'staffApplicant' => $applicant->only(['id', 'name', 'email']),
@@ -95,7 +99,7 @@ class StaffApplicationController extends Controller
     {
         abort_unless($applicant->hasRole('applicant'), 404);
 
-        $wizard->saveDraft($applicant, $request->validated('payload'));
+        $wizard->saveDraft($applicant, $request->validated('payload'), enteredBy: $request->user()->id);
 
         return back()->with('success', 'Draft saved.');
     }

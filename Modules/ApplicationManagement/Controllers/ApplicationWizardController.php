@@ -90,6 +90,7 @@ class ApplicationWizardController extends Controller
             'applicant.experiences',
             'applicant.documents',
             'offering.company',
+            'focalPerson:id,name',
             'vouchers',
             'paymentTransactions' => fn ($query) => $query->latest(),
             'paymentTransactions.voucher:id,payment_transaction_id,voucher_number',
@@ -111,11 +112,13 @@ class ApplicationWizardController extends Controller
             'collectionAccount' => $collectionAccount?->only(['name', 'account_name', 'account_number', 'bank_name']),
             'amountInWords' => $words->toWords((string) $application->total_amount_declared),
             'sharesInWords' => str_replace(' Rupaiya Matra', '', $words->toWords($application->shares_applied)),
-            // The document route serves the logged-in user's own file, so only
-            // offer these to the owner — and only when the file actually exists,
-            // so the form doesn't render broken images where a doc is missing.
-            'photoUrl' => $this->documentUrl($application, $isOwner, 'photo'),
-            'signatureUrl' => $this->documentUrl($application, $isOwner, 'signature'),
+            // Served through this page's own gated routes rather than the
+            // self-service /profile/documents/{type} one, which only ever
+            // serves the *logged-in* user's own files — wrong for the staff
+            // member who filed this on someone else's behalf, and previously
+            // meant photo/signature only ever showed for the applicant.
+            'photoUrl' => $this->documentUrl($application, 'photo'),
+            'signatureUrl' => $this->documentUrl($application, 'signature'),
             'voucherImageUrls' => $application->vouchers
                 ->filter->has_image
                 ->map(fn ($voucher) => [
@@ -130,25 +133,30 @@ class ApplicationWizardController extends Controller
                 'showUrl' => route('vouchers.show', $receiptVoucher),
                 'downloadUrl' => route('vouchers.download', $receiptVoucher),
             ] : null,
+            // The applicant's own wizard is meaningless — and permission-gated
+            // shut — for a staff member previewing someone else's application;
+            // send them back to the admin detail page instead.
+            'backRoute' => $isOwner
+                ? route('applications.wizard')
+                : route('admin.applications.show', $application->id),
+            'backLabel' => $isOwner ? null : 'Back to Applications',
         ]);
     }
 
     /**
-     * A link to one of the applicant's own uploads, or null when they aren't
-     * the owner or never uploaded it.
+     * A link to the applicant's uploaded document, for anyone the "view"
+     * gate already let onto this page — owner or staff alike. Null only
+     * when the file was never uploaded, so the form never renders a broken
+     * image link.
      */
-    private function documentUrl(ShareApplication $application, bool $isOwner, string $slug): ?string
+    private function documentUrl(ShareApplication $application, string $slug): ?string
     {
-        if (! $isOwner) {
-            return null;
-        }
-
         $documentType = ProfileDocumentService::TYPE_BY_SLUG[$slug] ?? null;
 
         $exists = $application->applicant?->documents
             ->contains(fn ($document) => $document->document_type === $documentType);
 
-        return $exists ? route('profile.documents.show', $slug) : null;
+        return $exists ? route('applications.'.$slug, $application->id) : null;
     }
 
     public function voucherImage(ShareApplication $application, ShareApplicationVoucher $voucher)
@@ -165,6 +173,38 @@ class ApplicationWizardController extends Controller
         );
 
         return response()->file(Storage::disk('private')->path($voucher->image_path));
+    }
+
+    public function photo(ShareApplication $application)
+    {
+        return $this->applicantDocument($application, 'photo');
+    }
+
+    public function signature(ShareApplication $application)
+    {
+        return $this->applicantDocument($application, 'signature');
+    }
+
+    /**
+     * Serve one of the applicant's own documents for this application, to
+     * anyone the "view" gate lets onto the application — the owner or a
+     * staff member who filed it on their behalf alike.
+     */
+    private function applicantDocument(ShareApplication $application, string $slug)
+    {
+        Gate::authorize('view', $application);
+
+        $documentType = ProfileDocumentService::TYPE_BY_SLUG[$slug] ?? null;
+
+        $document = $application->applicant?->documents
+            ->firstWhere('document_type', $documentType);
+
+        abort_unless(
+            $document && Storage::disk('private')->exists($document->file_path),
+            404,
+        );
+
+        return response()->file(Storage::disk('private')->path($document->file_path));
     }
 
     public function storeDraft(StoreDraftStepRequest $request)

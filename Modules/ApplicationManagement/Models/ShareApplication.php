@@ -58,6 +58,16 @@ class ShareApplication extends Model
         return $this->belongsTo(Profile::class);
     }
 
+    /**
+     * The Application Verifier who filed this application from a paper form,
+     * if it was staff-entered rather than self-submitted. Deliberately
+     * absent from $fillable — only ApplicationWizardService sets it.
+     */
+    public function enteredBy()
+    {
+        return $this->belongsTo(User::class, 'entered_by');
+    }
+
     public function offering()
     {
         return $this->belongsTo(ShareOffering::class, 'share_offering_id');

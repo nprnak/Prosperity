@@ -39,10 +39,14 @@ class ApplicantProfileUpdateRequest extends FormRequest
             'gender' => ['required', Rule::enum(Gender::class)],
             'nationality' => ['required', 'string', 'max:100'],
             'marital_status' => ['nullable', Rule::enum(MaritalStatus::class)],
-            'father_name' => ['required', 'string', 'max:255'],
-            'mother_name' => ['required', 'string', 'max:255'],
-            'grandfather_name' => ['required', 'string', 'max:255'],
-            'spouse_name' => ['nullable', 'string', 'max:255'],
+            'father_name_en' => ['required', 'string', 'max:255'],
+            'father_name_np' => ['required', 'string', 'max:255'],
+            'mother_name_en' => ['nullable', 'string', 'max:255'],
+            'mother_name_np' => ['nullable', 'string', 'max:255'],
+            'grandfather_name_en' => ['required', 'string', 'max:255'],
+            'grandfather_name_np' => ['required', 'string', 'max:255'],
+            'spouse_name_en' => ['nullable', 'string', 'max:255'],
+            'spouse_name_np' => ['nullable', 'string', 'max:255'],
             'occupation' => ['nullable', 'string', 'max:255'],
             'education' => ['required', Rule::enum(EducationLevel::class)],
 
@@ -66,6 +70,9 @@ class ApplicantProfileUpdateRequest extends FormRequest
 
             // 5. Identity — citizenship and national ID are compulsory.
             'citizenship_number' => ['required', 'string', 'max:50'],
+            // As printed on the certificate in Devanagari numerals — optional,
+            // since not every KYC form on file will have been asked for it.
+            'citizenship_number_np' => ['nullable', 'string', 'max:50'],
             'citizenship_issued_district' => ['nullable', 'string', 'max:255'],
             'citizenship_issued_date' => ['nullable', 'date', 'before_or_equal:today'],
             'national_id_number' => ['required', 'digits:10'],
@@ -75,13 +82,15 @@ class ApplicantProfileUpdateRequest extends FormRequest
             'photo' => $this->documentRules('photo', imageOnly: true),
             'citizenship_front' => $this->documentRules('citizenship_front'),
             'citizenship_back' => $this->documentRules('citizenship_back'),
-            'national_id_doc' => $this->documentRules('national_id'),
+            'national_id_front' => $this->documentRules('national_id_front'),
+            'national_id_back' => $this->documentRules('national_id_back'),
             'pan_doc' => $this->documentRules('pan'),
             'signature' => $this->documentRules('signature', imageOnly: true),
 
-            // 7. Source of investment
-            'sources' => ['required', 'array', 'min:1'],
+            // 7. Source of investment — optional; "Other" may carry a free-text detail.
+            'sources' => ['nullable', 'array'],
             'sources.*' => ['string', Rule::enum(SourceOfFunds::class)],
+            'source_other_detail' => ['nullable', 'string', 'max:500'],
 
             // 8. Nominee
             'nominee.full_name' => ['nullable', 'string', 'max:255'],
@@ -96,15 +105,12 @@ class ApplicantProfileUpdateRequest extends FormRequest
             'experiences.*.position' => ['nullable', 'string', 'max:255'],
             'experiences.*.years' => ['nullable', 'numeric', 'min:0', 'max:99'],
 
-            // 10. Declaration
-            'declarations.information_true' => ['accepted'],
-            'declarations.funds_legal' => ['accepted'],
-            'declarations.terms' => ['accepted'],
+            // 10. Declaration — one combined statement rather than three separate ticks.
+            'declarations.accepted' => ['accepted'],
 
             // MeroShare / C-ASBA
             'boid' => ['required', 'digits:16', Rule::unique('profiles', 'boid')->ignore($this->targetUserId(), 'user_id')],
             'bank_name' => ['required', 'string', 'max:255'],
-            'bank_code' => ['nullable', 'string', 'max:20'],
             'bank_branch' => ['required', 'string', 'max:255'],
             'bank_account_number' => ['required', 'string', 'max:50'],
             'account_holder_name' => ['required', 'string', 'max:255'],
@@ -115,9 +121,8 @@ class ApplicantProfileUpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'declarations.*.accepted' => 'Every declaration must be accepted before saving.',
+            'declarations.accepted.accepted' => 'You must accept the declaration before saving.',
             'permanent.*.required' => 'This field is required.',
-            'sources.required' => 'Select at least one source of investment.',
         ];
     }
 

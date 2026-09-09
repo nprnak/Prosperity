@@ -33,20 +33,40 @@ class AdminApplicationsController extends Controller
 
         $application = $this->applications->loadDetail($application);
 
+        $payment = $application->paymentTransactions->first();
+        $receiptVoucher = $payment?->voucher;
+
         return Inertia::render('Admin/ApplicationShow', [
             'application' => $application,
+            'receipt' => $receiptVoucher ? [
+                'receiptNumber' => $payment->receipt_number,
+                'showUrl' => route('vouchers.show', $receiptVoucher),
+                'downloadUrl' => route('vouchers.download', $receiptVoucher),
+            ] : null,
+            ...$this->backLink($request),
+            // The paper-entry flow is a verify-stage job; shown here too so a
+            // verifier reviewing one application can jump straight to filing
+            // another without detouring through their dashboard.
+            'addApplicationUrl' => $request->user()?->can('application.verify')
+                ? route('applications.add.pick') : null,
             // Only offered when the scan is actually on file, so the print
             // action never opens onto a 404.
             'citizenshipUrls' => collect(['front' => 'Front', 'back' => 'Back'])
                 ->map(fn ($label, $side) => [
                     'side' => $side,
                     'label' => $label,
-                    'url' => $this->hasCitizenship($application, $side)
+                    'url' => $this->hasDocument($application, "citizenship_{$side}")
                         ? route('admin.applications.citizenship', [$application->id, $side])
                         : null,
                 ])
                 ->filter(fn ($doc) => $doc['url'] !== null)
                 ->values(),
+            // The reviewing stages need to see the applicant's face and
+            // signature too, not just the applicant's own copy of the form.
+            'photoUrl' => $this->hasDocument($application, 'photo')
+                ? route('admin.applications.photo', $application->id) : null,
+            'signatureUrl' => $this->hasDocument($application, 'signature')
+                ? route('admin.applications.signature', $application->id) : null,
         ]);
     }
 
@@ -63,10 +83,53 @@ class AdminApplicationsController extends Controller
         return $documents->respond($applicant, "citizenship-{$side}");
     }
 
-    private function hasCitizenship(ShareApplication $application, string $side): bool
+    public function photo(ShareApplication $application, ProfileDocumentService $documents): BinaryFileResponse
+    {
+        $applicant = $application->applicant;
+
+        abort_unless($applicant instanceof Profile, 404);
+
+        return $documents->respond($applicant, 'photo');
+    }
+
+    public function signature(ShareApplication $application, ProfileDocumentService $documents): BinaryFileResponse
+    {
+        $applicant = $application->applicant;
+
+        abort_unless($applicant instanceof Profile, 404);
+
+        return $documents->respond($applicant, 'signature');
+    }
+
+    /**
+     * Where "Back" goes: the applications list for whoever can actually
+     * browse it (finance, admin), or a review-chain stage's own queue for
+     * whoever holds only their stage's permission and would otherwise land
+     * on a 403 — the applications list is no longer in their sidebar at all.
+     *
+     * @return array{backUrl: string, backLabel: string}
+     */
+    private function backLink(Request $request): array
+    {
+        $user = $request->user();
+
+        if ($user?->can('application.view-any')) {
+            return ['backUrl' => route('admin.applications'), 'backLabel' => 'Back to Applications'];
+        }
+
+        // The three review-chain stages share one queue (applications.review),
+        // so there's only one destination for all of them.
+        if ($user?->can('application.verify') || $user?->can('application.review') || $user?->can('application.approve')) {
+            return ['backUrl' => route('applications.review'), 'backLabel' => 'Back to Application Review'];
+        }
+
+        return ['backUrl' => route('admin.applications'), 'backLabel' => 'Back to Applications'];
+    }
+
+    private function hasDocument(ShareApplication $application, string $documentType): bool
     {
         return $application->applicant?->documents
-            ->contains(fn ($document) => $document->document_type === "citizenship_{$side}") ?? false;
+            ->contains(fn ($document) => $document->document_type === $documentType) ?? false;
     }
 
     private function viewedCacheKey(int $userId, int $applicationId): string

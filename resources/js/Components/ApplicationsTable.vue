@@ -1,5 +1,6 @@
 <script setup>
 import { Link, usePage } from '@inertiajs/vue3';
+import { DocumentTextIcon, ReceiptPercentIcon } from '@heroicons/vue/24/outline';
 
 defineProps({
   applications: { type: Array, default: () => [] },
@@ -89,16 +90,19 @@ const statusClass = (status) => {
           <td class="py-2 text-right whitespace-nowrap">
             <!-- One link: the form is always shown before printing, so a
                  separate Print link that fired the dialog on load is gone. -->
-            <Link :href="route('applications.show', app.id)" class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
-              View &amp; Print
+            <Link
+              :href="route('applications.show', app.id)"
+              class="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              <DocumentTextIcon class="h-4 w-4" /> View &amp; Print
             </Link>
             <template v-if="receiptOf(app)">
               <span class="mx-2 text-gray-300">|</span>
               <a
                 :href="route('vouchers.download', receiptOf(app).voucherId)"
-                class="font-medium text-emerald-700 hover:text-emerald-900 hover:underline"
+                class="inline-flex items-center gap-1 font-medium text-emerald-700 hover:text-emerald-900 hover:underline"
               >
-                Download Receipt {{ receiptOf(app).number }}
+                <ReceiptPercentIcon class="h-4 w-4" /> Download Receipt {{ receiptOf(app).number }}
               </a>
             </template>
           </td>

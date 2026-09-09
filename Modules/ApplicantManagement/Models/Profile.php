@@ -29,7 +29,8 @@ class Profile extends Model
         'photo',
         'citizenship_front',
         'citizenship_back',
-        'national_id',
+        'national_id_front',
+        'national_id_back',
         'pan',
         'signature',
     ];
@@ -41,9 +42,10 @@ class Profile extends Model
         'full_name_en',
         'full_name_np',
         'date_of_birth',
-        'father_name',
-        'mother_name',
-        'grandfather_name',
+        'father_name_en',
+        'father_name_np',
+        'grandfather_name_en',
+        'grandfather_name_np',
         'education',
         'mobile',
         'citizenship_number',
@@ -58,10 +60,12 @@ class Profile extends Model
 
     protected $fillable = [
         'user_id', 'applicant_type', 'title', 'full_name_en', 'full_name_np', 'gender', 'date_of_birth',
-        'nationality', 'marital_status', 'father_name', 'mother_name', 'grandfather_name', 'spouse_name',
+        'nationality', 'marital_status',
+        'father_name_en', 'father_name_np', 'mother_name_en', 'mother_name_np',
+        'grandfather_name_en', 'grandfather_name_np', 'spouse_name_en', 'spouse_name_np',
         'occupation', 'education', 'mobile', 'email', 'pan_number', 'citizenship_number',
-        'citizenship_issued_district', 'citizenship_issued_date', 'national_id_number',
-        'boid', 'bank_name', 'bank_code', 'bank_branch', 'bank_account_number',
+        'citizenship_number_np', 'citizenship_issued_district', 'citizenship_issued_date', 'national_id_number',
+        'boid', 'bank_name', 'bank_branch', 'bank_account_number',
         'account_holder_name', 'asba_consent', 'declaration_accepted', 'declaration_accepted_at',
     ];
 
@@ -85,6 +89,16 @@ class Profile extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The KYC Verifier who filed this profile from a paper form, if it was
+     * staff-entered rather than self-registered. Deliberately absent from
+     * $fillable — only StaffApplicantController's flow sets it, via forceFill.
+     */
+    public function enteredBy()
+    {
+        return $this->belongsTo(User::class, 'entered_by');
     }
 
     public function shareApplications()

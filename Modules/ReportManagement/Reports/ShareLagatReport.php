@@ -2,7 +2,6 @@
 
 namespace Modules\ReportManagement\Reports;
 
-use App\Services\NepaliDateService;
 use App\Services\NepaliNumeralService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -53,7 +52,6 @@ class ShareLagatReport extends BaseReport
     private ?array $localLevelsNp = null;
 
     public function __construct(
-        private NepaliDateService $nepaliDates,
         private NepaliNumeralService $numerals,
     ) {}
 
@@ -248,7 +246,8 @@ class ShareLagatReport extends BaseReport
                 // The format prints छैन। rather than 0.00 when nothing is owed.
                 'outstanding' => $outstanding > 0.004 ? $this->amount($outstanding) : self::NONE_NP,
                 'promoter' => $this->promoter($holdings, $promoters),
-                'registered_on' => $this->registeredOn($holdings),
+                // Left blank for the system admin to fill in by hand later.
+                'registered_on' => '',
                 'nominee' => $profile->nominees->first()?->full_name ?: self::NONE_NP,
             ];
         }
@@ -320,24 +319,6 @@ class ShareLagatReport extends BaseReport
             : null;
 
         return $district ? $number.','.self::LINE.$district : $number;
-    }
-
-    /**
-     * When the holding was entered in the register: the date final approval was
-     * given on the earliest of the holder's approved applications, in Bikram
-     * Sambat with Devanagari numerals, as a Nepali register is dated.
-     *
-     * @param  Collection<int, ShareApplication>  $holdings
-     */
-    private function registeredOn($holdings): string
-    {
-        $earliest = $holdings
-            ->map(fn (ShareApplication $holding) => $holding->approved_at ?? $holding->reviewed_at ?? $holding->submitted_at)
-            ->filter()
-            ->sort()
-            ->first();
-
-        return $this->nepaliDates->toBikramSambat($earliest) ?: self::NONE_NP;
     }
 
     /**

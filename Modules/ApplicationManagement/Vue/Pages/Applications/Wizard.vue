@@ -144,6 +144,20 @@ const applicationInReview = computed(() => Boolean(activeApplication.value));
 // form rather than instead of it.
 const applicationReturned = computed(() => props.draft?.status === 'returned');
 
+// Staff mode only: filing "a fresh application" for someone and landing on
+// their old returned one, pre-filled, reads as a bug — "why am I seeing old
+// data?" — even though it is deliberate once you know why. So a verifier who
+// got here through the generic picker sees a plain notice first instead of
+// the pre-filled form; one who followed an explicit "Edit Application" link
+// (which appends ?resume=1) skips straight past it, since editing the old
+// entry was exactly the point of that click.
+const resumeConfirmed = ref(
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('resume') === '1',
+);
+const needsResumeConfirmation = computed(() =>
+  Boolean(props.staffApplicant) && applicationReturned.value && !resumeConfirmed.value,
+);
+
 const selectedOffering = computed(
   () => props.offerings.find((offering) => offering.id === form.payload.share_offering_id) || null,
 );
@@ -335,6 +349,26 @@ const submitFinal = () => {
         </p>
       </div>
 
+      <!-- Staff mode landing on a returned application through the generic
+           picker: a plain notice instead of the pre-filled form, so it never
+           looks like a fresh page has "old data" left in it. Explicit intent
+           (the Edit Application link, ?resume=1) skips straight past this. -->
+      <div v-else-if="needsResumeConfirmation" class="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 shadow-sm">
+        <h4 class="text-lg font-semibold">Application Returned for Correction</h4>
+        <p class="mt-2 text-sm">
+          {{ staffApplicant.name }} has an application, {{ draft.application_number }}, that was
+          returned for correction rather than a fresh one to file.
+          <span v-if="returnedReason" class="font-semibold">Reason: {{ returnedReason }}</span>
+        </p>
+        <button
+          type="button"
+          class="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+          @click="resumeConfirmed = true"
+        >
+          Edit and Resubmit
+        </button>
+      </div>
+
       <!-- Sits above the form, not instead of it: the applicant has been asked
            to correct this application, so they need something to correct it
            in. The form below is pre-filled with what they submitted. -->
@@ -349,7 +383,7 @@ const submitFinal = () => {
         </p>
       </div>
 
-      <div v-if="!applicationInReview && !profileReady" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
+      <div v-if="!applicationInReview && !needsResumeConfirmation && !profileReady" class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800 shadow-sm">
         <h4 class="text-lg font-semibold">
           {{ profileInReview ? 'Profile Under Review' : profileReturned ? 'Profile Returned for Correction' : 'Profile Approval Required' }}
         </h4>
@@ -378,7 +412,7 @@ const submitFinal = () => {
       <!-- Stated explicitly rather than as a v-else: the returned banner now
            sits above this block instead of replacing it, so a dangling v-else
            would attach to the wrong branch. -->
-      <div v-if="!applicationInReview && profileReady" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100 space-y-6">
+      <div v-if="!applicationInReview && !needsResumeConfirmation && profileReady" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100 space-y-6">
         <p v-if="$page.props.errors.profile" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {{ $page.props.errors.profile }}
         </p>

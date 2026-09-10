@@ -58,6 +58,12 @@ class ApprovalWorkflowTest extends TestCase
         $this->assertSame(ApplicationStatus::Approved, $application->status);
         $this->assertSame($approver->id, $application->approved_by);
 
+        // Approval is also the money sign-off — no separate finance step
+        // verifies the receipt.
+        $payment = $application->paymentTransactions()->firstOrFail();
+        $this->assertSame('verified', $payment->verification_status);
+        $this->assertSame($approver->id, $payment->verified_by);
+
         // three distinct signatures, each with remarks
         $events = $application->workflowEvents()->reorder('id')->get();
         $this->assertCount(3, $events);
@@ -110,10 +116,19 @@ class ApprovalWorkflowTest extends TestCase
         $application->refresh();
         $this->assertSame(ApplicationStatus::Approved, $application->status);
         $this->assertNotNull($application->approved_at);
-        $this->assertNotNull($application->paymentTransactions()->latest()->first()?->voucher);
+
+        $payment = $application->paymentTransactions()->latest()->first();
+        $this->assertNotNull($payment?->voucher);
+        $this->assertSame('verified', $payment?->verification_status);
     }
 
-    public function test_verifier_stage_marks_payment_verified(): void
+    /**
+     * A payment is settled once, at final approval — not at stage 1. An
+     * application can still be sent back after the verifier signs it off, so
+     * marking the payment verified this early would call money confirmed on
+     * an application nobody has actually approved yet.
+     */
+    public function test_verifier_stage_does_not_mark_payment_verified(): void
     {
         $application = $this->paymentVerifiedApplication();
         $application->update(['status' => ApplicationStatus::Submitted]);
@@ -138,8 +153,56 @@ class ApprovalWorkflowTest extends TestCase
 
         $payment->refresh();
 
+        $this->assertSame('pending', $payment->verification_status);
+        $this->assertNull($payment->verified_by);
+        $this->assertNull($payment->verified_at);
+    }
+
+    /**
+     * The rule the whole chain exists to enforce: every transaction on an
+     * application is marked verified once, automatically, the moment it is
+     * finally approved — not before, and not by a separate finance sign-off.
+     */
+    public function test_approval_marks_every_transaction_on_the_application_verified(): void
+    {
+        Storage::fake('private');
+        Notification::fake();
+
+        $application = $this->paymentVerifiedApplication();
+        $application->update(['status' => ApplicationStatus::Submitted]);
+        $application->paymentTransactions()->update([
+            'verification_status' => 'pending',
+            'verified_by' => null,
+            'verified_at' => null,
+        ]);
+
+        $approver = User::factory()->create()->assignRole('application_approver');
+
+        foreach (['application_verifier', 'application_reviewer'] as $role) {
+            $staff = User::factory()->create()->assignRole($role);
+
+            $this->actingAs($staff)
+                ->get("/admin/applications/{$application->id}")
+                ->assertOk();
+            $this->actingAs($staff)
+                ->post('/'.str_replace('application_', '', $role)."/applications/{$application->id}/act",
+                    ['action' => 'approve', 'remarks' => 'Checked.'])
+                ->assertSessionHasNoErrors();
+        }
+
+        $this->actingAs($approver)
+            ->get("/admin/applications/{$application->id}")
+            ->assertOk();
+        $this->actingAs($approver)
+            ->post("/approver/applications/{$application->id}/act",
+                ['action' => 'approve', 'remarks' => 'Approved.'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(ApplicationStatus::Approved, $application->fresh()->status);
+
+        $payment = $application->paymentTransactions()->firstOrFail();
         $this->assertSame('verified', $payment->verification_status);
-        $this->assertSame($verifier->id, $payment->verified_by);
+        $this->assertSame($approver->id, $payment->verified_by);
         $this->assertNotNull($payment->verified_at);
     }
 
@@ -409,167 +472,6 @@ class ApprovalWorkflowTest extends TestCase
         $this->assertNotNull($application->verified_at);
         $this->assertNotNull($application->reviewed_at);
         $this->assertNotNull($application->approved_at);
-    }
-
-    /**
-     * Finance recomputing the payment total must never rewind sign-offs that
-     * have already been given. An application sitting with the approver does
-     * not drop back into the verifier's queue because one more slip was
-     * checked — and it certainly must not do so silently, with no event on
-     * the record to say why.
-     */
-    public function test_finance_verification_does_not_rewind_completed_sign_offs(): void
-    {
-        $application = $this->paymentVerifiedApplication();
-
-        $this->actingAs(User::factory()->create()->assignRole('application_verifier'))
-            ->post("/verifier/applications/{$application->id}/act",
-                ['action' => 'approve', 'remarks' => 'Slips match the statement.']);
-        $this->actingAs(User::factory()->create()->assignRole('application_reviewer'))
-            ->post("/reviewer/applications/{$application->id}/act",
-                ['action' => 'approve', 'remarks' => 'Details check out.']);
-
-        $this->assertSame(ApplicationStatus::Reviewed, $application->fresh()->status);
-
-        // A further deposit turns up and finance works through it.
-        $second = $application->paymentTransactions()->create([
-            'receipt_number' => 'R-second-'.$application->id,
-            'amount' => '500.00',
-            'payment_mode' => 'cash',
-            'payment_date' => now(),
-            'verification_status' => 'pending',
-        ]);
-
-        $this->actingAs(User::factory()->create()->assignRole('finance_staff'))
-            ->post("/finance/payments/{$second->id}/verify", ['status' => 'verified']);
-        $this->actingAs(User::factory()->create()->assignRole('finance_staff'))
-            ->post("/finance/payments/{$second->id}/verify", ['status' => 'verified']);
-
-        $this->assertSame(ApplicationStatus::Reviewed, $application->fresh()->status);
-    }
-
-    /**
-     * A payment rejected after the chain has passed the application must not
-     * rewind it into an earlier queue — but nor can it be left sitting at
-     * Reviewed with money nobody confirmed. It goes back to the applicant,
-     * who is the only one who can do anything about a failed deposit.
-     */
-    public function test_rejecting_a_payment_after_review_returns_the_application(): void
-    {
-        Notification::fake();
-
-        $application = $this->paymentVerifiedApplication();
-
-        $this->actingAs(User::factory()->create()->assignRole('application_verifier'))
-            ->post("/verifier/applications/{$application->id}/act",
-                ['action' => 'approve', 'remarks' => 'Slips match the statement.']);
-
-        $this->assertSame(ApplicationStatus::Verified, $application->fresh()->status);
-
-        $payment = $application->paymentTransactions()->first();
-
-        $this->actingAs(User::factory()->create()->assignRole('finance_staff'))
-            ->post("/finance/payments/{$payment->id}/verify",
-                ['status' => 'rejected', 'notes' => 'Bank reversed the transfer.']);
-
-        $application->refresh();
-
-        $this->assertSame(ApplicationStatus::Returned, $application->status);
-        // Not rewound into the verifier's queue — returned, which is a state
-        // the applicant can act on.
-        $this->assertNotSame(ApplicationStatus::PaymentVerified, $application->status);
-    }
-
-    /**
-     * A deposit rejected while finance still holds the application just moves
-     * it back to PaymentPending; there is no sign-off to protect yet.
-     */
-    public function test_rejecting_a_deposit_before_review_leaves_it_with_finance(): void
-    {
-        $application = $this->paymentVerifiedApplication();
-        $payment = $application->paymentTransactions()->firstOrFail();
-
-        $deposit = $payment->deposits()->create([
-            'reference_no' => 'TXN-A', 'amount' => '1000.00',
-            'payment_date' => '2026-07-01', 'verification_status' => 'pending',
-        ]);
-
-        $this->actingAs(User::factory()->create()->assignRole('finance_staff'))
-            ->post("/finance/deposits/{$deposit->id}/verify", ['status' => 'rejected'])
-            ->assertSessionHasNoErrors();
-
-        $this->assertSame('rejected', $deposit->fresh()->verification_status);
-        $this->assertNotSame(ApplicationStatus::Returned, $application->fresh()->status);
-    }
-
-    /**
-     * The same failed deposit, after the chain has taken the application on,
-     * does send it back.
-     */
-    public function test_rejecting_a_deposit_after_review_returns_the_application(): void
-    {
-        Notification::fake();
-
-        $application = $this->paymentVerifiedApplication();
-        $payment = $application->paymentTransactions()->firstOrFail();
-
-        $deposit = $payment->deposits()->create([
-            'reference_no' => 'TXN-A', 'amount' => '1000.00',
-            'payment_date' => '2026-07-01', 'verification_status' => 'verified',
-        ]);
-
-        $this->actingAs(User::factory()->create()->assignRole('application_verifier'))
-            ->post("/verifier/applications/{$application->id}/act",
-                ['action' => 'approve', 'remarks' => 'Slips match the statement.']);
-
-        $this->assertSame(ApplicationStatus::Verified, $application->fresh()->status);
-
-        $this->actingAs(User::factory()->create()->assignRole('finance_staff'))
-            ->post("/finance/deposits/{$deposit->id}/verify",
-                ['status' => 'rejected', 'notes' => 'Bank reversed the transfer.'])
-            ->assertSessionHasNoErrors();
-
-        $application->refresh();
-
-        $this->assertSame(ApplicationStatus::Returned, $application->status);
-        $this->assertStringContainsString('Bank reversed the transfer.', (string) $application->rejection_reason);
-    }
-
-    /**
-     * The two-officer sign-off is the last step, so it cannot run while a slip
-     * on the same receipt is still unchecked — the receipt would acknowledge
-     * money nobody confirmed arrived.
-     */
-    public function test_a_receipt_cannot_be_signed_off_until_every_deposit_is(): void
-    {
-        $application = $this->paymentVerifiedApplication();
-        $payment = $application->paymentTransactions()->firstOrFail();
-
-        $payment->deposits()->create([
-            'reference_no' => 'TXN-A', 'amount' => '500.00',
-            'payment_date' => '2026-07-01', 'verification_status' => 'verified',
-        ]);
-        $unchecked = $payment->deposits()->create([
-            'reference_no' => 'TXN-B', 'amount' => '500.00',
-            'payment_date' => '2026-07-02', 'verification_status' => 'pending',
-        ]);
-
-        $this->actingAs(User::factory()->create()->assignRole('finance_staff'))
-            ->post("/finance/payments/{$payment->id}/verify", ['status' => 'verified'])
-            ->assertStatus(422);
-
-        $this->assertNull($payment->fresh()->checked_by);
-
-        // Once the last slip is checked off, the sign-off may proceed.
-        $this->actingAs(User::factory()->create()->assignRole('finance_staff'))
-            ->post("/finance/deposits/{$unchecked->id}/verify", ['status' => 'verified'])
-            ->assertSessionHasNoErrors();
-
-        $this->actingAs(User::factory()->create()->assignRole('finance_staff'))
-            ->post("/finance/payments/{$payment->id}/verify", ['status' => 'verified'])
-            ->assertSessionHasNoErrors();
-
-        $this->assertNotNull($payment->fresh()->checked_by);
     }
 
     /**

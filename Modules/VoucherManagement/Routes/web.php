@@ -13,6 +13,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // copy of it are the same disclosure.
     Route::get('/vouchers/{voucher}', [VoucherController::class, 'show'])
         ->whereNumber('voucher')->middleware('can:download,voucher')->name('vouchers.show');
+    // Inline (Content-Disposition: inline) so an <iframe> can render the PDF
+    // rather than triggering the browser's download prompt — vouchers.download
+    // stays the explicit "save a copy" action.
+    Route::get('/vouchers/{voucher}/preview', [VoucherController::class, 'preview'])
+        ->middleware('can:download,voucher')->name('vouchers.preview');
     Route::get('/vouchers/{voucher}/download', [VoucherController::class, 'download'])
         ->middleware('can:download,voucher')->name('vouchers.download');
 });

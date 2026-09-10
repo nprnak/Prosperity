@@ -40,9 +40,26 @@ class ShareAllotmentRepository extends Repository
         );
     }
 
-    public function totalShares(): int
+    /**
+     * @param  array{company_id?: int|null, share_offering_id?: int|null, date_from?: string|null, date_to?: string|null}  $filters
+     */
+    public function totalShares(array $filters = []): int
     {
-        return (int) $this->query()->sum('shares_allotted');
+        $hasFilters = array_filter($filters, fn ($value) => $value !== null && $value !== '') !== [];
+
+        if (! $hasFilters) {
+            return (int) $this->query()->sum('shares_allotted');
+        }
+
+        return (int) $this->query()
+            ->whereHas('shareApplication', fn ($application) => $application
+                ->when($filters['company_id'] ?? null, fn ($q, $companyId) => $q->whereHas(
+                    'offering', fn ($offering) => $offering->where('company_id', $companyId)
+                ))
+                ->when($filters['share_offering_id'] ?? null, fn ($q, $offeringId) => $q->where('share_offering_id', $offeringId))
+                ->when($filters['date_from'] ?? null, fn ($q, $date) => $q->whereDate('submitted_at', '>=', $date))
+                ->when($filters['date_to'] ?? null, fn ($q, $date) => $q->whereDate('submitted_at', '<=', $date)))
+            ->sum('shares_allotted');
     }
 
     /**

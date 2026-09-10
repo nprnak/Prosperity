@@ -9,6 +9,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\ApplicantManagement\Models\Profile;
 use Modules\ApplicantManagement\Services\ProfileDocumentService;
+use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApplicationManagement\Repositories\ShareApplicationRepository;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -41,6 +42,7 @@ class AdminApplicationsController extends Controller
             'receipt' => $receiptVoucher ? [
                 'receiptNumber' => $payment->receipt_number,
                 'showUrl' => route('vouchers.show', $receiptVoucher),
+                'previewUrl' => route('vouchers.preview', $receiptVoucher),
                 'downloadUrl' => route('vouchers.download', $receiptVoucher),
             ] : null,
             ...$this->backLink($request),
@@ -49,6 +51,12 @@ class AdminApplicationsController extends Controller
             // another without detouring through their dashboard.
             'addApplicationUrl' => $request->user()?->can('application.verify')
                 ? route('applications.add.pick') : null,
+            // A verifier's own paper application, sent back by a later stage
+            // (or still a draft), reopens in the same wizard they filed it in
+            // — the paper-entry flow already knows how to resume an editable
+            // application for its applicant, so this just links straight to it
+            // rather than making the verifier search the picker again.
+            'editApplicationUrl' => $this->editApplicationUrl($request, $application),
             // Only offered when the scan is actually on file, so the print
             // action never opens onto a 404.
             'citizenshipUrls' => collect(['front' => 'Front', 'back' => 'Back'])
@@ -124,6 +132,31 @@ class AdminApplicationsController extends Controller
         }
 
         return ['backUrl' => route('admin.applications'), 'backLabel' => 'Back to Applications'];
+    }
+
+    /**
+     * Only the verifier who filed this exact paper application gets a direct
+     * link to correct it — and only while it is still theirs to correct: a
+     * draft they have not submitted yet, or one a later stage sent back.
+     * Anyone else with application.verify still has the generic "Add
+     * Application" picker for filing a different one.
+     */
+    private function editApplicationUrl(Request $request, ShareApplication $application): ?string
+    {
+        $user = $request->user();
+
+        if (! $user
+            || $application->entered_by !== $user->id
+            || ! in_array($application->status, [ApplicationStatus::Draft, ApplicationStatus::Returned], true)
+            || ! $application->applicant?->user_id
+        ) {
+            return null;
+        }
+
+        // ?resume=1 tells the wizard this link was an explicit "go fix it"
+        // click, so it can skip straight to the pre-filled form instead of
+        // the confirmation notice a plain "Add Application" visit gets.
+        return route('applications.add.create', $application->applicant->user_id).'?resume=1';
     }
 
     private function hasDocument(ShareApplication $application, string $documentType): bool

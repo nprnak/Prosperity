@@ -93,10 +93,10 @@ const paymentMethodLabel = (payment) =>
                   </span>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-600">{{ payment.payment_date }}</td>
-                <!-- This page is payment.view-any: a read-only overview. The
-                     Verify and Reject buttons that used to sit here had no
-                     handlers and no permission behind them; verification is
-                     the finance dashboard's job, under payment.verify. -->
+                <!-- This page is payment.view-any: a read-only overview. A
+                     payment is marked verified automatically once its
+                     application is approved — there is no manual verify
+                     action left to link to. -->
                 <td class="px-6 py-4 text-sm">
                   <Link
                     v-if="payment.share_application?.id"

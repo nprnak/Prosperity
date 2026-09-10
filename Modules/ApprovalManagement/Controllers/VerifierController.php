@@ -41,15 +41,12 @@ class VerifierController extends ApplicationStageController
 
     protected function afterAct(Request $request, ShareApplication $application, ApplicationStatus $before): void
     {
+        // Payment verification happens once, at final approval
+        // (ApproverController) — not here. Stage 1 is only the first of three
+        // sign-offs, and an application can still be sent back after it, so
+        // marking the payment verified this early would call money confirmed
+        // on an application nobody has actually approved yet.
         if ($application->status === ApplicationStatus::Verified) {
-            $application->paymentTransactions()
-                ->where('verification_status', '!=', 'verified')
-                ->update([
-                    'verification_status' => 'verified',
-                    'verified_by' => $request->user()->id,
-                    'verified_at' => now(),
-                ]);
-
             Cache::forget($this->viewedCacheKey($request->user()->id, $application->id));
         }
 

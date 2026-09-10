@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApprovalManagement\Notifications\ApplicationApprovedNotification;
+use Modules\PaymentManagement\Models\PaymentTransaction;
 use Modules\ApprovalManagement\Requests\ApplicationWorkflowActionRequest;
 use Modules\VoucherManagement\Models\Voucher;
 use Modules\VoucherManagement\Services\VoucherIssueService;
@@ -82,7 +83,20 @@ class ApproverController extends ApplicationStageController
             ->latest()
             ->firstOrFail();
 
-        $payment->update(['approved_by' => $request->user()->id]);
+        // Approval is the money sign-off now: the review chain has already
+        // seen every declared voucher on the application form, so there is no
+        // separate finance verification left to wait on. Every transaction on
+        // the application is settled here rather than just the latest, since
+        // an application can in principle carry more than one receipt.
+        $application->paymentTransactions->each(fn (PaymentTransaction $transaction) => $transaction->update([
+            'verification_status' => 'verified',
+            'checked_by' => $transaction->checked_by ?? $request->user()->id,
+            'checked_at' => $transaction->checked_at ?? now(),
+            'verified_by' => $request->user()->id,
+            'approved_by' => $request->user()->id,
+        ]));
+
+        $payment->refresh();
 
         $voucher = app(VoucherIssueService::class)->issue($application, $payment, $request->user()->id);
 

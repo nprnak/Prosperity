@@ -77,27 +77,4 @@ class PaymentTransaction extends Model
     {
         return $this->hasMany(PaymentDeposit::class);
     }
-
-    /**
-     * Whether every deposit has been verified.
-     *
-     * The two-officer sign-off on the transaction is the last step, so it
-     * cannot run while a slip on the same receipt is still unchecked or has
-     * been rejected — the receipt would acknowledge money nobody confirmed.
-     */
-    public function allDepositsVerified(): bool
-    {
-        $deposits = $this->relationLoaded('deposits') ? $this->deposits : $this->deposits()->get();
-
-        return $deposits->isNotEmpty()
-            && $deposits->every(fn (PaymentDeposit $deposit) => $deposit->verification_status === 'verified');
-    }
-
-    /** The total actually verified, in rupees. */
-    public function verifiedDepositTotal(): string
-    {
-        return (string) $this->deposits()
-            ->where('verification_status', 'verified')
-            ->sum('amount');
-    }
 }

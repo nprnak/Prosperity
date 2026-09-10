@@ -5,7 +5,6 @@ import { computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import {
   HomeIcon,
-  ChartBarIcon,
   PuzzlePieceIcon,
   UsersIcon,
   UserGroupIcon,
@@ -56,7 +55,7 @@ const APPLICANT_LIST_PERMISSIONS = [
 ];
 
 const staffMenuItems = [
-  { label: 'Dashboard', icon: ChartBarIcon, route: 'admin.dashboard', startsWith: '/admin/dashboard', permission: 'dashboard.view-admin' },
+  { label: 'Dashboard', icon: HomeIcon, route: 'admin.dashboard', startsWith: '/admin/dashboard', permission: 'dashboard.view-admin' },
   { label: 'Role Hub', icon: PuzzlePieceIcon, route: 'admin.roles.hub', startsWith: '/admin/roles/hub', permission: 'user.manage' },
   { label: 'Users', icon: UsersIcon, route: 'admin.users', startsWith: '/admin/users', permission: 'user.manage' },
   { label: 'Focal Persons', icon: UserGroupIcon, route: 'admin.focal-persons', startsWith: '/admin/focal-persons', permission: 'focal-person.manage' },

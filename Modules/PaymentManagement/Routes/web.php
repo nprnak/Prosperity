@@ -6,16 +6,11 @@ use Modules\PaymentManagement\Controllers\AdminPaymentsController;
 use Modules\PaymentManagement\Controllers\FinanceController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Read-only now: a payment is settled automatically when the application
+    // it belongs to is approved (see ApproverController), so there is no
+    // manual deposit- or receipt-level verification step left to route to.
     Route::get('/finance/dashboard', [FinanceController::class, 'dashboard'])
         ->middleware('can:payment.record')->name('finance.dashboard');
-    // Each slip is checked on its own; the receipt is signed off once they all
-    // are. There is no "record payment" route any more — submission already
-    // creates the transaction and its deposits, so that one only ever produced
-    // a duplicate.
-    Route::post('/finance/deposits/{deposit}/verify', [FinanceController::class, 'verifyDeposit'])
-        ->middleware('can:payment.verify')->name('finance.deposits.verify');
-    Route::post('/finance/payments/{payment}/verify', [FinanceController::class, 'verifyPayment'])
-        ->middleware('can:payment.verify')->name('finance.payments.verify');
 
     Route::get('/admin/payments', [AdminPaymentsController::class, 'index'])
         ->middleware('can:payment.view-any')->name('admin.payments');

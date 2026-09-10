@@ -6,8 +6,10 @@ use App\Enums\WorkflowStage;
 use App\Models\User;
 use App\Repositories\Repository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
+use Illuminate\Support\Facades\DB;
 use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 
@@ -283,7 +285,10 @@ class ShareApplicationRepository extends Repository
             ->get();
     }
 
-    public function countByStatus(ApplicationStatus|string|array $status): int
+    /**
+     * @param  array{company_id?: int|null, share_offering_id?: int|null, date_from?: string|null, date_to?: string|null}  $filters
+     */
+    public function countByStatus(ApplicationStatus|string|array $status, array $filters = []): int
     {
         $statuses = is_array($status) ? $status : [$status];
 
@@ -294,9 +299,89 @@ class ShareApplicationRepository extends Repository
             $statuses
         );
 
-        return $this->query()
-            ->whereIn('status', $statuses)
-            ->count();
+        return $this->scopeToFilters($this->query()->whereIn('status', $statuses), $filters)->count();
+    }
+
+    /**
+     * How many distinct applicants hold at least one application in the given
+     * statuses — the shareholder count a portfolio dashboard wants, as
+     * opposed to the (larger) application count, since one holder can have
+     * been approved more than once.
+     *
+     * @param  array{company_id?: int|null, share_offering_id?: int|null, date_from?: string|null, date_to?: string|null}  $filters
+     */
+    public function distinctShareholderCount(array $statuses, array $filters = []): int
+    {
+        return $this->scopeToFilters($this->query()->whereIn('status', $statuses), $filters)
+            ->distinct('applicant_id')
+            ->count('applicant_id');
+    }
+
+    /**
+     * Every non-draft status with at least one application, newest-count
+     * first — the funnel the dashboard charts so staff can see where
+     * applications are piling up.
+     *
+     * @param  array{company_id?: int|null, share_offering_id?: int|null, date_from?: string|null, date_to?: string|null}  $filters
+     * @return array<int, array{status: string, label: string, count: int}>
+     */
+    public function statusBreakdown(array $filters = []): array
+    {
+        $counts = DB::table('share_applications')
+            ->where('status', '!=', ApplicationStatus::Draft->value)
+            ->when($filters['company_id'] ?? null, fn ($query, $companyId) => $query->whereIn('share_offering_id', function ($sub) use ($companyId) {
+                $sub->select('id')->from('share_offerings')->where('company_id', $companyId);
+            }))
+            ->when($filters['share_offering_id'] ?? null, fn ($query, $offeringId) => $query->where('share_offering_id', $offeringId))
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('submitted_at', '>=', $date))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('submitted_at', '<=', $date))
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return collect(ApplicationStatus::cases())
+            ->reject(fn (ApplicationStatus $status) => $status === ApplicationStatus::Draft)
+            ->map(fn (ApplicationStatus $status) => [
+                'status' => $status->value,
+                'label' => $status->labelEn(),
+                'count' => (int) ($counts[$status->value] ?? 0),
+            ])
+            ->filter(fn (array $row) => $row['count'] > 0)
+            ->sortByDesc('count')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The latest applications across every offering, for the dashboard's
+     * activity feed.
+     *
+     * @param  array{company_id?: int|null, share_offering_id?: int|null, date_from?: string|null, date_to?: string|null}  $filters
+     */
+    public function recent(int $limit = 6, array $filters = []): Collection
+    {
+        return $this->scopeToFilters($this->query(), $filters)
+            ->with(['applicant:id,full_name_en', 'offering:id,title'])
+            ->latest('submitted_at')
+            ->limit($limit)
+            ->get(['id', 'applicant_id', 'share_offering_id', 'application_number', 'status', 'shares_applied', 'total_amount_declared', 'submitted_at']);
+    }
+
+    /**
+     * Company/offering/date-range narrowing shared by the dashboard's
+     * queries. All optional — an empty $filters array matches everything.
+     *
+     * @param  array{company_id?: int|null, share_offering_id?: int|null, date_from?: string|null, date_to?: string|null}  $filters
+     */
+    private function scopeToFilters(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when($filters['company_id'] ?? null, fn ($q, $companyId) => $q->whereHas(
+                'offering', fn ($offering) => $offering->where('company_id', $companyId)
+            ))
+            ->when($filters['share_offering_id'] ?? null, fn ($q, $offeringId) => $q->where('share_offering_id', $offeringId))
+            ->when($filters['date_from'] ?? null, fn ($q, $date) => $q->whereDate('submitted_at', '>=', $date))
+            ->when($filters['date_to'] ?? null, fn ($q, $date) => $q->whereDate('submitted_at', '<=', $date));
     }
 
     /**

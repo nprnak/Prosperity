@@ -16,9 +16,23 @@ onMounted(() => {
     type: 'line',
     data: {
       labels,
-      datasets: [{ label: 'Capital Raised', data: values, borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.2)' }],
+      datasets: [{
+        label: 'Capital Raised',
+        data: values,
+        borderColor: '#0a2140',
+        backgroundColor: 'rgba(10,33,64,0.08)',
+        pointBackgroundColor: '#0a2140',
+        pointRadius: 3,
+        tension: 0.25,
+        fill: true,
+      }],
     },
-    options: { responsive: true, maintainAspectRatio: false },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } },
+    },
   });
 });
 </script>

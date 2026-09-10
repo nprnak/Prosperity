@@ -59,6 +59,17 @@ class VoucherController extends Controller
     }
 
     /**
+     * Same file as download(), served inline so it renders inside a page's
+     * <iframe> instead of the browser treating it as a file to save.
+     */
+    public function preview(Voucher $voucher)
+    {
+        abort_unless($voucher->pdf_path, 404);
+
+        return Storage::disk('private')->response($voucher->pdf_path, 'voucher-'.$voucher->voucher_number.'.pdf');
+    }
+
+    /**
      * Public voucher authenticity check — reachable without login via the
      * QR code / verification code printed on the receipt PDF.
      */

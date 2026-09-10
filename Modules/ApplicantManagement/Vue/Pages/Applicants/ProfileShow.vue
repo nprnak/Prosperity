@@ -209,21 +209,19 @@ const saveAmendment = () => {
     <Head :title="`KYC — ${applicant.full_name_en || 'Applicant'}`" />
 
     <PanelLayout>
-        <template #header>
+        <div class="mx-auto max-w-5xl space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-xl font-semibold text-gray-900">
+                <h2 class="text-2xl font-bold text-gray-900">
                     {{ applicant.full_name_en || 'Applicant' }}
                 </h2>
                 <Link
                     :href="route('applicants.review')"
-                    class="text-sm font-semibold text-blue-700 hover:text-blue-900"
+                    class="text-sm font-semibold text-brand-700 hover:text-brand-900"
                 >
                     ← Back to queue
                 </Link>
             </div>
-        </template>
 
-        <div class="mx-auto max-w-5xl space-y-6">
             <!-- Status strip -->
             <section class="flex flex-wrap items-center gap-2 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
                 <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-900 ring-1 ring-blue-200">

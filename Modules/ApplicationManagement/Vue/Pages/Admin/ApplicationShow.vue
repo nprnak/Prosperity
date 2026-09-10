@@ -4,7 +4,7 @@ import StageActions from '@/Components/StageActions.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
 import WorkflowTimeline from '@/Components/WorkflowTimeline.vue';
-import { ArrowLeftIcon, DocumentTextIcon, ReceiptPercentIcon, ArrowDownTrayIcon, DocumentPlusIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, DocumentTextIcon, ReceiptPercentIcon, ArrowDownTrayIcon, DocumentPlusIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
   application: Object,
@@ -15,6 +15,7 @@ const props = defineProps({
   backUrl: { type: String, default: null },
   backLabel: { type: String, default: 'Back to Applications' },
   addApplicationUrl: { type: String, default: null },
+  editApplicationUrl: { type: String, default: null },
 });
 
 const nominee = computed(() => (props.application.applicant?.nominees || [])[0] || null);
@@ -96,6 +97,13 @@ const canApproveFromDetail = computed(() =>
           <p class="text-sm text-gray-600">Application No: {{ application.application_number }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+          <Link
+            v-if="editApplicationUrl"
+            :href="editApplicationUrl"
+            class="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+          >
+            <PencilSquareIcon class="h-4 w-4" /> Edit Application
+          </Link>
           <Link
             v-if="addApplicationUrl"
             :href="addApplicationUrl"
@@ -247,7 +255,7 @@ const canApproveFromDetail = computed(() =>
         <h2 class="text-lg font-semibold text-gray-900 mb-3">Receipt</h2>
         <p class="text-sm text-gray-700 mb-3"><span class="font-medium">Receipt No:</span> {{ receipt.receiptNumber || '-' }}</p>
         <div class="overflow-hidden rounded-lg border border-gray-200" style="height: 32rem;">
-          <iframe :src="receipt.downloadUrl" title="Receipt preview" class="h-full w-full"></iframe>
+          <iframe :src="receipt.previewUrl" title="Receipt preview" class="h-full w-full"></iframe>
         </div>
         <div class="mt-3 flex flex-wrap gap-3">
           <Link :href="receipt.showUrl" class="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-900">

@@ -12,7 +12,6 @@ use Modules\ApplicationManagement\Enums\ApplicationStatus;
 use Modules\ApplicationManagement\Models\ShareApplication;
 use Modules\ApprovalManagement\Notifications\ApplicationStageProgressedNotification;
 use Modules\ApprovalManagement\Notifications\ApplicationReturnedNotification;
-use Modules\PaymentManagement\Notifications\PaymentVerifiedNotification;
 use Tests\Support\CreatesProfiles;
 use Tests\TestCase;
 
@@ -99,23 +98,6 @@ class InAppNotificationTest extends TestCase
         $this->actingAs($user)->post('/notifications/mark-read');
 
         $this->assertSame(0, $user->fresh()->unreadNotifications()->count());
-    }
-
-    /**
-     * @return array{0: User, 1: ShareApplication}
-     */
-    /**
-     * The status is an enum, so interpolating it straight into a mail line
-     * throws and the queued job dies in failed_jobs — the applicant simply
-     * never hears that their payment cleared.
-     */
-    public function test_payment_verified_mail_renders_the_status_label(): void
-    {
-        [$user, $application] = $this->applicationAt(ApplicationStatus::PaymentVerified);
-
-        $mail = (new PaymentVerifiedNotification($application))->toMail($user);
-
-        $this->assertContains('Status: Awaiting Verification', $mail->introLines);
     }
 
     /**

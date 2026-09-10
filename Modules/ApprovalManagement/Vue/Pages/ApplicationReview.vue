@@ -4,7 +4,7 @@ import QueueToolbar from '@/Components/QueueToolbar.vue';
 import PanelLayout from '@/Layouts/PanelLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import { PlusIcon, EyeIcon, DocumentTextIcon, ShieldCheckIcon } from '@heroicons/vue/24/outline';
+import { PlusIcon, EyeIcon, DocumentTextIcon, ShieldCheckIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 
 const page = usePage();
 const canAddApplication = (page.props.auth?.permissions || []).includes('application.verify');
@@ -36,6 +36,17 @@ const applySearch = () => {
     });
 };
 
+// A paper application this verifier filed themselves reopens in the same
+// wizard while it is still a draft, or once a later stage has sent it back
+// for correction — anything past that is the review chain's to decide on.
+// ?resume=1 marks this as an explicit "go fix it" click, so the wizard skips
+// straight to the pre-filled form instead of its confirmation notice.
+const editUrl = (application) => (
+  ['draft', 'returned'].includes(application.status) && application.applicant?.user_id
+    ? `${route('applications.add.create', application.applicant.user_id)}?resume=1`
+    : null
+);
+
 const issuedVoucher = (application) =>
     (application.payment_transactions || []).map((payment) => payment.voucher).find((voucher) => !!voucher) || null;
 
@@ -50,6 +61,10 @@ const statusClass = (status) => {
 
     if (['rejected', 'not_allotted'].includes(status)) {
         return 'bg-red-100 text-red-700';
+    }
+
+    if (status === 'returned') {
+        return 'bg-amber-100 text-amber-700';
     }
 
     return 'bg-gray-100 text-gray-700';
@@ -229,6 +244,14 @@ const statusClass = (status) => {
                                 <div class="flex items-center gap-3">
                                     <Link :href="route('admin.applications.show', app.id)" class="text-indigo-600 hover:text-indigo-900" title="View">
                                         <EyeIcon class="h-4 w-4" />
+                                    </Link>
+                                    <Link
+                                        v-if="editUrl(app)"
+                                        :href="editUrl(app)"
+                                        class="text-amber-600 hover:text-amber-800"
+                                        :title="app.status === 'returned' ? 'Edit and resubmit' : 'Continue draft'"
+                                    >
+                                        <PencilSquareIcon class="h-4 w-4" />
                                     </Link>
                                 </div>
                             </td>

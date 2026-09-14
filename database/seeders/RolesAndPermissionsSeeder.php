@@ -61,6 +61,26 @@ class RolesAndPermissionsSeeder extends Seeder
         'report.view',
         'audit.view',
         'dashboard.view-admin',
+
+        // Water Jar Manufacturing & Distribution — a separate closed-loop
+        // module with its own six roles (see ROLES below); it shares only
+        // the User/Role/Permission/Audit plumbing with the share-management
+        // permissions above, none of the domain permissions themselves.
+        'jar.production.manage',
+        'jar.receipt.manage',
+        'jar.inventory.view',
+        'jar.inventory.manage',
+        'jar.vehicle.manage',
+        'jar.dispatch.manage',
+        'jar.dispatch.view',
+        'jar.delivery.manage',
+        'jar.customer.manage',
+        'jar.pricing.manage',
+        'jar.payment.record',
+        'jar.sales.view',
+        'jar.report.view',
+        'jar.trace.view',
+        'jar.dashboard.view',
     ];
 
     public const ROLES = [
@@ -112,6 +132,50 @@ class RolesAndPermissionsSeeder extends Seeder
         ],
         'super_admin' => self::PERMISSIONS,
 
+        // Jar module roles. jar_management is deliberately given only
+        // *.view/*.report/*.dashboard/*.trace permissions — holding no
+        // *.manage permission is what makes it read-only, the same way
+        // application_verifier/reviewer holds only its own stage above.
+        'jar_production_staff' => [
+            'jar.production.manage',
+            'jar.receipt.manage',
+            'jar.inventory.view',
+            'jar.trace.view',
+        ],
+        'jar_warehouse_manager' => [
+            'jar.inventory.view',
+            'jar.inventory.manage',
+            'jar.vehicle.manage',
+            'jar.dispatch.view',
+            'jar.trace.view',
+        ],
+        'jar_dispatch_manager' => [
+            'jar.dispatch.manage',
+            'jar.dispatch.view',
+            'jar.vehicle.manage',
+            'jar.inventory.view',
+            'jar.trace.view',
+        ],
+        'jar_field_staff' => [
+            'jar.delivery.manage',
+            'jar.dispatch.view',
+        ],
+        'jar_sales_accounts' => [
+            'jar.customer.manage',
+            'jar.pricing.manage',
+            'jar.payment.record',
+            'jar.sales.view',
+            'jar.report.view',
+            'jar.trace.view',
+        ],
+        'jar_management' => [
+            'jar.dashboard.view',
+            'jar.inventory.view',
+            'jar.dispatch.view',
+            'jar.sales.view',
+            'jar.report.view',
+            'jar.trace.view',
+        ],
     ];
 
     public function run(): void

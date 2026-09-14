@@ -83,6 +83,33 @@ class NumberGeneratorService
         return sprintf('FP-%04d', $this->nextGlobalNumber('focal_person'));
     }
 
+    /** Sequential, globally unique jar identity — printed on the jar's own QR/barcode label. */
+    public function generateJarCode(): string
+    {
+        return sprintf('JAR-%06d', $this->nextGlobalNumber('jar_code'));
+    }
+
+    /**
+     * Batches and lots are scoped per calendar day: at ~500 jars/day across
+     * 7+ lots, a fresh count from 1 each day keeps the codes short and
+     * readable on a factory floor printout rather than growing unbounded.
+     */
+    public function generateJarBatchCode(?Carbon $date = null): string
+    {
+        $date = $date ?: now();
+        $sequence = $this->nextScopedNumber('jar_batch', $date->format('Ymd'), 0);
+
+        return sprintf('BATCH-%s-%03d', $date->format('Ymd'), $sequence);
+    }
+
+    public function generateJarLotCode(?Carbon $date = null): string
+    {
+        $date = $date ?: now();
+        $sequence = $this->nextScopedNumber('jar_lot', $date->format('Ymd'), 0);
+
+        return sprintf('LOT-%s-%02d', $date->format('Ymd'), $sequence);
+    }
+
     private function nextGlobalNumber(string $type): int
     {
         return $this->nextScopedNumber($type, '', 0);

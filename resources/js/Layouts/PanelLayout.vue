@@ -21,6 +21,13 @@ import {
   IdentificationIcon,
   DocumentPlusIcon,
   QueueListIcon,
+  BeakerIcon,
+  TruckIcon,
+  ArchiveBoxArrowDownIcon,
+  ExclamationTriangleIcon,
+  UserIcon,
+  MagnifyingGlassIcon,
+  Squares2X2Icon,
 } from '@heroicons/vue/24/outline';
 
 const page = usePage();
@@ -80,6 +87,20 @@ const staffMenuItems = [
   { label: 'Reports', icon: PresentationChartLineIcon, route: 'admin.reports', startsWith: '/admin/reports', permission: 'report.view' },
   { label: 'Site Settings', icon: BuildingLibraryIcon, route: 'admin.settings', startsWith: '/admin/settings', permission: 'settings.manage' },
   { label: 'Activity Log', icon: ClockIcon, route: 'admin.logs', startsWith: '/admin/logs', permission: 'audit.view' },
+
+  // Water Jar Manufacturing & Distribution — a separate closed-loop module;
+  // its items only ever appear for the six jar_* roles (or super_admin),
+  // never mixed into the share-management items above by accident since
+  // every permission here is namespaced jar.*.
+  { label: 'Jar Dashboard', icon: Squares2X2Icon, route: 'jar.dashboard', startsWith: '/jar/dashboard', permission: 'jar.dashboard.view' },
+  { label: 'Production Batches', icon: BeakerIcon, route: 'jar.production.index', startsWith: '/jar/production', permission: 'jar.production.manage' },
+  { label: 'Vehicle Lots', icon: TruckIcon, route: 'jar.dispatch.index', startsWith: '/jar/dispatch', permission: ['jar.dispatch.manage', 'jar.dispatch.view'] },
+  { label: 'My Deliveries', icon: PaperAirplaneIcon, route: 'jar.delivery.my-lots', startsWith: '/jar/delivery', permission: 'jar.delivery.manage' },
+  { label: 'Factory Receipt', icon: ArchiveBoxArrowDownIcon, route: 'jar.receipts.index', startsWith: '/jar/receipts', permission: 'jar.receipt.manage' },
+  { label: 'Quarantine Review', icon: ExclamationTriangleIcon, route: 'jar.quarantine.index', startsWith: '/jar/quarantine', permission: ['jar.receipt.manage', 'jar.inventory.manage', 'jar.inventory.view'] },
+  { label: 'Jar Customers', icon: UserIcon, route: 'jar.customers.index', startsWith: '/jar/customers', permission: 'jar.customer.manage' },
+  { label: 'Jar Vehicles', icon: TruckIcon, route: 'jar.vehicles.index', startsWith: '/jar/vehicles', permission: 'jar.vehicle.manage' },
+  { label: 'Jar Trace', icon: MagnifyingGlassIcon, route: 'jar.trace', startsWith: '/jar/trace', permission: 'jar.trace.view' },
 ];
 
 const isApplicant = computed(() => page.props.auth?.user?.roles?.some((role) => role.name === 'applicant') ?? false);

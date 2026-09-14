@@ -106,6 +106,13 @@ return [
             'middleware' => ['api'],
         ],
 
+        // No Routes/api.php — its JSON lookups (scan-input validation,
+        // customer typeahead) are plain 'web' routes instead, so they stay
+        // session-authenticated like the rest of the app rather than being
+        // the first module to exercise the untested api.php/'api' middleware
+        // mounting path.
+        'JarManagement' => [],
+
     ],
 
 ];
